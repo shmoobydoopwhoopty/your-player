@@ -1,35 +1,35 @@
 # Your Player
 
-A local-first desktop music player for Windows with album artwork front and center, plus a built-in YouTube downloader and video library. Fully offline for your own music; only the Downloader tab talks to YouTube.
+A desktop music player for Windows that keeps everything on your machine, with album artwork front and center, plus a YouTube downloader and video library built in. Fully offline for your own music; only the Downloader tab talks to YouTube.
 
-> The app is rebrandable: the default name is "Your", and you can rename it from settings or first-run onboarding
+> The app is rebrandable: the default name is "Your", and you can rename it from settings or the first run tour.
 
 ## Highlights
 
 - **Your library, your files**: point it at your music folders and it builds a persistent library with embedded tags and album art. Supports MP3, M4A/AAC, WAV, FLAC, OGG, Opus, and WebM.
-- **Album artwork everywhere**: blurred backdrops, a full-screen Now Playing view, and auto-upscaling for big displays. Missing art gets a generated placeholder.
-- **Built-in downloader**: search YouTube or paste a link, then grab songs as MP3 (straight into your library) or videos (into the Media tab), with a live progress queue.
-- **8-band equalizer**: presets included, custom presets savable, settings persist.
-- **Deep customization**: themes, accent colors, per-area color overrides, and a drag-and-drop layout editor (sidebar side, player dock, queue position).
+- **Album artwork everywhere**: blurred backdrops, a fullscreen Now Playing view, and automatic upscaling for big displays. Missing art gets a generated placeholder.
+- **YouTube downloader**: search YouTube or paste a link, then grab songs as MP3 (straight into your library) or videos (into the Media tab), with a live progress queue.
+- **Equalizer with 8 bands**: presets included, custom presets you can save, settings persist.
+- **Deep customization**: themes, accent colors, color overrides for every area, and a layout editor with drag and drop placement (sidebar side, player dock, queue position).
 
 ## Features
 
 ### Library
-- Import by file picker, folder scan (recursive, cancellable, with progress), or drag-and-drop
-- Multiple tracked folders with add/remove management and a manual "Rescan folders" button; auto-checks folders for new music on launch
-- Library, favorites, play counts, queue, volume, shuffle/repeat, and view state persist across restarts; missing files are reported, and a moved folder can be auto-relinked
+- Import by file picker, folder scan (recursive, cancellable, with progress), or drag and drop
+- Multiple tracked folders with add/remove management and a manual "Rescan folders" button; folders are checked automatically for new music on launch
+- Library, favorites, play counts, queue, volume, shuffle/repeat, and view state persist across restarts; missing files are reported, and a moved folder is relinked automatically
 - Views: Home, All Songs, Albums, Artists, Favorites, Most Listened, Playlists
 - Sorting (recently added / title / artist), filter chips, and "Show more" pagination for large libraries
 - Live search with a ranked suggestion dropdown and keyboard navigation
-- Custom playlists plus a built-in "Liked songs" collection
+- Custom playlists plus a "Liked songs" collection
 - Back/forward navigation history
 
 ### Playback
 - Play/pause, next/previous, shuffle, and repeat (off / all / one)
 - Draggable seek bar, elapsed/total time, volume slider with mute
-- **Up Next** queue: drag-to-reorder while audio keeps playing, auto-continuation in shuffle or library order, clear-queue option
-- Full-screen Now Playing overlay with blurred artwork backdrop
-- 8-band equalizer (60 Hz to 16 kHz, ±12 dB) with 13 built-in presets and saveable custom presets
+- **Up Next** queue: drag to reorder while audio keeps playing, continues on its own in shuffle or library order, and an option to clear the queue
+- Fullscreen Now Playing overlay with blurred artwork backdrop
+- Equalizer with 8 bands (60 Hz to 16 kHz, ±12 dB), 13 included presets, and custom presets you can save
 - Keyboard shortcuts (when not typing in a field):
 
 | Key | Action |
@@ -39,21 +39,21 @@ A local-first desktop music player for Windows with album artwork front and cent
 | `↑` / `↓` | Volume up / down |
 | `Esc` | Close overlays (now playing, drawers, popups) |
 
-### Downloader (yt-dlp powered)
+### Downloader (powered by yt-dlp)
 - Search YouTube (up to 25 results) or paste any video / Shorts / playlist URL
 - Autocomplete suggestions as you type
 - Embedded preview player before you commit
-- **MP3** downloads (best audio, embedded thumbnail + metadata) are auto-imported into your library
+- **MP3** downloads (best audio, embedded thumbnail and metadata) are imported into your library automatically
 - **Video** downloads (H.264, ≤1080p MP4) land in the **Media** tab
-- Download queue with live progress (percent, speed, ETA), per-item and cancel-all, up to 3 concurrent downloads
+- Download queue with live progress (percent, speed, ETA), cancel one or all, up to 3 downloads at once
 
 ### Media tab
 - Your downloaded videos in a grid; play them inside the app or delete them from disk
 
 ### Appearance & layout
 - 6 themes: Charcoal, OLED, Slate, Forest, Mocha, Dusk, plus 8 accent colors
-- Per-area custom color pickers (accent, background, sidebar, panels, text, player bar, buttons, shadow) with text-shadow toggle
-- Layout presets (Classic, Compact, Leftie, Cinema, Heads Up), sidebar/player size sliders, and a "Customize layout" edit mode with drag-and-drop snap zones
+- Color pickers for every area (accent, background, sidebar, panels, text, player bar, buttons, shadow) with a text shadow toggle
+- Layout presets (Classic, Compact, Leftie, Cinema, Heads Up), sidebar/player size sliders, and a "Customize layout" edit mode with drag and drop snap zones
 - Frameless window with custom window controls; rename the app and it propagates everywhere
 
 ## Getting started
@@ -61,7 +61,7 @@ A local-first desktop music player for Windows with album artwork front and cent
 ### Prerequisites
 - [Node.js](https://nodejs.org) 18+
 - **For the Downloader tab only:** [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org)
-  - Install e.g. `winget install yt-dlp` and `winget install Gyan.FFmpeg`, or set the `TREE_PLAYER_TOOLS_DIR` environment variable to a folder containing `yt-dlp.exe` and `ffmpeg.exe`
+  - Install e.g. `winget install yt-dlp` and `winget install Gyan.FFmpeg`; both just need to be on your PATH
   - Everything else (library, playback, equalizer) works without them
 
 ### Run in development
@@ -73,16 +73,17 @@ npm start
 ### Build an installer / portable exe
 ```bash
 npm run dist              # NSIS installer + portable exe  → release/
-npm run dist:installer    # installer onlynpm run dist:portable    # portable exe only
+npm run dist:installer    # installer only
+npm run dist:portable     # portable exe only
 ```
 
-### Releases & self-updating
+### Releases and updates
 
-The app ships with a built-in updater pointed at this project's GitHub releases:
+The app ships with an updater pointed at this project's GitHub releases:
 
 - Installed apps check `releases/latest/download/manifest.json` shortly after launch and every 30 minutes.
 - When a newer version is published, a red dot appears on the settings button, and Settings → Update can download, verify (SHA-256), and install it, and the app relaunches to finish.
-- The update source can be overridden per-user in Settings → Update source, or via the `TREE_PLAYER_UPDATE_URL` environment variable.
+- You can change the update source any time in Settings → Update source.
 - Updates replace only `index.html`, `package.json`, and `electron/*.cjs`; the previous versions are backed up to `userData/updates/backups/`.
 
 To ship an update:
@@ -102,7 +103,7 @@ The NSIS installer creates a standard Windows uninstaller (Settings → Apps →
 ### First run
 A short onboarding tour helps you name the app, pick a downloads folder, and add your music folders. You can skip it and change everything later in settings (gear icon).
 
-## Updates (self-updating app)
+## Updates (the app updates itself)
 
 The app can update itself, no reinstall needed:
 
@@ -111,11 +112,11 @@ The app can update itself, no reinstall needed:
    npm run publish:update        # writes release/update-channel/ (app files + manifest.json)
    ```
 2. **Host the folder** on any static HTTP(S) server (the manifest and files just sit side by side).
-3. **Point installs at it:** Settings → Update source → `<url>/manifest.json`. For zero-config installs, bake the URL into `DEFAULT_UPDATE_URL` in `electron/updater.cjs` (or set the `TREE_PLAYER_UPDATE_URL` environment variable).
+3. **Point installs at it:** Settings → Update source → `<url>/manifest.json`. To skip that step, bake the URL into `DEFAULT_UPDATE_URL` in `electron/updater.cjs`.
 
-Installed apps check the channel at launch and every 30 minutes. When a newer version is published, a **red dot** appears on the settings button and Settings → Update offers **Download & install update**: files are SHA-256-verified, staged in userData, swapped into the install folder with backups, and the app relaunches. Old versions are kept under `userData/updates/backups/`.
+Installed apps check the channel at launch and every 30 minutes. When a newer version is published, a **red dot** appears on the settings button and Settings → Update offers **Download & install update**: files are verified with SHA-256, staged in userData, swapped into the install folder with backups, and the app relaunches. Old versions are kept under `userData/updates/backups/`.
 
-Notes: self-updates apply to installed (NSIS) builds; the portable exe will tell you to grab the new installer instead. Updates are restricted to `index.html`, `package.json`, and `electron/*.cjs`, and any pending apply also finishes automatically on the next launch.
+Notes: updates from inside the app apply to installed (NSIS) builds; the portable exe will tell you to grab the new installer instead. Updates are restricted to `index.html`, `package.json`, and `electron/*.cjs`, and any pending apply also finishes automatically on the next launch.
 
 The installer (`npm run dist:installer` → `installer/`) is a standard NSIS setup with a full uninstaller (Windows Apps & Features → Uninstall).
 
@@ -124,8 +125,8 @@ The installer (`npm run dist:installer` → `installer/`) is a standard NSIS set
 | What | Where |
 | --- | --- |
 | Library, playlists, settings, EQ | Browser localStorage inside Electron's userData folder |
-| Album artwork cache | IndexedDB (`tree-player-artwork-v2`) |
-| Downloads folder (songs) | `Music\Tree Player Downloads` by default, changeable in settings |
+| Album artwork cache | IndexedDB inside Electron's userData folder |
+| Downloads folder (songs) | `Music\Your Player Downloads` by default, changeable in settings |
 | Downloaded videos | `<downloads folder>\Your Media` |
 | Crash log | `userData\your-player-crash.log` |
 
@@ -136,13 +137,13 @@ Removing a tracked folder from settings removes its tracks from the library but 
 ```
 index.html              # The entire app UI: styles, markup, and renderer logic
 electron/
-  main.cjs              # Window creation, file scanning, IPC, file-access allowlist
+  main.cjs              # Window creation, file scanning, IPC file access allowlist
   preload.cjs           # Secure bridge (window.afterglowDesktop) between UI and main
   downloader.cjs        # yt-dlp/ffmpeg search + download queue manager
-  updater.cjs           # GitHub-release update check, download, verify, apply
+  updater.cjs           # GitHub release update check, download, verify, apply
 scripts/
-  copy-installer.js     # Post-build installer helper
-  publish-update.js     # Builds the self-update channel (manifest + files) for a release
+  copy-installer.js     # Copies the built installer into installer/
+  publish-update.js     # Builds the update channel (manifest + files) for a release
 release/                # Build output
 ```
 
