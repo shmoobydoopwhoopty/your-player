@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Your Player</string>
-    <string name="title_activity_main">Your Player</string>
-    <string name="package_name">com.yourplayer.app</string>
-    <string name="custom_url_scheme">com.yourplayer.app</string>
-</resources>

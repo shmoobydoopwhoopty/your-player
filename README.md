@@ -141,10 +141,8 @@ electron/
   downloader.cjs        # yt-dlp/ffmpeg search + download queue manager
   updater.cjs           # GitHub-release update check, download, verify, apply
 scripts/
-  sync-mobile.js        # Copies the UI into www/ for the Android (Capacitor) port
   copy-installer.js     # Post-build installer helper
   publish-update.js     # Builds the self-update channel (manifest + files) for a release
-android/, www/          # Experimental Capacitor Android port (not covered here)
 release/                # Build output
 ```
 
