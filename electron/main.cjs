@@ -708,6 +708,58 @@ async function findFfmpegPath() {
 
 const sanitizeTag = value => String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 300);
 
+// ── Trim songs & videos (ffmpeg) ──────────────────────────────────────────
+ipcMain.handle('player:trim', async (_event, payload) => {
+  const target = path.resolve(String(payload?.path || ''));
+  const start = Number(payload?.start);
+  const rawEnd = payload?.end;
+  const end = rawEnd == null || rawEnd === '' ? null : Number(rawEnd);
+  if (!Number.isFinite(start) || start < 0) throw new Error('Invalid start time.');
+  if (end != null && (!Number.isFinite(end) || end <= start)) throw new Error('Invalid end time.');
+  if (!fs.existsSync(target)) throw new Error('That file no longer exists.');
+  const ext = path.extname(target).toLowerCase();
+  const videoExtensions = new Set(['.mp4', '.webm', '.mkv']);
+  const isAudio = audioExtensions.has(ext);
+  const isVideo = videoExtensions.has(ext);
+  if (isAudio) {
+    if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);
+  } else if (isVideo) {
+    const mediaRoot = path.resolve(await downloader.getMediaRoot());
+    if (!target.startsWith(mediaRoot)) throw new Error('That video is not part of Your Player Media.');
+  } else {
+    throw new Error('That file type cannot be trimmed.');
+  }
+  const ffmpegPath = await findFfmpegPath();
+  if (!ffmpegPath) throw new Error('ffmpeg was not found, so trimming is unavailable. Install ffmpeg ("winget install Gyan.FFmpeg").');
+  const dir = path.dirname(target);
+  const base = path.basename(target, ext);
+  let out = path.join(dir, `${base} (trimmed)${ext}`);
+  for (let n = 2; fs.existsSync(out); n++) out = path.join(dir, `${base} (trimmed ${n})${ext}`);
+  const attempt = async extraArgs => {
+    const args = ['-hide_banner', '-y', '-ss', String(start), '-i', target];
+    if (end != null) args.push('-t', String(end - start));
+    args.push(...extraArgs, out);
+    await runFfmpegTool(args, 15 * 60 * 1000);
+  };
+  try {
+    await attempt(['-c', 'copy']);
+  } catch (copyError) {
+    const fallbackArgs = isVideo
+      ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-c:a', 'aac', '-b:a', '160k']
+      : ext === '.mp3' ? ['-c:a', 'libmp3lame', '-b:a', '192k']
+      : ext === '.flac' ? ['-c:a', 'flac']
+      : ext === '.wav' ? ['-c:a', 'pcm_s16le']
+      : ['-c:a', 'aac', '-b:a', '192k'];
+    try {
+      await attempt(fallbackArgs);
+    } catch (encodeError) {
+      try { fs.unlinkSync(out); } catch {}
+      throw new Error(`ffmpeg could not trim that file — ${String(encodeError?.message || encodeError).slice(0, 140)}`);
+    }
+  }
+  return { ok: true, path: out };
+});
+
 ipcMain.handle('tracks:write-tags', async (_event, payload) => {
   const target = path.resolve(String(payload?.path || ''));
   if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);

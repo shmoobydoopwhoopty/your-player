@@ -77,6 +77,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   // Editing song details (writes tags into the music files)
   writeTrackTags: payload => ipcRenderer.invoke('tracks:write-tags', payload),
   writeTrackArt: payload => ipcRenderer.invoke('tracks:write-art', payload),
+  trimMediaFile: payload => ipcRenderer.invoke('player:trim', payload),
   chooseImageFile: title => ipcRenderer.invoke('afterglow:choose-image', title),
 
   // Custom app logo

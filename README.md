@@ -22,13 +22,14 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - Views: Home, All Songs, Albums, Artists, Favorites, Most Listened, Playlists
 - Sorting (recently added / title / artist), filter chips, and "Show more" pagination for large libraries
 - Live search with a ranked suggestion dropdown covering songs, artists, albums and playlists. Click an artist or album in the dropdown to open its page; press Enter to see everything that matches across your library
-- Artist pages gather everything you have from one artist: albums, songs, playlists that include them and favorites
+- Artist pages gather everything you have from one artist: albums, songs, playlists that include them and favorites. Clicking an artist in the Artists tab opens their profile (it no longer sneaks a song into the player)
 - Custom app logo: pick any picture from your computer for the corner logo
 - Custom playlists plus a "Liked songs" collection
 - Back/forward navigation history
 
 ### Playback
 - Play/pause, next/previous, shuffle, and repeat (off / all / one); the Shuffle button on an album or artist page shuffles just that album or artist until you shuffle something else or turn shuffle off
+- Scoped playback: playing a song from inside an album or artist page (or a playlist) keeps automatic advance, previous and the Up Next suggestions inside that collection; anything you queue manually still plays first. Starting playback elsewhere (Home, All songs, a card, pressing Play) goes back to your whole library
 - Draggable seek bar, elapsed/total time, volume slider with mute
 - **Up Next** queue: drag to reorder while audio keeps playing, continues on its own in shuffle or library order, and an option to clear the queue
 - Song crossfade: fade gently out of one song and into the next, with a 0 to 10 second slider in settings
@@ -53,20 +54,26 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - **MP3** downloads (best audio, embedded thumbnail and metadata) are imported into your library automatically
 - **Video** downloads (H.264, ≤1080p MP4) land in the **Media** tab
 - Download queue with live progress (percent, speed, ETA), cancel one or all, up to 3 downloads at once
+- A download pill with live progress follows you around the app while anything is downloading, with a “Downloading…” notice the moment a download starts
+- Sign in to YouTube from Settings → YouTube account so age gated or members-only videos can download (cookies stay on your PC)
+- Right-click any song or video and choose **Trim** to save a section as a new copy — the original is never touched (uses ffmpeg, same as the downloader)
 
 ### Media tab
-- Your downloaded videos in a grid; play them inside the app or delete them from disk
+- Your downloaded videos in a grid; play, trim or delete them (right-click a video for the menu)
 
 ### Appearance & layout
 - 6 themes: Charcoal, OLED, Slate, Forest, Mocha, Dusk, plus 8 accent colors
-- Color pickers for every area (accent, background, tab bar, panels, text, player, buttons, tab buttons, album and artist cards, card borders, shadow) with opacity sliders for the drop shadow, album card background, tab bar and player
+- Save any look as a named custom theme (theme + accent + every color and slider), then re-apply or delete it from the theme panel
+- Color pickers for every area (accent, background, tab bar, panels, text, player, buttons, tab buttons, album and artist cards, card borders, shadow) with opacity sliders for the drop shadow, album card background, tab bar and player; the card border color also frames the Home now-playing picture
 - Layout presets (Classic, Compact, Leftie, Cinema, Heads Up), size sliders, and a "Customize layout" edit mode with drag and drop snap zones. The tab bar docks on any side like the Windows taskbar, the player docks on any side, and the search bar can move and resize
+- Home page layout editor: drag the now-playing hero, Up next card and song list onto any of 9 snap points (3×3 grid — top/middle/bottom × left/center/right); sections scale to their cell and the classic side-by-side look stays the default
+- Sharper blown-up album art: the now-playing full-screen view upscales in multiple passes with an unsharp-mask sharpen between passes, targets your screen size, and still works when a track has no large embedded artwork
 - Frameless window with custom window controls; rename the app and it propagates everywhere
 
 ## Getting started
 
 ### Installing
-Grab the newest Windows installer from the [releases page](https://github.com/shmoobydoopwhoopty/your-player/releases/latest): the asset is named like `Your.Player.Setup.1.0.6.exe` (GitHub renames spaces to dots in download links). Installed apps update themselves from the same releases page; new installers appear here with each release.
+Grab the newest Windows installer from the [releases page](https://github.com/shmoobydoopwhoopty/your-player/releases/latest): the asset is named like `Your.Player.Setup.1.0.8.exe` (GitHub renames spaces to dots in download links). Installed apps update themselves from the same releases page; new installers appear here with each release.
 
 ### Prerequisites
 - [Node.js](https://nodejs.org) 18+
