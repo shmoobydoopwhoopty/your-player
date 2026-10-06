@@ -65,6 +65,9 @@ A desktop music player for Windows that keeps everything on your machine, with a
 
 ## Getting started
 
+### Installing
+Grab the newest Windows installer from the [releases page](https://github.com/shmoobydoopwhoopty/your-player/releases/latest): the asset is named like `Your.Player.Setup.1.0.6.exe` (GitHub renames spaces to dots in download links). Installed apps update themselves from the same releases page; new installers appear here with each release.
+
 ### Prerequisites
 - [Node.js](https://nodejs.org) 18+
 - **For the Downloader tab only:** [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org)
