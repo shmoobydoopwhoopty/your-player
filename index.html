@@ -1184,6 +1184,11 @@ window.addEventListener('error',event=>console.error(`${appTitle()} renderer err
 // ── Self-update (red dot on settings + Update section) ────────────────────
 const updateUi={available:false,notifiedVersion:'',state:'idle',latestVersion:'',currentVersion:''};
 const updateDot=(()=>{const btn=$('#settingsBtn');let dot=btn.querySelector('.update-dot');if(!dot){dot=document.createElement('span');dot.className='update-dot';dot.hidden=true;btn.append(dot)}return dot})();
+let updateRelaunchTimer=null;
+function scheduleUpdateRelaunch(){
+  if(updateRelaunchTimer)return;
+  updateRelaunchTimer=setTimeout(()=>{try{desktop.updateRelaunch()}catch{}},1800);
+}
 function updateStatusText(s){
   const cur=s.currentVersion||updateUi.currentVersion;
   switch(s.state){
@@ -1193,7 +1198,7 @@ function updateStatusText(s){
     case 'available':return `Version ${s.latestVersion||updateUi.latestVersion} is available — install below`;
     case 'downloading':return `Downloading update${s.version?` (v${s.version})`:''} — ${Math.max(0,Math.round(s.percent||0))}%`;
     case 'applying':return 'Installing update…';
-    case 'applied':return `Update to ${s.version||updateUi.latestVersion} installed — restart to finish`;
+    case 'applied':return `Update to ${s.version||updateUi.latestVersion} installed — restarting…`;
     case 'error':return `Update failed — ${s.error||'try again'}`;
     default:return '';
   }
@@ -1216,6 +1221,7 @@ function applyUpdateStatus(s){
   const installBtn=$('#updateInstallBtn');
   if(installBtn){installBtn.hidden=!available;installBtn.textContent=`Download & install update${updateUi.latestVersion?` (v${updateUi.latestVersion})`:''}`}
   const restartBtn=$('#updateRestartBtn');if(restartBtn)restartBtn.hidden=updateUi.state!=='applied';
+  if(updateUi.state==='applied'){showToast(`Update to ${s.version||updateUi.latestVersion||'the new version'} installed — restarting…`);scheduleUpdateRelaunch()}
   const checkBtn=$('#updateCheckBtn');if(checkBtn){const busy=updateUi.state==='checking'||updateUi.state==='downloading'||updateUi.state==='applying';checkBtn.disabled=busy;checkBtn.textContent=updateUi.state==='checking'?'Checking…':'Check now'}
   if(available&&updateUi.notifiedVersion!==updateUi.latestVersion){updateUi.notifiedVersion=updateUi.latestVersion;showToast(`Update to ${updateUi.latestVersion} available — open settings to install`)}
 }
