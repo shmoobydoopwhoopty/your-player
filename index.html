@@ -366,8 +366,8 @@ body[data-player-dock="top"] .layout-edit-bar{bottom:18px}
   <div class="scan-progress update-progress" id="updateProgressBar" hidden><div class="scan-progress-fill" id="updateProgressFill"></div></div>
   <div class="update-actions"><button class="accent-btn" id="updateInstallBtn" type="button" hidden>Download &amp; install update</button><button class="accent-btn" id="updateRestartBtn" type="button" hidden>Restart to finish update</button></div>
   <div class="pop-label">Update source</div>
-  <div class="brand-row"><input id="updateUrlInput" placeholder="URL to manifest.json (optional)" autocomplete="off" spellcheck="false"><button class="text-btn" id="updateUrlSave" type="button">Save</button></div>
-  <div class="brand-note">Where update checks look for new builds. Leave empty to disable update checks.</div>
+  <div class="brand-row"><input id="updateUrlInput" placeholder="URL ending in manifest.json (optional)" autocomplete="off" spellcheck="false"><button class="text-btn" id="updateUrlSave" type="button">Save</button></div>
+  <div class="brand-note">Where update checks look for new builds. Leave empty to use the built in release channel; the URL must end with manifest.json.</div>
   <div class="pop-label">App logo</div>
   <div class="folder-row"><div class="folder-path" id="logoPathRow" title="">Default logo</div><button class="text-btn" id="logoChooseBtn" type="button">Choose</button></div>
   <div class="folder-note">Pick any picture from your computer as the app logo in the corner. Clear it to go back to the default.</div>
@@ -1512,7 +1512,7 @@ function updateStatusText(s){
     case 'downloading':return `Downloading update${s.version?` (v${s.version})`:''} — ${Math.max(0,Math.round(s.percent||0))}%`;
     case 'applying':return 'Installing update…';
     case 'applied':return `Update to ${s.version||updateUi.latestVersion} installed — restarting…`;
-    case 'error':return `Update failed — ${s.error||'try again'}`;
+    case 'error':return /HTTP 404/i.test(String(s.error))?'Update source gave a 404 — clear the custom URL below or fix it, then check again':`Update failed — ${s.error||'try again'}`;
     default:return '';
   }
 }

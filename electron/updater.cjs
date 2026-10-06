@@ -135,7 +135,12 @@ async function checkForUpdate() {
   try {
     const manifestUrl = manifestUrlFor(cfg);
     const raw = await fetchBuffer(`${manifestUrl}${manifestUrl.includes('?') ? '&' : '?'}t=${Date.now()}`, MAX_MANIFEST_BYTES);
-    const manifest = JSON.parse(raw.toString('utf8'));
+    let manifest;
+    try { manifest = JSON.parse(raw.toString('utf8')); }
+    catch { throw new Error('That update source did not return a valid manifest — check the URL (it should end with manifest.json)'); }
+    if (manifest && typeof manifest === 'object' && !Array.isArray(manifest) && !manifest.version && manifest.message) {
+      throw new Error(`Update source replied: ${String(manifest.message).slice(0, 120)}`);
+    }
     validateManifest(manifest);
     lastManifest = manifest;
     const isNewer = compareVersions(manifest.version, app.getVersion()) > 0;
