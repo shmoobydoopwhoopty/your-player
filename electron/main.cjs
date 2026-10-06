@@ -90,7 +90,7 @@ async function describeAudioFile(filePath) {
     const stat = await fs.stat(absolutePath);
     if (!stat.isFile()) return null;
     allowedAudioFiles.add(absolutePath);
-    return { path: absolutePath, name: path.basename(absolutePath), size: stat.size, lastModified: stat.mtimeMs };
+    return { path: absolutePath, name: path.basename(absolutePath), size: stat.size, lastModified: stat.mtimeMs, created: stat.birthtimeMs || stat.ctimeMs || stat.mtimeMs };
   } catch {
     return null;
   }
@@ -107,7 +107,7 @@ async function describeMediaFile(filePath) {
     const stat = await fs.stat(absolutePath);
     if (!stat.isFile()) return null;
     allowedAudioFiles.add(absolutePath);
-    return { path: absolutePath, name: path.basename(absolutePath), size: stat.size, lastModified: stat.mtimeMs };
+    return { path: absolutePath, name: path.basename(absolutePath), size: stat.size, lastModified: stat.mtimeMs, created: stat.birthtimeMs || stat.ctimeMs || stat.mtimeMs };
   } catch {
     return null;
   }
