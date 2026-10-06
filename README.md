@@ -18,9 +18,10 @@ A desktop music player for Windows that keeps everything on your machine, with a
 ### Library
 - Import by file picker, folder scan (recursive, cancellable, with progress), or drag and drop
 - Multiple tracked folders with add/remove management and a manual "Rescan folders" button; folders are checked automatically for new music on launch
-- Library, favorites, play counts, queue, volume, shuffle/repeat, and view state persist across restarts; missing files are reported, and a moved folder is relinked automatically
+- Library, favorites, playlists, play counts, queue, volume, shuffle/repeat, and view state persist across restarts **and across app updates** — every snapshot is written both to local storage and to `library.json` in the app's data folder, and the newer of the two wins on launch. Missing files are reported, and a moved folder is relinked automatically
 - Views: Home, All Songs, Albums, Artists, Favorites, Most Listened, Playlists
-- Sorting (recently added / title / artist), filter chips, and "Show more" pagination for large libraries
+- Albums are built from the tags in your files; anything untagged falls back to the name of the folder it lives in, so songs from different folders never get lumped into one shared album. Clicking an album in the Albums tab opens the album instead of starting playback, and album pages list songs in track-number order
+- Sorting (recently added / title / artist), filter chips, and "Show more" pagination for large libraries; "Recently added" is newest first, so a song you just downloaded lands at the top of Home
 - Live search with a ranked suggestion dropdown covering songs, artists, albums and playlists. Click an artist or album in the dropdown to open its page; press Enter to see everything that matches across your library
 - Artist pages gather everything you have from one artist: albums, songs, playlists that include them and favorites. Clicking an artist in the Artists tab opens their profile (it no longer sneaks a song into the player)
 - Custom app logo: pick any picture from your computer for the corner logo
@@ -36,7 +37,8 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - "Listened to" counter next to the song in the player, counting every play or restart
 - Click the artist name in the player to jump to their artist page
 - Fullscreen Now Playing overlay with blurred artwork backdrop
-- Equalizer with 8 bands (60 Hz to 16 kHz, ±12 dB), 13 included presets, and custom presets you can save
+- Equalizer with 8 bands (60 Hz to 16 kHz, ±12 dB), 13 included presets, and custom presets you can save, name and delete; picking a preset moves every band, and Reset puts them back flat
+- Party mode: settings toggle that flashes the screen in shifting colors on every bass hit under 100 Hz while music plays
 - Keyboard shortcuts (when not typing in a field):
 
 | Key | Action |
@@ -62,7 +64,7 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - Your downloaded videos in a grid; play, trim or delete them (right-click a video for the menu)
 
 ### Appearance & layout
-- 6 themes: Charcoal, OLED, Slate, Forest, Mocha, Dusk, plus 8 accent colors
+- 10 themes: Charcoal, OLED, Slate, Forest, Mocha, Dusk plus four gradient surfaces (Aurora, Sunset, Deep Sea, Nebula), and 14 accent colors including six gradients (Sunset, Aurora, Orchid, Ocean, Ember, Neon). Accent-tinted buttons, player controls and progress bars carry the gradient through the app
 - Save any look as a named custom theme (theme + accent + every color and slider), then re-apply or delete it from the theme panel
 - Color pickers for every area (accent, background, tab bar, panels, text, player, buttons, tab buttons, album and artist cards, card borders, shadow) with opacity sliders for the drop shadow, album card background, tab bar and player; the card border color also frames the Home now-playing picture
 - Layout presets (Classic, Compact, Leftie, Cinema, Heads Up), size sliders, and a "Customize layout" edit mode with drag and drop snap zones. The tab bar docks on any side like the Windows taskbar, the player docks on any side, and the search bar can move and resize
@@ -166,5 +168,5 @@ release/                # Build output
 
 ### Architecture notes
 - The renderer is sandboxed (`contextIsolation`, `sandbox`, no node integration). Audio and metadata are read through an IPC allowlist, so only files registered via import/scan/download are readable.
-- Tag parsing (ID3v2 for MP3, MP4 atoms for M4A/AAC) runs in a pool of 4 web workers over partial file reads (first 6 MB), so imports stay fast even for big libraries.
+- Tag parsing runs in a pool of 4 web workers over partial file reads, so imports stay fast even for big libraries. MP3 reads ID3v2.2/2.3/2.4 (plain and syncsafe frame sizes, extended headers, unsynchronised tags, APIC artwork), M4A/MP4 walks the real atom tree (metadata is read from the start and end of the file separately, so a trailing `moov` still works), and FLAC, OGG/Opus and WAV read their Vorbis comments, picture blocks and RIFF INFO tags. Titles, artists, albums and track numbers all come from your files.
 - The Downloader shells out to `yt-dlp` for search/download and `ffmpeg` for MP3 conversion and video merging; progress is streamed to the UI over IPC.

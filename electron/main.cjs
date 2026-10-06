@@ -819,6 +819,23 @@ ipcMain.handle('tracks:write-art', async (_event, payload) => {
   return true;
 });
 
+// ── Library persistence on disk (survives re-installs and storage resets) ──
+function libraryFilePath() { return path.join(app.getPath('userData'), 'library.json'); }
+
+ipcMain.handle('library:load', async () => {
+  try { return JSON.parse(fsSync.readFileSync(libraryFilePath(), 'utf8')); } catch { return null; }
+});
+
+ipcMain.handle('library:save', async (_event, data) => {
+  try {
+    const file = libraryFilePath();
+    const temp = `${file}.tmp`;
+    fsSync.writeFileSync(temp, JSON.stringify(data));
+    fsSync.renameSync(temp, file);
+    return true;
+  } catch { return false; }
+});
+
 // ── YouTube sign in (cookies) ────────────────────────────────────────
 let ytSignInWindow = null;
 
@@ -840,6 +857,7 @@ ipcMain.handle('youtube:signin', async () => {
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, partition: 'persist:youtube-signin' },
   });
   ytSignInWindow.loadURL('https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2F&service=youtube');
+  ytSignInWindow.once('ready-to-show', () => { try { ytSignInWindow.show(); ytSignInWindow.focus(); } catch {} });
   ytSignInWindow.on('closed', () => { ytSignInWindow = null; });
   return { ok: true, signedIn: false };
 });

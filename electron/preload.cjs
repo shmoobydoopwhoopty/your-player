@@ -85,6 +85,8 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   clearAppLogo: () => ipcRenderer.invoke('app-logo:clear'),
 
   // YouTube sign in for the downloader
+  libraryLoad: () => ipcRenderer.invoke('library:load'),
+  librarySave: data => ipcRenderer.invoke('library:save', data),
   youtubeSignIn: () => ipcRenderer.invoke('youtube:signin'),
   youtubeSigninStatus: () => ipcRenderer.invoke('youtube:signin-status'),
   youtubeSignOut: () => ipcRenderer.invoke('youtube:signout'),
