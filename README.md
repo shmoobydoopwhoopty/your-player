@@ -2,7 +2,7 @@
 
 A local-first desktop music player for Windows with album artwork front and center — plus a built-in YouTube downloader and video library. Fully offline for your own music; only the Downloader tab talks to YouTube.
 
-> The app is rebrandable: the default name is "Your", and you can rename it from settings or first-run onboarding (e.g. "Tree Player"). This README uses **Tree Player**.
+> The app is rebrandable: the default name is "Your", and you can rename it from settings or first-run onboarding
 
 ## Highlights
 
