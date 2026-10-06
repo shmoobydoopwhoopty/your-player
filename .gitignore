@@ -1,0 +1,15 @@
+node_modules/
+release/
+installer/
+dist/
+.DS_Store
+Thumbs.db
+electron-debug.log
+vendor/
+www/
+.freebuff/
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties

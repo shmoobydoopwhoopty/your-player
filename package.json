@@ -1,0 +1,60 @@
+{
+  "name": "your-player",
+  "version": "1.0.4",
+  "private": true,
+  "description": "Your Player — a local music player with album artwork front and center.",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "sync:mobile": "node scripts/sync-mobile.js",
+    "android:sync": "node scripts/sync-mobile.js && npx cap sync android",
+    "android:build": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "dist": "electron-builder --win nsis portable",
+    "dist:installer": "electron-builder --win nsis && node scripts/copy-installer.js",
+    "dist:portable": "electron-builder --win portable",
+    "publish:update": "node scripts/publish-update.js"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.yourplayer.player",
+    "productName": "Your Player",
+    "asar": false,
+    "icon": "build/icon.ico",
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "index.html",
+      "electron/**/*.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "uninstallDisplayName": "Your Player",
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Your Player"
+    }
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2"
+  }
+}
