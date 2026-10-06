@@ -10,7 +10,8 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - **Album artwork everywhere**: blurred backdrops, a fullscreen Now Playing view, and automatic upscaling for big displays. Missing art gets a generated placeholder.
 - **YouTube downloader**: search YouTube or paste a link, then grab songs as MP3 (straight into your library) or videos (into the Media tab), with a live progress queue.
 - **Equalizer with 8 bands**: presets included, custom presets you can save, settings persist.
-- **Deep customization**: themes, accent colors, color overrides for every area, and a layout editor with drag and drop placement (sidebar side, player dock, queue position).
+- **Deep customization**: themes, accent colors, color overrides for every area (including tab buttons, album card backgrounds and borders), opacity sliders for shadows and backgrounds, and a layout editor with drag and drop placement (tab bar docks left, right, top or bottom like the Windows taskbar, the player docks on any side, and the search bar is moveable and resizable).
+- **Edit your music**: right click any song, album or artist and choose Edit to rename the artist, album or song, renumber the track, or swap the album art. Changes are written back into your music files themselves, and renaming an album to match another one by the same artist merges them.
 
 ## Features
 
@@ -20,7 +21,9 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - Library, favorites, play counts, queue, volume, shuffle/repeat, and view state persist across restarts; missing files are reported, and a moved folder is relinked automatically
 - Views: Home, All Songs, Albums, Artists, Favorites, Most Listened, Playlists
 - Sorting (recently added / title / artist), filter chips, and "Show more" pagination for large libraries
-- Live search with a ranked suggestion dropdown and keyboard navigation
+- Live search with a ranked suggestion dropdown covering songs, artists, albums and playlists. Click an artist or album in the dropdown to open its page; press Enter to see everything that matches across your library
+- Artist pages gather everything you have from one artist: albums, songs, playlists that include them and favorites
+- Custom app logo: pick any picture from your computer for the corner logo
 - Custom playlists plus a "Liked songs" collection
 - Back/forward navigation history
 
@@ -28,6 +31,9 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - Play/pause, next/previous, shuffle, and repeat (off / all / one)
 - Draggable seek bar, elapsed/total time, volume slider with mute
 - **Up Next** queue: drag to reorder while audio keeps playing, continues on its own in shuffle or library order, and an option to clear the queue
+- Song crossfade: fade gently out of one song and into the next, with a 0 to 10 second slider in settings
+- "Listened to" counter next to the song in the player, counting every play or restart
+- Click the artist name in the player to jump to their artist page
 - Fullscreen Now Playing overlay with blurred artwork backdrop
 - Equalizer with 8 bands (60 Hz to 16 kHz, ±12 dB), 13 included presets, and custom presets you can save
 - Keyboard shortcuts (when not typing in a field):
@@ -42,7 +48,8 @@ A desktop music player for Windows that keeps everything on your machine, with a
 ### Downloader (powered by yt-dlp)
 - Search YouTube (up to 25 results) or paste any video / Shorts / playlist URL
 - Autocomplete suggestions as you type
-- Embedded preview player before you commit
+- Embedded preview player before you commit, and you can sign in to YouTube from the app so age gated or restricted videos play properly
+- Look up any artist or album straight from the right click menu in your library
 - **MP3** downloads (best audio, embedded thumbnail and metadata) are imported into your library automatically
 - **Video** downloads (H.264, ≤1080p MP4) land in the **Media** tab
 - Download queue with live progress (percent, speed, ETA), cancel one or all, up to 3 downloads at once
@@ -52,8 +59,8 @@ A desktop music player for Windows that keeps everything on your machine, with a
 
 ### Appearance & layout
 - 6 themes: Charcoal, OLED, Slate, Forest, Mocha, Dusk, plus 8 accent colors
-- Color pickers for every area (accent, background, sidebar, panels, text, player bar, buttons, shadow) with a text shadow toggle
-- Layout presets (Classic, Compact, Leftie, Cinema, Heads Up), sidebar/player size sliders, and a "Customize layout" edit mode with drag and drop snap zones
+- Color pickers for every area (accent, background, tab bar, panels, text, player, buttons, tab buttons, album and artist cards, card borders, shadow) with opacity sliders for the drop shadow, album card background, tab bar and player
+- Layout presets (Classic, Compact, Leftie, Cinema, Heads Up), size sliders, and a "Customize layout" edit mode with drag and drop snap zones. The tab bar docks on any side like the Windows taskbar, the player docks on any side, and the search bar can move and resize
 - Frameless window with custom window controls; rename the app and it propagates everywhere
 
 ## Getting started

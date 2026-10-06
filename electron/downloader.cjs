@@ -44,6 +44,27 @@ function extractYouTubeId(input) {
   return m ? m[1] : '';
 }
 
+// YouTube cookies collected from the app's sign in window, if any.
+let youtubeCookieHeader = '';
+function setYouTubeCookies(header) { youtubeCookieHeader = String(header || '').trim(); }
+function youtubeCookieArgs() {
+  if (!youtubeCookieHeader) return [];
+  const cookieFile = path.join(os.tmpdir(), `your-player-cookies-${process.pid}.txt`);
+  try {
+    const lines = ['# Netscape HTTP Cookie File'];
+    for (const pair of youtubeCookieHeader.split('; ')) {
+      const eq = pair.indexOf('=');
+      if (eq <= 0) continue;
+      const name = pair.slice(0, eq).trim();
+      const value = pair.slice(eq + 1).trim();
+      if (!name) continue;
+      lines.push(['.youtube.com', 'TRUE', '/', 'TRUE', '9999999999', name, value].join('\t'));
+    }
+    fs.writeFileSync(cookieFile, lines.join('\n') + '\n');
+    return ['--cookies', cookieFile];
+  } catch { return []; }
+}
+
 let cachedTools = null;
 async function resolveTools() {
   if (cachedTools) return cachedTools;
@@ -160,13 +181,14 @@ async function searchYouTube(query) {
   const trimmed = String(query || '').trim();
   if (!trimmed) return [];
   const { ytDlpPath } = await resolveTools();
+  const cookieArgs = youtubeCookieArgs();
   if (isPlainYouTubeUrl(trimmed)) {
-    const results = await runYtDlpJson(ytDlpPath, ['--no-warnings', '--flat-playlist', '--skip-download', '--dump-json', trimmed], SEARCH_TIMEOUT_MS);
+    const results = await runYtDlpJson(ytDlpPath, [...cookieArgs, '--no-warnings', '--flat-playlist', '--skip-download', '--dump-json', trimmed], SEARCH_TIMEOUT_MS);
     return results.map(normalizeEntry).flat().filter(Boolean).slice(0, MAX_SEARCH_RESULTS);
   }
   const results = await runYtDlpJson(
     ytDlpPath,
-    ['--no-warnings', '--flat-playlist', '--skip-download', '--dump-json', `ytsearch${MAX_SEARCH_RESULTS}:${trimmed}`],
+    [...cookieArgs, '--no-warnings', '--flat-playlist', '--skip-download', '--dump-json', `ytsearch${MAX_SEARCH_RESULTS}:${trimmed}`],
     SEARCH_TIMEOUT_MS,
   );
   return results.map(normalizeEntry).flat().filter(Boolean).slice(0, MAX_SEARCH_RESULTS);
@@ -316,7 +338,7 @@ function startDownload(options) {
         ? ['-f', 'bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[vcodec^=avc1][height<=1080]/bv*[ext=mp4][height<=1080]+ba/b[height<=1080]/bv*+ba/b', '--merge-output-format', 'mp4']
         : ['-f', 'bestaudio/best', '--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0'];
       const template = isVideo ? '%(title)s [%(id)s].%(ext)s' : '%(title)s.%(ext)s';
-      const args = [...baseYtDlpArgs(), '--ffmpeg-location', tools.ffmpegPath, ...formatArgs, '-o', path.join(outputDir, template), options.url];
+      const args = [...youtubeCookieArgs(), ...baseYtDlpArgs(), '--ffmpeg-location', tools.ffmpegPath, ...formatArgs, '-o', path.join(outputDir, template), options.url];
       const child = spawn(tools.ytDlpPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 
       const item = {
@@ -474,6 +496,8 @@ async function ensureDirectories() {
 }
 
 module.exports = {
+  setYouTubeCookies,
+  resolveTools,
   ensureDirectories,
   getDownloadsRoot,
   getMediaRoot,

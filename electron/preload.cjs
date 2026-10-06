@@ -58,6 +58,8 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   downloadActive: () => ipcRenderer.invoke('player:active'),
   cancelDownloads: id => ipcRenderer.invoke('player:cancel', id ?? null),
   listMediaFiles: () => ipcRenderer.invoke('player:list-media'),
+  listMediaFilesWithThumbs: () => ipcRenderer.invoke('player:media-list-with-thumbs'),
+  getCookieHeader: () => ipcRenderer.invoke('player:get-cookie-header'),
   getMediaUrl: filePath => ipcRenderer.invoke('player:media-url', filePath),
   deleteMediaFile: filePath => ipcRenderer.invoke('player:media-delete', filePath),
   onDownloadProgress: callback => {
@@ -71,6 +73,20 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   refetchArtistPhoto: name => ipcRenderer.invoke('artist-photo:refetch', name),
   chooseArtistPhoto: name => ipcRenderer.invoke('artist-photo:choose-custom', name),
   removeArtistPhoto: name => ipcRenderer.invoke('artist-photo:remove', name),
+
+  // Editing song details (writes tags into the music files)
+  writeTrackTags: payload => ipcRenderer.invoke('tracks:write-tags', payload),
+  writeTrackArt: payload => ipcRenderer.invoke('tracks:write-art', payload),
+  chooseImageFile: title => ipcRenderer.invoke('afterglow:choose-image', title),
+
+  // Custom app logo
+  saveAppLogo: payload => ipcRenderer.invoke('app-logo:save', payload),
+  clearAppLogo: () => ipcRenderer.invoke('app-logo:clear'),
+
+  // YouTube sign in for the downloader
+  youtubeSignIn: () => ipcRenderer.invoke('youtube:signin'),
+  youtubeSigninStatus: () => ipcRenderer.invoke('youtube:signin-status'),
+  youtubeSignOut: () => ipcRenderer.invoke('youtube:signout'),
 
   // Self-update
   updateGetConfig: () => ipcRenderer.invoke('update:get-config'),

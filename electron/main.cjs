@@ -4,6 +4,7 @@ const fsSync = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { createHash } = require('node:crypto');
+const { spawn } = require('node:child_process');
 
 const downloader = require('./downloader.cjs');
 const updater = require('./updater.cjs');
@@ -213,6 +214,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webviewTag: true,
     },
   });
 
@@ -367,6 +369,42 @@ ipcMain.handle('afterglow:playable-url', (_event, filePath) => {
   const absolutePath = path.resolve(String(filePath));
   if (!allowedAudioFiles.has(absolutePath)) throw new Error(`This audio file was not selected in ${safeBrandPrefix()} Player.`);
   return pathToFileURL(absolutePath).href;
+});
+
+// ── Image picker & app logo ──────────────────────────────────────────────────
+ipcMain.handle('afterglow:choose-image', async (_event, title) => {
+  const result = await dialog.showOpenDialog(dialogParent(), {
+    title: typeof title === 'string' && title.trim() ? title.trim() : 'Choose a picture',
+    properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'] }],
+  });
+  if (result.canceled || !result.filePaths.length) return null;
+  try {
+    const bytes = await fs.readFile(result.filePaths[0]);
+    if (bytes.length > 25 * 1024 * 1024) return null;
+    const ext = path.extname(result.filePaths[0]).toLowerCase().replace('.', '') || 'jpg';
+    const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : ext === 'bmp' ? 'image/bmp' : 'image/jpeg';
+    return { path: result.filePaths[0], bytes: Uint8Array.from(bytes), mime, name: path.basename(result.filePaths[0]) };
+  } catch {
+    return null;
+  }
+});
+
+const appLogoPath = () => path.join(app.getPath('userData'), 'app-logo');
+ipcMain.handle('app-logo:save', async (_event, payload) => {
+  const bytes = payload && payload.bytes;
+  if (!bytes || !bytes.length || bytes.length > 25 * 1024 * 1024) return null;
+  try {
+    const target = appLogoPath();
+    await fs.writeFile(target, Buffer.from(bytes));
+    return { path: target, url: pathToFileURL(target).href };
+  } catch {
+    return null;
+  }
+});
+ipcMain.handle('app-logo:clear', async () => {
+  try { await fs.rm(appLogoPath(), { force: true }); } catch {}
+  return true;
 });
 
 // ── Artist photos ───────────────────────────────────────────────────────────
@@ -578,6 +616,16 @@ ipcMain.handle('player:download', async (event, payload) => {
 ipcMain.handle('player:active', () => downloader.activeData());
 ipcMain.handle('player:cancel', (_event, id) => downloader.cancelDownload(id || null));
 ipcMain.handle('player:list-media', () => downloader.listDownloadsFolder('video'));
+ipcMain.handle('player:get-cookie-header', async () => {
+  try {
+    const { session } = require('electron');
+    const ses = session.fromPartition('persist:youtube-signin');
+    const cookies = await ses.cookies.get({ url: 'https://www.youtube.com' });
+    const header = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    if (header) downloader.setYouTubeCookies(header);
+    return header;
+  } catch { return ''; }
+});
 ipcMain.handle('player:apply-brand', (_event, value) => {
   const clean = typeof value === 'string' ? value.trim().slice(0, 28) : '';
   if (clean) {
@@ -593,6 +641,178 @@ ipcMain.handle('player:media-url', async (_event, filePath) => {
   return pathToFileURL(absolutePath).href;
 });
 ipcMain.handle('player:media-delete', async (_event, filePath) => downloader.removeMediaItem(filePath, await downloader.getMediaRoot()));
+ipcMain.handle('player:media-list-with-thumbs', async () => {
+  const items = await downloader.listDownloadsFolder('video');
+  const ytdlp = await resolveYtDlpPathSafely();
+  for (const item of items) {
+    const id = downloader.extractYouTubeId(item.filename);
+    if (id) {
+      item.thumbnail = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+      item.id = id;
+    } else if (ytdlp) {
+      item.thumbnail = await probeEmbeddedThumbnail(ytdlp, item.path);
+    }
+  }
+  return items;
+});
+
+let ytDlpPathCache = null;
+async function resolveYtDlpPathSafely() {
+  if (ytDlpPathCache !== null) return ytDlpPathCache;
+  try { ytDlpPathCache = (await downloader.resolveTools()).ytDlpPath; } catch { ytDlpPathCache = ''; }
+  return ytDlpPathCache;
+}
+
+function probeEmbeddedThumbnail(ytDlpPath, filePath) {
+  return new Promise(resolve => {
+    const child = spawn(ytDlpPath, ['--no-warnings', '--skip-download', '--print', 'thumbnail', filePath], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    child.stdout.on('data', chunk => { if (out.length < 4096) out += chunk; });
+    child.on('error', () => resolve(''));
+    child.on('close', () => resolve(out.trim().split(/\r?\n/).filter(l => /^https?:\/\//.test(l)).pop() || ''));
+    setTimeout(() => { try { child.kill(); } catch {} resolve(out.trim().split(/\r?\n/).filter(l => /^https?:\/\//.test(l)).pop() || ''); }, 12000);
+  });
+}
+
+// ── Writing tags back into music files (uses ffmpeg) ────────────────────────
+async function runFfmpegTool(args, timeoutMs = 60000) {
+  const ffmpeg = (await findFfmpegPath()) || 'ffmpeg';
+  return new Promise((resolve, reject) => {
+    const child = spawn(ffmpeg, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let err = '';
+    const timer = setTimeout(() => { try { child.kill(); } catch {} reject(new Error('ffmpeg timed out')); }, timeoutMs);
+    child.stderr.on('data', chunk => { if (err.length < 8000) err += chunk; });
+    child.on('error', error => { clearTimeout(timer); reject(error); });
+    child.on('close', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(err.trim().split('\n').pop() || `ffmpeg exited with code ${code}`)); });
+  });
+}
+
+async function findFfmpegPath() {
+  const envDir = String(process.env.YOUR_PLAYER_TOOLS_DIR || '').trim();
+  const isWin = process.platform === 'win32';
+  const candidates = [
+    envDir && path.join(envDir, isWin ? 'ffmpeg.exe' : 'ffmpeg'),
+    isWin ? 'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe' : '/usr/local/bin/ffmpeg',
+  ];
+  const dirs = String(process.env.PATH || '').split(path.delimiter).filter(Boolean);
+  const exts = isWin ? ['.exe', '.cmd', '.bat', ''] : [''];
+  for (const dir of dirs) for (const ext of exts) {
+    try { const candidate = path.join(dir, 'ffmpeg' + ext); if (fsSync.existsSync(candidate)) return candidate; } catch {}
+  }
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try { await fs.access(candidate); return candidate; } catch {}
+  }
+  return '';
+}
+
+const sanitizeTag = value => String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 300);
+
+ipcMain.handle('tracks:write-tags', async (_event, payload) => {
+  const target = path.resolve(String(payload?.path || ''));
+  if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);
+  const ffmpegPath = await findFfmpegPath();
+  if (!ffmpegPath) throw new Error('ffmpeg was not found, so tags could not be written. Install ffmpeg ("winget install Gyan.FFmpeg").');
+  const ext = path.extname(target).toLowerCase();
+  if (!audioExtensions.has(ext)) throw new Error('That file type cannot be edited.');
+  const tmp = `${target}.your-player-edit.tmp${ext}`;
+  const args = ['-y', '-i', target, '-map_metadata', '0', '-id3v2_version', '3'];
+  if (typeof payload?.title === 'string' && payload.title.trim()) args.push('-metadata', `title=${sanitizeTag(payload.title)}`);
+  if (typeof payload?.artist === 'string' && payload.artist.trim()) args.push('-metadata', `artist=${sanitizeTag(payload.artist)}`);
+  if (typeof payload?.album === 'string' && payload.album.trim()) args.push('-metadata', `album=${sanitizeTag(payload.album)}`);
+  if (Number.isFinite(Number(payload?.trackNo)) && Number(payload.trackNo) > 0) args.push('-metadata', `track=${Number(payload.trackNo)}`);
+  if (ext === '.flac') args.push('-c', 'copy');
+  else args.push('-c', 'copy');
+  args.push(tmp);
+  try {
+    await runFfmpegTool(args, 120000);
+    await fs.rename(tmp, target);
+    return true;
+  } catch (error) {
+    try { await fs.rm(tmp, { force: true }); } catch {}
+    throw error;
+  }
+});
+
+ipcMain.handle('tracks:write-art', async (_event, payload) => {
+  const target = path.resolve(String(payload?.path || ''));
+  if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);
+  const ffmpegPath = await findFfmpegPath();
+  if (!ffmpegPath) throw new Error('ffmpeg was not found, so the picture could not be written.');
+  const ext = path.extname(target).toLowerCase();
+  if (!audioExtensions.has(ext)) throw new Error('That file type cannot be edited.');
+  const tmp = `${target}.your-player-art.tmp${ext}`;
+  let args;
+  if (!payload.bytes || !payload.bytes.length) {
+    args = ['-y', '-i', target, '-map', '0:a', '-c', 'copy', '-map_metadata', '0', '-id3v2_version', '3', tmp];
+  } else {
+    const artTmp = `${target}.your-player-art-src.tmp`;
+    await fs.writeFile(artTmp, Buffer.from(payload.bytes));
+    const mime = String(payload.mime || 'image/jpeg');
+    const isPng = mime.includes('png');
+    if (ext === '.mp3') {
+      args = ['-y', '-i', target, '-i', artTmp, '-map', '0:0', '-map', '1:0', '-c', 'copy', '-id3v2_version', '3', '-metadata:s:v', 'title=Album cover', '-metadata:s:v', `comment=Cover (front)`, tmp];
+    } else if (ext === '.flac') {
+      args = ['-y', '-i', target, '-i', artTmp, '-map', '0:0', '-map', '1:0', '-c', 'copy', '-disposition:v', 'attached_pic', tmp];
+    } else {
+      args = ['-y', '-i', target, '-map', '0', '-c', 'copy', '-map_metadata', '0', tmp];
+    }
+    try { await runFfmpegTool(args, 120000); await fs.rename(tmp, target); }
+    catch (error) { try { await fs.rm(tmp, { force: true }); } catch {} throw error; }
+    finally { try { await fs.rm(artTmp, { force: true }); } catch {} }
+    return true;
+  }
+  try { await runFfmpegTool(args, 120000); await fs.rename(tmp, target); }
+  catch (error) { try { await fs.rm(tmp, { force: true }); } catch {} throw error; }
+  return true;
+});
+
+// ── YouTube sign in (cookies) ────────────────────────────────────────
+let ytSignInWindow = null;
+
+function readYouTubeCookieHeader() {
+  try {
+    const session = ytSignInWindow?.webContents?.session;
+    if (!session) return '';
+    const cookies = session.cookies.get({ url: 'https://www.youtube.com' });
+    return cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+  } catch { return ''; }
+}
+
+ipcMain.handle('youtube:signin', async () => {
+  if (ytSignInWindow && !ytSignInWindow.isDestroyed()) { ytSignInWindow.focus(); return { ok: true, signedIn: false, already: true }; }
+  ytSignInWindow = new BrowserWindow({
+    width: 460, height: 720, show: true, autoHideMenuBar: true,
+    title: `Sign in to YouTube for ${safeBrandPrefix()} Player`,
+    backgroundColor: '#111111',
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, partition: 'persist:youtube-signin' },
+  });
+  ytSignInWindow.loadURL('https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2F&service=youtube');
+  ytSignInWindow.on('closed', () => { ytSignInWindow = null; });
+  return { ok: true, signedIn: false };
+});
+
+ipcMain.handle('youtube:signin-status', async () => {
+  try {
+    const { session } = require('electron');
+    const ses = session.fromPartition('persist:youtube-signin');
+    const cookies = await ses.cookies.get({ url: 'https://www.youtube.com' });
+    const hasLogin = cookies.some(cookie => cookie.name === 'SID' || cookie.name === '__Secure-1PSID' || cookie.name === '__Secure-3PSID');
+    return { signedIn: hasLogin, cookieHeader: hasLogin ? cookies.map(c => `${c.name}=${c.value}`).join('; ') : '' };
+  } catch { return { signedIn: false, cookieHeader: '' }; }
+});
+
+ipcMain.handle('youtube:signout', async () => {
+  try {
+    const { session } = require('electron');
+    const ses = session.fromPartition('persist:youtube-signin');
+    const cookies = await ses.cookies.get({});
+    for (const cookie of cookies) {
+      try { await ses.cookies.remove(`https://${cookie.domain?.replace(/^\./, '') || 'youtube.com'}`, cookie.name); } catch {}
+    }
+  } catch {}
+  return { ok: true };
+});
 
 // ── Self-update ─────────────────────────────────────────────────────────────
 function pushUpdateStatus(extra = {}) {
@@ -639,6 +859,13 @@ app.whenReady().then(async () => {
   try {
     const applied = await updater.applyPendingUpdate();
     if (applied && applied.applied) console.log(`Finished installing update ${applied.version}`);
+  } catch {}
+  // Restore saved YouTube cookies so the downloader stays signed in.
+  try {
+    const { session } = require('electron');
+    const ses = session.fromPartition('persist:youtube-signin');
+    const cookies = await ses.cookies.get({ url: 'https://www.youtube.com' });
+    if (cookies.length) downloader.setYouTubeCookies(cookies.map(c => `${c.name}=${c.value}`).join('; '));
   } catch {}
   createWindow();
   app.on('activate', () => {
