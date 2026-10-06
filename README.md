@@ -28,7 +28,7 @@ A desktop music player for Windows that keeps everything on your machine, with a
 - Back/forward navigation history
 
 ### Playback
-- Play/pause, next/previous, shuffle, and repeat (off / all / one)
+- Play/pause, next/previous, shuffle, and repeat (off / all / one); the Shuffle button on an album or artist page shuffles just that album or artist until you shuffle something else or turn shuffle off
 - Draggable seek bar, elapsed/total time, volume slider with mute
 - **Up Next** queue: drag to reorder while audio keeps playing, continues on its own in shuffle or library order, and an option to clear the queue
 - Song crossfade: fade gently out of one song and into the next, with a 0 to 10 second slider in settings

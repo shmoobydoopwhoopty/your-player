@@ -47,13 +47,17 @@ async function main() {
   const releaseId = rel.json.id;
   const channelFiles = fs.readdirSync(dir, { withFileTypes: true }).filter(e => e.isFile()).map(e => e.name);
   const files = [...channelFiles.map(f => ({ name: f, full: path.resolve(dir, f) })), ...extraFiles.map(f => ({ name: path.basename(f), full: path.isAbsolute(f) ? f : path.resolve(__dirname, '..', f) }))];
-  const existing = new Set(rel.json.assets.map(a => a.name));
+  // GitHub normalizes asset names (spaces become dots) — compare normalized.
+  const assetKey = n => String(n).replace(/\s+/g, '.').toLowerCase();
+  const existingByName = new Map(rel.json.assets.map(a => [assetKey(a.name), a]));
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
   for (const { name: file, full } of files) {
     const bytes = fs.readFileSync(full);
-    if (existing.has(file)) {
-      const asset = rel.json.assets.find(a => a.name === file);
+    const asset = existingByName.get(assetKey(file));
+    if (asset) {
       const del = await api(`/repos/${repo}/releases/assets/${asset.id}`, 'DELETE');
       console.log(`deleted existing ${file}: ${del.status}`);
+      await sleep(1500);
     }
     const upload = await new Promise((resolve, reject) => {
       const req = https.request({
@@ -76,6 +80,8 @@ async function main() {
       req.end();
     });
     console.log(`uploaded ${file}: ${upload.status} ${upload.json && upload.json.state ? upload.json.state : ''}`);
+    if (upload.status !== 201) { console.error(`upload failed for ${file} — stopping so it can be retried`); process.exit(1); }
+    await sleep(1500);
   }
   const check = await api(`/repos/${repo}/releases/tags/${tag}`, 'GET');
   console.log('assets now:', check.json.assets.map(a => `${a.name} (${a.size} bytes)`).join(', '));
