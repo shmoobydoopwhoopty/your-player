@@ -69,7 +69,7 @@ async function resolveTools() {
     }
     return '';
   };
-  const envDir = String(process.env.TREE_PLAYER_TOOLS_DIR || '').trim();
+  const envDir = String(process.env.YOUR_PLAYER_TOOLS_DIR || '').trim();
   const ytCandidates = [
     envDir && path.join(envDir, isWin ? 'yt-dlp.exe' : 'yt-dlp'),
     which('yt-dlp'),
@@ -84,7 +84,7 @@ async function resolveTools() {
   const ytDlpPath = await probe(ytCandidates);
   const ffmpegPath = await probe(ffCandidates);
   if (!ytDlpPath) {
-    throw new Error('yt-dlp was not found. Install it ("pip install -U yt-dlp" or "winget install yt-dlp") or set TREE_PLAYER_TOOLS_DIR to its folder.');
+    throw new Error('yt-dlp was not found. Install it ("pip install -U yt-dlp" or "winget install yt-dlp") or set YOUR_PLAYER_TOOLS_DIR to its folder.');
   }
   cachedTools = { ytDlpPath, ffmpegPath };
   return cachedTools;
@@ -455,9 +455,9 @@ function guessMusicFolder() {
 }
 
 async function getDownloadsRoot() {
-  const configured = String(process.env.TREE_PLAYER_DOWNLOADS_DIR || '').trim();
+  const configured = String(process.env.YOUR_PLAYER_DOWNLOADS_DIR || '').trim();
   if (configured) return configured;
-  const music = String(process.env.TREE_PLAYER_MUSIC_DIR || '').trim() || guessMusicFolder();
+  const music = String(process.env.YOUR_PLAYER_MUSIC_DIR || '').trim() || guessMusicFolder();
   return path.join(music, DOWNLOADS_DIR_NAME);
 }
 

@@ -14,7 +14,7 @@
 // folder (previous versions are backed up) and the app relaunches.
 //
 // The update source is chosen in this order:
-//   1. TREE_PLAYER_UPDATE_URL environment variable
+//   1. YOUR_PLAYER_UPDATE_URL environment variable
 //   2. The URL the user set in Settings → Update source (update-config.json)
 //   3. DEFAULT_UPDATE_URL below
 
@@ -55,7 +55,7 @@ function readConfigFile() {
 
 function getConfig() {
   const stored = readConfigFile();
-  const url = String(process.env.TREE_PLAYER_UPDATE_URL || '').trim()
+  const url = String(process.env.YOUR_PLAYER_UPDATE_URL || '').trim()
     || String(stored.url || '').trim()
     || DEFAULT_UPDATE_URL;
   return {
@@ -182,7 +182,7 @@ async function downloadUpdate(manifest, onProgress) {
 
 function applyFailureMessage(reason, detail) {
   if (reason === 'portable') return 'Portable builds cannot self-update — download the new installer instead.';
-  if (reason === 'dev') return 'Updates only apply to installed builds. Set TREE_PLAYER_ALLOW_DEV_UPDATE=1 to test in development.';
+  if (reason === 'dev') return 'Updates only apply to installed builds. Set YOUR_PLAYER_ALLOW_DEV_UPDATE=1 to test in development.';
   if (reason === 'error') return detail || 'The update could not be applied.';
   return 'The update could not be applied.';
 }
@@ -202,7 +202,7 @@ async function applyPendingUpdate() {
     return { applied: false, reason: 'invalid-pending' };
   }
   if (process.env.PORTABLE_EXECUTABLE_DIR) return { applied: false, reason: 'portable', version: pending.version };
-  if (!app.isPackaged && process.env.TREE_PLAYER_ALLOW_DEV_UPDATE !== '1') {
+  if (!app.isPackaged && process.env.YOUR_PLAYER_ALLOW_DEV_UPDATE !== '1') {
     return { applied: false, reason: 'dev', version: pending.version };
   }
   const appRoot = app.getAppPath();

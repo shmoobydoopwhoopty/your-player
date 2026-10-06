@@ -103,7 +103,7 @@ async function main() {
     console.log('  1. Host this folder over HTTP(S) (any static host works).');
     console.log('  2. In the app: Settings → Update source → set <url>/manifest.json.');
     console.log('     (Or bake the URL in as DEFAULT_UPDATE_URL in electron/updater.cjs,');
-    console.log('      or set the TREE_PLAYER_UPDATE_URL environment variable.)');
+    console.log('      or set the YOUR_PLAYER_UPDATE_URL environment variable.)');
   }
 }
 

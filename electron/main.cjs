@@ -19,9 +19,9 @@ const trackedFoldersStore = new Set();
 const allowedAudioFiles = new Set();
 let mainWindow;
 
-// The user can rename the app (“Tree” by default) from settings; the renderer
+// The user can rename the app (“Your” by default) from settings; the renderer
 // persists the choice in localStorage and we mirror it for native titles.
-const BRAND_KEY = 'treeplayer.brand.v1';
+const BRAND_KEY = 'yourplayer.brand.v1';
 const BRAND_FALLBACK_PREFIX = 'Your';
 let brandPrefix = null;
 function readBrandFromStorage() {
@@ -50,7 +50,14 @@ function titleCaseBrandPrefix(value) {
 
 // Stored folder choices (a dedicated downloads folder, separate from the user's
 // music folders) live in a small JSON file in userData.
-const foldersSettingsFile = path.join(app.getPath('userData'), 'tree-folders.json');
+const foldersSettingsFile = path.join(app.getPath('userData'), 'folders.json');
+const legacyFoldersSettingsFile = path.join(app.getPath('userData'), 'tree-folders.json');
+try {
+  // One-time rename from the old file name; nothing is lost for existing installs.
+  if (!fsSync.existsSync(foldersSettingsFile) && fsSync.existsSync(legacyFoldersSettingsFile)) {
+    fsSync.renameSync(legacyFoldersSettingsFile, foldersSettingsFile);
+  }
+} catch {}
 function loadStoredFolders() {
   try { return JSON.parse(fsSync.readFileSync(foldersSettingsFile, 'utf8')) || {}; } catch { return {}; }
 }
@@ -114,7 +121,7 @@ const SKIPPED_FOLDERS = new Set([
   '$recycle.bin', 'system volume information', 'windows', 'program files', 'program files (x86)',
   '.freebuff', '.git', '.github', '.vscode', '.idea', '.cache', 'node_modules',
   'electron', 'release', 'dist', 'build', 'out', 'win-unpacked', 'coverage',
-  'tree player', 'tree-player', 'treeplayer', 'tree media',
+  'your player', 'your-player', 'yourplayer', 'your media',
   'afterglow music player', 'afterglow-player',
 ]);
 
@@ -484,9 +491,9 @@ ipcMain.handle('artist-photo:remove', async (_event, name) => {
 });
 
 // ── Downloader & Media ──────────────────────────────────────────────────────
-let treeProgressLastSent = 0;
+let dlProgressLastSent = 0;
 
-ipcMain.handle('tree:downloader-init', (_event, payload) => {
+ipcMain.handle('player:downloader-init', (_event, payload) => {
   let musicDir = null;
   let downloadsDir = null;
   if (typeof payload === 'string') musicDir = payload;
@@ -498,30 +505,30 @@ ipcMain.handle('tree:downloader-init', (_event, payload) => {
   const effectiveDownloads = (typeof downloadsDir === 'string' && downloadsDir.trim())
     || (typeof stored.downloadsDir === 'string' && stored.downloadsDir.trim())
     || '';
-  if (effectiveDownloads) process.env.TREE_PLAYER_DOWNLOADS_DIR = effectiveDownloads;
-  else delete process.env.TREE_PLAYER_DOWNLOADS_DIR;
+  if (effectiveDownloads) process.env.YOUR_PLAYER_DOWNLOADS_DIR = effectiveDownloads;
+  else delete process.env.YOUR_PLAYER_DOWNLOADS_DIR;
   if (typeof musicDir === 'string' && musicDir.trim()) {
-    process.env.TREE_PLAYER_MUSIC_DIR = musicDir.trim();
+    process.env.YOUR_PLAYER_MUSIC_DIR = musicDir.trim();
   } else {
-    try { process.env.TREE_PLAYER_MUSIC_DIR = app.getPath('music'); } catch {}
+    try { process.env.YOUR_PLAYER_MUSIC_DIR = app.getPath('music'); } catch {}
   }
   return downloader.ensureDirectories();
 });
 
-ipcMain.handle('tree:get-downloads-dir', () => {
+ipcMain.handle('player:get-downloads-dir', () => {
   const stored = loadStoredFolders();
   return (typeof stored.downloadsDir === 'string' && stored.downloadsDir.trim()) || '';
 });
 
-ipcMain.handle('tree:set-downloads-dir', (_event, dir) => {
+ipcMain.handle('player:set-downloads-dir', (_event, dir) => {
   const clean = typeof dir === 'string' ? dir.trim() : '';
   const stored = loadStoredFolders();
   if (clean) {
     stored.downloadsDir = clean;
-    process.env.TREE_PLAYER_DOWNLOADS_DIR = clean;
+    process.env.YOUR_PLAYER_DOWNLOADS_DIR = clean;
   } else {
     delete stored.downloadsDir;
-    delete process.env.TREE_PLAYER_DOWNLOADS_DIR;
+    delete process.env.YOUR_PLAYER_DOWNLOADS_DIR;
   }
   saveStoredFolders(stored);
   return downloader.ensureDirectories();
@@ -537,10 +544,10 @@ ipcMain.handle('afterglow:choose-dir', async (_event, title) => {
   return result.filePaths[0];
 });
 
-ipcMain.handle('tree:search', async (_event, query) => downloader.searchYouTube(query));
-ipcMain.handle('tree:suggest', (_event, query) => downloader.fetchYouTubeSuggestions(query));
+ipcMain.handle('player:search', async (_event, query) => downloader.searchYouTube(query));
+ipcMain.handle('player:suggest', (_event, query) => downloader.fetchYouTubeSuggestions(query));
 
-ipcMain.handle('tree:download', async (event, payload) => {
+ipcMain.handle('player:download', async (event, payload) => {
   const url = typeof payload?.url === 'string' ? payload.url.trim() : '';
   if (!url) throw new Error('A video link is required.');
   const kind = payload?.kind === 'video' ? 'video' : 'audio';
@@ -555,12 +562,12 @@ ipcMain.handle('tree:download', async (event, payload) => {
     channel: typeof payload?.channel === 'string' ? payload.channel : '',
     onProgress: data => {
       const now = Date.now();
-      if (now - treeProgressLastSent < 250) return;
-      treeProgressLastSent = now;
-      if (!event.sender.isDestroyed()) event.sender.send('tree:progress', data);
+      if (now - dlProgressLastSent < 250) return;
+      dlProgressLastSent = now;
+      if (!event.sender.isDestroyed()) event.sender.send('player:progress', data);
     },
   });
-  if (!event.sender.isDestroyed()) event.sender.send('tree:progress', downloader.activeData());
+  if (!event.sender.isDestroyed()) event.sender.send('player:progress', downloader.activeData());
   const result = { id: item.id, kind: item.kind, status: item.status, title: item.title, filePath: item.filePath || '', file: null, error: item.error || '' };
   if (item.status === 'done' && item.kind === 'audio' && item.filePath) {
     result.file = await describeAudioFile(item.filePath);
@@ -568,10 +575,10 @@ ipcMain.handle('tree:download', async (event, payload) => {
   return result;
 });
 
-ipcMain.handle('tree:active', () => downloader.activeData());
-ipcMain.handle('tree:cancel', (_event, id) => downloader.cancelDownload(id || null));
-ipcMain.handle('tree:list-media', () => downloader.listDownloadsFolder('video'));
-ipcMain.handle('tree:apply-brand', (_event, value) => {
+ipcMain.handle('player:active', () => downloader.activeData());
+ipcMain.handle('player:cancel', (_event, id) => downloader.cancelDownload(id || null));
+ipcMain.handle('player:list-media', () => downloader.listDownloadsFolder('video'));
+ipcMain.handle('player:apply-brand', (_event, value) => {
   const clean = typeof value === 'string' ? value.trim().slice(0, 28) : '';
   if (clean) {
     brandPrefix = titleCaseBrandPrefix(clean);
@@ -579,13 +586,13 @@ ipcMain.handle('tree:apply-brand', (_event, value) => {
   }
   return brandPrefix || BRAND_FALLBACK_PREFIX;
 });
-ipcMain.handle('tree:media-url', async (_event, filePath) => {
+ipcMain.handle('player:media-url', async (_event, filePath) => {
   const absolutePath = path.resolve(String(filePath || ''));
   const mediaRoot = path.resolve(await downloader.getMediaRoot());
   if (path.dirname(absolutePath) !== mediaRoot) throw new Error(`That video is not part of ${safeBrandPrefix()} Media.`);
   return pathToFileURL(absolutePath).href;
 });
-ipcMain.handle('tree:media-delete', async (_event, filePath) => downloader.removeMediaItem(filePath, await downloader.getMediaRoot()));
+ipcMain.handle('player:media-delete', async (_event, filePath) => downloader.removeMediaItem(filePath, await downloader.getMediaRoot()));
 
 // ── Self-update ─────────────────────────────────────────────────────────────
 function pushUpdateStatus(extra = {}) {

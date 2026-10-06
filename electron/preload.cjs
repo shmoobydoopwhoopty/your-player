@@ -47,23 +47,23 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   },
 
   // Downloader & Media
-  renameApp: value => ipcRenderer.invoke('tree:apply-brand', value),
+  renameApp: value => ipcRenderer.invoke('player:apply-brand', value),
   chooseDirectory: title => ipcRenderer.invoke('afterglow:choose-dir', title),
-  getDownloadsDir: () => ipcRenderer.invoke('tree:get-downloads-dir'),
-  setDownloadsDir: dir => ipcRenderer.invoke('tree:set-downloads-dir', dir),
-  initDownloader: payload => ipcRenderer.invoke('tree:downloader-init', payload ?? null),
-  searchYouTube: query => ipcRenderer.invoke('tree:search', query),
-  searchSuggestions: query => ipcRenderer.invoke('tree:suggest', query),
-  startDownload: payload => ipcRenderer.invoke('tree:download', payload),
-  downloadActive: () => ipcRenderer.invoke('tree:active'),
-  cancelDownloads: id => ipcRenderer.invoke('tree:cancel', id ?? null),
-  listTreeMedia: () => ipcRenderer.invoke('tree:list-media'),
-  getMediaUrl: filePath => ipcRenderer.invoke('tree:media-url', filePath),
-  deleteTreeMedia: filePath => ipcRenderer.invoke('tree:media-delete', filePath),
+  getDownloadsDir: () => ipcRenderer.invoke('player:get-downloads-dir'),
+  setDownloadsDir: dir => ipcRenderer.invoke('player:set-downloads-dir', dir),
+  initDownloader: payload => ipcRenderer.invoke('player:downloader-init', payload ?? null),
+  searchYouTube: query => ipcRenderer.invoke('player:search', query),
+  searchSuggestions: query => ipcRenderer.invoke('player:suggest', query),
+  startDownload: payload => ipcRenderer.invoke('player:download', payload),
+  downloadActive: () => ipcRenderer.invoke('player:active'),
+  cancelDownloads: id => ipcRenderer.invoke('player:cancel', id ?? null),
+  listMediaFiles: () => ipcRenderer.invoke('player:list-media'),
+  getMediaUrl: filePath => ipcRenderer.invoke('player:media-url', filePath),
+  deleteMediaFile: filePath => ipcRenderer.invoke('player:media-delete', filePath),
   onDownloadProgress: callback => {
     const listener = (_event, data) => callback(data);
-    ipcRenderer.on('tree:progress', listener);
-    return () => ipcRenderer.removeListener('tree:progress', listener);
+    ipcRenderer.on('player:progress', listener);
+    return () => ipcRenderer.removeListener('player:progress', listener);
   },
 
   // Artist photos (display-only lookup cache; never edits files or tags)
