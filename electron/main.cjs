@@ -215,6 +215,10 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       webviewTag: true,
+      // Local music files (file:// URLs) otherwise count as cross-origin for
+      // MediaElementSource, which silently zeroes the WebAudio graph — killing
+      // the equalizer and party mode. Local player, local files: allow it.
+      webSecurity: false,
     },
   });
 

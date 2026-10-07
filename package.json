@@ -1,6 +1,6 @@
 {
   "name": "your-player",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "description": "Your Player, a local music player for Windows with album artwork front and center.",
   "main": "electron/main.cjs",
@@ -9,7 +9,8 @@
     "dist": "electron-builder --win nsis portable",
     "dist:installer": "electron-builder --win nsis && node scripts/copy-installer.js",
     "dist:portable": "electron-builder --win portable",
-    "publish:update": "node scripts/publish-update.js"
+    "publish:update": "node scripts/publish-update.js",
+    "release": "node scripts/release.js"
   },
   "devDependencies": {
     "electron": "^39.2.7",
@@ -43,7 +44,7 @@
     "nsis": {
       "oneClick": false,
       "uninstallDisplayName": "Your Player",
-      "deleteAppDataOnUninstall": true,
+      "deleteAppDataOnUninstall": false,
       "include": "build/installer.nsh",
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
