@@ -13,6 +13,8 @@ const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.webm', '.mkv']);
 const YOUTUBE_URL_RE = /(?:youtube\.com\/(?:watch\?.*v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/i;
 const VIDEO_TOKEN_RE = /(?:^|[?&])v=([\w-]{11})/i;
+// yt-dlp's output template names files "Title [dQw4w9WgXcQ].mp4" — pull the id out of that.
+const YOUTUBE_FILENAME_ID_RE = /\[([\w-]{11})\](?:\.[a-z0-9]+)?$/i;
 
 const DOWNLOAD_CONCURRENCY = 3;
 const SEARCH_TIMEOUT_MS = 45000;
@@ -40,7 +42,7 @@ function isPlainYouTubeUrl(input) {
 function extractYouTubeId(input) {
   const text = String(input || '').trim();
   if (/^[\w-]{11}$/.test(text)) return text;
-  const m = text.match(YOUTUBE_URL_RE) || text.match(VIDEO_TOKEN_RE);
+  const m = text.match(YOUTUBE_URL_RE) || text.match(VIDEO_TOKEN_RE) || text.match(YOUTUBE_FILENAME_ID_RE);
   return m ? m[1] : '';
 }
 
@@ -258,16 +260,18 @@ function listFilesIn(folder, wantedExtensions) {
       const full = path.join(folder, entry.name);
       try {
         const stat = fs.statSync(full);
-        results.push({
-          id: path.basename(entry.name, ext),
-          title: path.basename(entry.name, ext),
-          path: full,
-          filename: entry.name,
-          kind: wantedExtensions === VIDEO_EXTENSIONS ? 'video' : 'audio',
-          size: stat.size,
-          addedAt: stat.mtimeMs,
-          url: '',
-        });
+      const baseName = path.basename(entry.name, ext);
+      const youtubeId = extractYouTubeId(entry.name);
+      results.push({
+        id: youtubeId || path.basename(entry.name, ext),
+        title: baseName.replace(/\s*\[[\w-]{11}\]\s*$/, '').trim() || baseName,
+        path: full,
+        filename: entry.name,
+        kind: wantedExtensions === VIDEO_EXTENSIONS ? 'video' : 'audio',
+        size: stat.size,
+        addedAt: stat.mtimeMs,
+        url: youtubeId ? `https://www.youtube.com/watch?v=${youtubeId}` : '',
+      });
       } catch {}
     }
     return results;

@@ -241,9 +241,8 @@ function createWindow() {
   mainWindow.webContents.on('render-process-gone', (_event, details) => logRendererProblem({ type: 'render-process-gone', ...details }));
   mainWindow.on('unresponsive', () => logRendererProblem({ type: 'window-unresponsive' }));
   mainWindow.on('responsive', () => logRendererProblem({ type: 'window-responsive' }));
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
-    return { action: 'deny' };
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {     if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
+     return { action: 'deny' };
   });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -532,6 +531,62 @@ ipcMain.handle('artist-photo:remove', async (_event, name) => {
   return null;
 });
 
+// ── Hi-res album art ────────────────────────────────────────────────────────
+// Cover art embedded in audio files is often only 300–600px, which turns into
+// a pixelated mess in the full-screen player. When the renderer asks, look up
+// a high-resolution cover (Deezer cover_xl, ~1000px) for that album once,
+// cache it in the user data folder, and return the bytes. This never touches
+// the music files themselves — it is display-only.
+const albumArtHiresDir = path.join(app.getPath('userData'), 'album-art-hires');
+
+ipcMain.handle('album-art:hires', async (_event, payload) => {
+  try {
+    const artist = String(payload?.artist || '').trim();
+    const album = String(payload?.album || '').trim();
+    if (!album || /^single$/i.test(album)) return { ok: false };
+    await fs.mkdir(albumArtHiresDir, { recursive: true });
+    const key = createHash('sha1').update(`${artist.toLowerCase()}\u0000${album.toLowerCase()}`).digest('hex');
+    const file = path.join(albumArtHiresDir, `${key}.jpg`);
+    if (fsSync.existsSync(file)) {
+      const data = await fs.readFile(file);
+      return { ok: true, data: `data:image/jpeg;base64,${data.toString('base64')}` };
+    }
+    const query = encodeURIComponent(`${artist} ${album}`.trim());
+    const searchRes = await fetch(`https://api.deezer.com/search/album?q=${query}&limit=8`, { signal: AbortSignal.timeout(10000) });
+    if (!searchRes.ok) return { ok: false };
+    const searchJson = await searchRes.json();
+    const candidates = Array.isArray(searchJson?.data) ? searchJson.data : [];
+    if (!candidates.length) return { ok: false };
+    const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const albumN = norm(album);
+    const artistN = norm(artist);
+    const scored = candidates
+      .map(entry => {
+        const titleN = norm(entry.title);
+        const entryArtistN = norm(entry.artist?.name);
+        let score = 0;
+        if (titleN === albumN) score += 4;
+        else if (titleN && (titleN.includes(albumN) || albumN.includes(titleN))) score += 2;
+        if (!artistN || entryArtistN === artistN) score += 3;
+        else if (entryArtistN && entryArtistN.includes(artistN)) score += 1;
+        return { entry, score };
+      })
+      .sort((a, b) => b.score - a.score);
+    const best = scored[0];
+    if (!best || best.score < 4) return { ok: false };
+    const coverUrl = best.entry.cover_xl || best.entry.cover_big || best.entry.cover_medium;
+    if (!coverUrl) return { ok: false };
+    const imgRes = await fetch(coverUrl, { signal: AbortSignal.timeout(15000) });
+    if (!imgRes.ok) return { ok: false };
+    const buf = Buffer.from(await imgRes.arrayBuffer());
+    if (buf.length < 4096) return { ok: false };
+    await fs.writeFile(file, buf);
+    return { ok: true, data: `data:image/jpeg;base64,${buf.toString('base64')}` };
+  } catch {
+    return { ok: false };
+  }
+});
+
 // ── Downloader & Media ──────────────────────────────────────────────────────
 let dlProgressLastSent = 0;
 
@@ -593,7 +648,12 @@ ipcMain.handle('player:download', async (event, payload) => {
   const url = typeof payload?.url === 'string' ? payload.url.trim() : '';
   if (!url) throw new Error('A video link is required.');
   const kind = payload?.kind === 'video' ? 'video' : 'audio';
-  const audioDir = await downloader.getDownloadsRoot();
+  const intoMusic = Boolean(payload?.intoMusic) && kind === 'audio';
+  // MP3s land in the downloads folder by default; with intoMusic they go to
+  // the user's own music folder so they sit next to the rest of the library.
+  const audioDir = intoMusic
+    ? (String(process.env.YOUR_PLAYER_MUSIC_DIR || '').trim() || await downloader.getDownloadsRoot())
+    : await downloader.getDownloadsRoot();
   const mediaDir = await downloader.getMediaRoot();
   const item = await downloader.enqueueDownload({
     url,
@@ -645,6 +705,20 @@ ipcMain.handle('player:media-url', async (_event, filePath) => {
   return pathToFileURL(absolutePath).href;
 });
 ipcMain.handle('player:media-delete', async (_event, filePath) => downloader.removeMediaItem(filePath, await downloader.getMediaRoot()));
+ipcMain.handle('player:media-to-mp3', async (_event, filePath) => {
+  const absolute = path.resolve(String(filePath || ''));
+  const mediaRoot = path.resolve(await downloader.getMediaRoot());
+  if (path.dirname(absolute) !== mediaRoot) throw new Error('That video is not part of Media.');
+  const ffmpeg = await findFfmpegPath();
+  if (!ffmpeg) throw new Error('ffmpeg is required to convert videos. Install it ("winget install Gyan.FFmpeg").');
+  const musicDir = String(process.env.YOUR_PLAYER_MUSIC_DIR || '').trim() || await downloader.getDownloadsRoot();
+  const base = path.basename(absolute, path.extname(absolute));
+  let out = path.join(musicDir, `${base}.mp3`);
+  let n = 1;
+  while (fsSync.existsSync(out)) { out = path.join(musicDir, `${base} (${++n}).mp3`); }
+  await runFfmpegTool(['-y', '-i', absolute, '-vn', '-c:a', 'libmp3lame', '-q:a', '0', out], 15 * 60 * 1000);
+  return { path: out, dir: musicDir };
+});
 ipcMain.handle('player:media-list-with-thumbs', async () => {
   const items = await downloader.listDownloadsFolder('video');
   const ytdlp = await resolveYtDlpPathSafely();
@@ -840,30 +914,16 @@ ipcMain.handle('library:save', async (_event, data) => {
   } catch { return false; }
 });
 
-// ── YouTube sign in (cookies) ────────────────────────────────────────
-let ytSignInWindow = null;
-
-function readYouTubeCookieHeader() {
-  try {
-    const session = ytSignInWindow?.webContents?.session;
-    if (!session) return '';
-    const cookies = session.cookies.get({ url: 'https://www.youtube.com' });
-    return cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
-  } catch { return ''; }
-}
-
+// ── YouTube sign in (cookies) ──
+// Sign-in happens inside the player window: the renderer hosts a <webview>
+// on the persist:youtube-signin partition and cookies are read from that
+// partition for downloads. This handler stays for backward compatibility
+// (an older cached renderer can still call it) but it must never pop a
+// separate BrowserWindow — it just asks the live UI to open its in-app modal.
 ipcMain.handle('youtube:signin', async () => {
-  if (ytSignInWindow && !ytSignInWindow.isDestroyed()) { ytSignInWindow.focus(); return { ok: true, signedIn: false, already: true }; }
-  ytSignInWindow = new BrowserWindow({
-    width: 460, height: 720, show: true, autoHideMenuBar: true,
-    title: `Sign in to YouTube for ${safeBrandPrefix()} Player`,
-    backgroundColor: '#111111',
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, partition: 'persist:youtube-signin' },
-  });
-  ytSignInWindow.loadURL('https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fwww.youtube.com%2F&service=youtube');
-  ytSignInWindow.once('ready-to-show', () => { try { ytSignInWindow.show(); ytSignInWindow.focus(); } catch {} });
-  ytSignInWindow.on('closed', () => { ytSignInWindow = null; });
-  return { ok: true, signedIn: false };
+  const win = windowRef();
+  if (win) win.webContents.send('youtube:signin-open');
+  return { ok: true, signedIn: false, inApp: true };
 });
 
 ipcMain.handle('youtube:signin-status', async () => {
@@ -926,6 +986,71 @@ ipcMain.handle('update:install', async () => {
 ipcMain.on('update:relaunch', () => {
   app.relaunch();
   app.exit(0);
+});
+
+// ── Pop-out mini player ──
+// A tiny always-on-top window showing album art and the transport controls.
+// It loads the same index.html; the page detects mini state via a boot script
+// that reads the last snapshot and listens for live updates over IPC.
+let miniWindow = null;
+function miniWindowIcon() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.ico')
+    : path.join(__dirname, '..', 'build', 'icon.ico');
+}
+function createMiniWindow() {
+  if (miniWindow && !miniWindow.isDestroyed()) {
+    miniWindow.show();
+    miniWindow.focus();
+    return miniWindow;
+  }
+  const icon = miniWindowIcon();
+  miniWindow = new BrowserWindow({
+    width: 300,
+    height: 380,
+    minWidth: 200,
+    minHeight: 280,
+    maxWidth: 420,
+    maxHeight: 640,
+    useContentSize: true,
+    alwaysOnTop: true,
+    backgroundColor: '#0b0d0e',
+    autoHideMenuBar: true,
+    frame: false,
+    title: 'Player',
+    icon: fsSync.existsSync(icon) ? icon : undefined,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: false,
+    },
+  });
+  miniWindow.setAlwaysOnTop(true, 'floating');
+  miniWindow.loadFile(path.join(__dirname, '..', 'index.html'), { hash: 'mini' });
+  miniWindow.on('closed', () => { miniWindow = null; try { mainWindow?.webContents.send('mini:closed'); } catch {} });
+  return miniWindow;
+}
+let lastMiniState = null;
+ipcMain.handle('mini:get-state', () => lastMiniState || null);
+ipcMain.handle('mini:show', () => { createMiniWindow(); return true; });
+ipcMain.handle('mini:close', () => {
+  if (miniWindow && !miniWindow.isDestroyed()) miniWindow.close();
+  miniWindow = null;
+  return true;
+});
+ipcMain.handle('mini:is-open', () => Boolean(miniWindow && !miniWindow.isDestroyed()));
+ipcMain.on('mini:push-state', (_event, state) => {
+  lastMiniState = state;
+  if (miniWindow && !miniWindow.isDestroyed()) {
+    try { miniWindow.webContents.send('mini:state', state); } catch {}
+  }
+});
+ipcMain.on('mini:command', (event, cmd, arg) => {
+  if (event.sender === miniWindow?.webContents && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('mini:command', cmd, arg);
+  }
 });
 
 app.whenReady().then(async () => {

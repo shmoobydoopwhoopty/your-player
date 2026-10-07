@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
 
   // Artist photos (display-only lookup cache; never edits files or tags)
   getArtistPhoto: name => ipcRenderer.invoke('artist-photo:get', name),
+  getAlbumArtHires: payload => ipcRenderer.invoke('album-art:hires', payload),
   refetchArtistPhoto: name => ipcRenderer.invoke('artist-photo:refetch', name),
   chooseArtistPhoto: name => ipcRenderer.invoke('artist-photo:choose-custom', name),
   removeArtistPhoto: name => ipcRenderer.invoke('artist-photo:remove', name),
@@ -90,6 +91,34 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   youtubeSignIn: () => ipcRenderer.invoke('youtube:signin'),
   youtubeSigninStatus: () => ipcRenderer.invoke('youtube:signin-status'),
   youtubeSignOut: () => ipcRenderer.invoke('youtube:signout'),
+  onYouTubeSigninRequested: callback => {
+    const listener = () => callback();
+    ipcRenderer.on('youtube:signin-open', listener);
+    return () => ipcRenderer.removeListener('youtube:signin-open', listener);
+  },
+
+  // Pop-out mini player
+  miniShow: () => ipcRenderer.invoke('mini:show'),
+  miniClose: () => ipcRenderer.invoke('mini:close'),
+  miniIsOpen: () => ipcRenderer.invoke('mini:is-open'),
+  miniPushState: state => ipcRenderer.send('mini:push-state', state),
+  miniCommand: (cmd, arg) => ipcRenderer.send('mini:command', cmd, arg),
+  miniGetState: () => ipcRenderer.invoke('mini:get-state'),
+  miniOnState: callback => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('mini:state', listener);
+    return () => ipcRenderer.removeListener('mini:state', listener);
+  },
+  miniOnCommand: callback => {
+    const listener = (_event, cmd, arg) => callback(cmd, arg);
+    ipcRenderer.on('mini:command', listener);
+    return () => ipcRenderer.removeListener('mini:command', listener);
+  },
+  miniOnClosed: callback => {
+    const listener = () => callback();
+    ipcRenderer.on('mini:closed', listener);
+    return () => ipcRenderer.removeListener('mini:closed', listener);
+  },
 
   // Self-update
   updateGetConfig: () => ipcRenderer.invoke('update:get-config'),
