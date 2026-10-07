@@ -6,6 +6,15 @@
 //   node scripts/publish-update.js [--out release/update-channel] [--version 1.0.5] [--notes "..."]
 //   node scripts/publish-update.js --github owner/repo --tag v1.0.5 [--out release/update-channel] [--notes "..."]
 //
+// Options:
+//   --notes "..."        release notes (shown in the app's update panel)
+//   --notes-file <path>  read the notes from a file instead (handy for long notes
+//                        or when quoting through a shell is awkward)
+//   --clean              empty the output folder first, so no stale files from a
+//                        previous version get uploaded alongside the new ones
+//
+// The output folder is created if it doesn't exist.
+//
 // Without --github: the output folder holds manifest.json next to the app files
 // using their real paths — host it on any static server and point the app's
 // Settings → Update source at <url>/manifest.json.
@@ -14,6 +23,8 @@
 // main.cjs, …) and the manifest points each file at its absolute GitHub
 // release-download URL, because GitHub release assets cannot contain slashes.
 // Upload the folder's contents as assets of the given release tag.
+//
+// `npm run release` runs this script for you, together with the build and upload.
 
 const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
@@ -55,6 +66,18 @@ async function main() {
     throw new Error(`--github expects "owner/repo", got "${github}"`);
   }
 
+  const notes = typeof args.notes === 'string' && args.notes
+    ? args.notes
+    : (args['notes-file'] ? await fs.readFile(path.resolve(ROOT, args['notes-file']), 'utf8') : '');
+
+  if ('clean' in args) {
+    if (outDir === ROOT || (ROOT + path.sep).startsWith(outDir + path.sep)) {
+      throw new Error(`Refusing to --clean ${outDir} — that would wipe the project folder itself.`);
+    }
+    await fs.rm(outDir, { recursive: true, force: true });
+  }
+  await fs.mkdir(outDir, { recursive: true });
+
   const seenAssets = new Set();
   const files = [];
   for (const rel of UPDATE_FILES) {
@@ -84,7 +107,7 @@ async function main() {
   const manifest = {
     version,
     releaseDate: new Date().toISOString(),
-    notes: args.notes || '',
+    notes,
     files,
   };
   await fs.writeFile(path.join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2));

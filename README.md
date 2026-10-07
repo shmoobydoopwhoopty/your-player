@@ -106,17 +106,31 @@ The app ships with an updater pointed at this project's GitHub releases:
 - You can change the update source any time in Settings → Update source.
 - Updates replace only `index.html`, `package.json`, and `electron/*.cjs`; the previous versions are backed up to `userData/updates/backups/`.
 
-To ship an update:
+To ship an update, make your changes, bump `"version"` in `package.json`, then run one command:
 
 ```bash
-# 1. Make your changes, bump "version" in package.json
-npm run dist:installer                                  # 2. build the new installer
-node scripts/publish-update.js --github <owner>/<repo> --notes "What changed"
-# 3. Attach everything in release/update-channel/ (manifest.json included)
-#    plus the new installer to a GitHub release, e.g.:
-gh release create v1.0.5 release/update-channel/* "installer/Your Player Setup 1.0.5.exe" \
-  --title "Your Player 1.0.5" --notes "What changed"
+npm run release -- --notes "What changed"
 ```
+
+That command:
+
+1. checks the git state (warns if your work is uncommitted or unpushed)
+2. builds the installer + portable exe, and **refuses to publish artifacts older than the source**
+3. regenerates `release/update-channel/` from a clean folder, with every URL pointing at the new tag
+4. creates (or updates) the GitHub release and uploads the channel files and installers
+5. downloads the published `manifest.json` back and verifies the SHA-256 of every file the app will fetch
+
+Handy variations:
+
+```bash
+npm run release -- --dry-run          # build + write the channel, change nothing on GitHub
+npm run release -- --skip-build       # reuse the .exe files already in release/
+npm run release -- --notes-file release-notes.md
+npm run release -- --allow-stale      # publish even if the build predates the source
+npm run release -- --verify-only      # re-check an already published release, no build or upload
+```
+
+Auth comes from `GITHUB_TOKEN`, or from a signed-in `gh` CLI — including the copy at `~/.gh-cli/bin/gh.exe` — so nothing needs exporting by hand.
 
 The NSIS installer creates a standard Windows uninstaller (Settings → Apps → "Your Player").
 
