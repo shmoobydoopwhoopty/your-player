@@ -33,6 +33,17 @@ let sameSessionOpenCount = 0;
 // a separate browser-style window — the historical bug where “Sign in to
 // YouTube” launched its own Google window outside the player.
 app.on('web-contents-created', (_event, contents) => {
+  // Surface guest-page console output in the terminal for support/debugging,
+  // and bridge the cover-lookup pick (sandboxed guest pages can't use ipc;
+  // their console lines are the only channel out).
+  if (contents.getType() === 'webview') {
+    contents.on('console-message', (_e, _level, message) => {
+      if (typeof message !== 'string' || !message.startsWith('CL_PICK:')) return;
+      console.log('GUEST_CONSOLE:', message.slice(0, 300));
+      const host = windowRef();
+      if (host) host.webContents.send('coverlookup:pick', message.slice(8));
+    });
+  }
   contents.setWindowOpenHandler(({ url }) => {
     const inWebview = contents.getType() === 'webview';
     const isHttp = url.startsWith('https://') || url.startsWith('http://');
@@ -1075,6 +1086,26 @@ ipcMain.handle('identify:fetch-cover', async (_event, url) => {
     if (bytes.length < 1024 || bytes.length > 10 * 1024 * 1024 || !looksLikeImageBuffer(bytes)) return null;
     return { bytes: Uint8Array.from(bytes), mime: contentType || 'image/jpeg' };
   } catch { return null; }
+});
+
+// Album-cover lookup: pull the full-size bytes of an image the user picked
+// from the Google Images page (the <webview> only carries the page's session;
+// fetching here decodes it reliably and enforces size/type limits).
+ipcMain.handle('coverlookup:fetch-image', async (_event, url) => {
+  const target = String(url || '');
+  // Real picker URLs are always https; loopback http is allowed for local tests.
+  const allowed = /^https:\/\//.test(target) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(target);
+  if (!allowed) return null;
+  try {
+    const res = await fetch(target, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20000) });
+    if (!res.ok) { console.log('coverlookup: HTTP', res.status, 'for', target.slice(0, 120)); return null; }
+    const contentType = String(res.headers.get('content-type') || '');
+    if (contentType && !contentType.startsWith('image/')) { console.log('coverlookup: bad type', contentType); return null; }
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length < 512 || bytes.length > 25 * 1024 * 1024) { console.log('coverlookup: bad size', bytes.length); return null; }
+    if (!looksLikeImageBuffer(bytes) && !contentType.includes('webp')) { console.log('coverlookup: bad magic for', contentType); return null; }
+    return { bytes: Uint8Array.from(bytes), mime: contentType || 'image/jpeg' };
+  } catch (error) { console.log('coverlookup: fetch failed:', String(error && error.message || error).slice(0, 140)); return null; }
 });
 
 // ── Library persistence on disk (survives re-installs and storage resets) ──

@@ -83,6 +83,14 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   // Identify a song from a file (Deezer-backed matching, cover fetch)
   identifySearch: payload => ipcRenderer.invoke('identify:search', payload),
   identifyFetchCover: url => ipcRenderer.invoke('identify:fetch-cover', url),
+
+  // Album cover lookup (Google Images picker + fetch of the picked image)
+  coverLookupFetchImage: url => ipcRenderer.invoke('coverlookup:fetch-image', url),
+  onCoverLookupPick: callback => {
+    const listener = (_event, url) => callback(url);
+    ipcRenderer.on('coverlookup:pick', listener);
+    return () => ipcRenderer.removeListener('coverlookup:pick', listener);
+  },
   trimMediaFile: payload => ipcRenderer.invoke('player:trim', payload),
   chooseImageFile: title => ipcRenderer.invoke('afterglow:choose-image', title),
 
