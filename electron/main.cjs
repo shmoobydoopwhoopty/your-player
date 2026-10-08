@@ -894,8 +894,14 @@ async function runFfmpegTool(args, timeoutMs = 60000) {
 async function findFfmpegPath() {
   const envDir = String(process.env.YOUR_PLAYER_TOOLS_DIR || '').trim();
   const isWin = process.platform === 'win32';
+  // The installer bundles ffmpeg in resources/vendor — try it first so a fresh
+  // install can convert media without any manual installs.
+  const bundledDir = path.join(process.resourcesPath || path.join(__dirname, '..'), 'vendor');
+  const bundledDevDir = path.join(__dirname, '..', 'vendor');
   const candidates = [
     envDir && path.join(envDir, isWin ? 'ffmpeg.exe' : 'ffmpeg'),
+    path.join(bundledDir, isWin ? 'ffmpeg.exe' : 'ffmpeg'),
+    path.join(bundledDevDir, isWin ? 'ffmpeg.exe' : 'ffmpeg'),
     isWin ? 'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe' : '/usr/local/bin/ffmpeg',
   ];
   const dirs = String(process.env.PATH || '').split(path.delimiter).filter(Boolean);

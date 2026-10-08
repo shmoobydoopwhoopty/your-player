@@ -93,14 +93,22 @@ async function resolveTools() {
     return '';
   };
   const envDir = String(process.env.YOUR_PLAYER_TOOLS_DIR || '').trim();
+  // Tools bundled with the installer ship in resources/vendor (packaged) or
+  // <repo>/vendor (dev) — checked first so a fresh install just works.
+  const bundledDir = path.join(process.resourcesPath || path.join(__dirname, '..'), 'vendor');
+  const bundledDevDir = path.join(__dirname, '..', 'vendor');
   const ytCandidates = [
     envDir && path.join(envDir, isWin ? 'yt-dlp.exe' : 'yt-dlp'),
+    path.join(bundledDir, isWin ? 'yt-dlp.exe' : 'yt-dlp'),
+    path.join(bundledDevDir, isWin ? 'yt-dlp.exe' : 'yt-dlp'),
     which('yt-dlp'),
     isWin ? 'C:\\Program Files\\yt-dlp\\yt-dlp.exe' : '/usr/local/bin/yt-dlp',
     isWin ? 'C:\\Program Files (x86)\\yt-dlp\\yt-dlp.exe' : '/usr/bin/yt-dlp',
   ];
   const ffCandidates = [
     envDir && path.join(envDir, isWin ? 'ffmpeg.exe' : 'ffmpeg'),
+    path.join(bundledDir, isWin ? 'ffmpeg.exe' : 'ffmpeg'),
+    path.join(bundledDevDir, isWin ? 'ffmpeg.exe' : 'ffmpeg'),
     which('ffmpeg'),
     isWin ? 'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe' : '/usr/local/bin/ffmpeg',
   ];
