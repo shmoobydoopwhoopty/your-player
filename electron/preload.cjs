@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   getCookieHeader: () => ipcRenderer.invoke('player:get-cookie-header'),
   getMediaUrl: filePath => ipcRenderer.invoke('player:media-url', filePath),
   deleteMediaFile: filePath => ipcRenderer.invoke('player:media-delete', filePath),
+  convertMediaToMp3: payload => ipcRenderer.invoke('player:media-to-mp3', payload ?? {}),
   onDownloadProgress: callback => {
     const listener = (_event, data) => callback(data);
     ipcRenderer.on('player:progress', listener);

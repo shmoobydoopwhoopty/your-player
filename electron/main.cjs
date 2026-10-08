@@ -705,19 +705,74 @@ ipcMain.handle('player:media-url', async (_event, filePath) => {
   return pathToFileURL(absolutePath).href;
 });
 ipcMain.handle('player:media-delete', async (_event, filePath) => downloader.removeMediaItem(filePath, await downloader.getMediaRoot()));
-ipcMain.handle('player:media-to-mp3', async (_event, filePath) => {
-  const absolute = path.resolve(String(filePath || ''));
+ipcMain.handle('player:media-to-mp3', async (_event, payload) => {
+  const target = path.resolve(String(payload?.path || ''));
   const mediaRoot = path.resolve(await downloader.getMediaRoot());
-  if (path.dirname(absolute) !== mediaRoot) throw new Error('That video is not part of Media.');
-  const ffmpeg = await findFfmpegPath();
-  if (!ffmpeg) throw new Error('ffmpeg is required to convert videos. Install it ("winget install Gyan.FFmpeg").');
-  const musicDir = String(process.env.YOUR_PLAYER_MUSIC_DIR || '').trim() || await downloader.getDownloadsRoot();
-  const base = path.basename(absolute, path.extname(absolute));
-  let out = path.join(musicDir, `${base}.mp3`);
+  if (!(target === mediaRoot || target.startsWith(mediaRoot + path.sep))) throw new Error('That video is not part of Media.');
+  if (!fsSync.existsSync(target)) throw new Error('That video no longer exists.');
+  const ffmpegPath = await findFfmpegPath();
+  if (!ffmpegPath) throw new Error('ffmpeg is required to convert videos. Install it ("winget install Gyan.FFmpeg").');
+
+  // Destination: the user's chosen music folder when valid, else the downloads root.
+  let musicDir = String(payload?.musicDir || '').trim();
+  if (musicDir) {
+    try { const stat = await fs.stat(musicDir); if (!stat.isDirectory()) musicDir = ''; } catch { musicDir = ''; }
+  }
+  if (!musicDir) musicDir = await downloader.getDownloadsRoot();
+  await fs.mkdir(musicDir, { recursive: true }).catch(() => {});
+
+  const fallbackTitle = path.basename(target, path.extname(target));
+  const title = sanitizeTag(typeof payload?.title === 'string' && payload.title.trim() ? payload.title.trim() : fallbackTitle) || fallbackTitle;
+  const safeName = title.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim() || 'song';
+  const artist = sanitizeTag(typeof payload?.artist === 'string' ? payload.artist : '');
+  const album = sanitizeTag(typeof payload?.album === 'string' ? payload.album : '');
+  const start = Number(payload?.start);
+  const rawEnd = payload?.end;
+  const end = rawEnd == null || rawEnd === '' ? null : Number(rawEnd);
+  const startSafe = Number.isFinite(start) && start > 0 ? start : 0;
+  if (end != null && (!Number.isFinite(end) || end <= startSafe)) throw new Error('End must come after Start.');
+
+  let out = path.join(musicDir, `${safeName}.mp3`);
   let n = 1;
-  while (fsSync.existsSync(out)) { out = path.join(musicDir, `${base} (${++n}).mp3`); }
-  await runFfmpegTool(['-y', '-i', absolute, '-vn', '-c:a', 'libmp3lame', '-q:a', '0', out], 15 * 60 * 1000);
-  return { path: out, dir: musicDir };
+  while (fsSync.existsSync(out)) { out = path.join(musicDir, `${safeName} (${++n}).mp3`); }
+
+  // Cover art: written to a temp file so ffmpeg can embed it as attached picture.
+  let artTmp = '';
+  const artBytes = payload?.artBytes;
+  if (artBytes && artBytes.length) {
+    try {
+      const buf = Buffer.from(artBytes);
+      const isPng = buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+      artTmp = path.join(app.getPath('temp'), `media-cover-${Date.now()}-${Math.random().toString(36).slice(2, 8)}${isPng ? '.png' : '.jpg'}`);
+      await fs.writeFile(artTmp, buf);
+    } catch { artTmp = ''; }
+  }
+
+  const args = ['-hide_banner', '-y'];
+  if (startSafe > 0) args.push('-ss', String(startSafe));
+  args.push('-i', target);
+  if (artTmp) args.push('-i', artTmp);
+  if (end != null) args.push('-t', String(end - startSafe));
+  if (!artTmp) args.push('-vn');          // with art embedded, -map 0:a already excludes video and -vn would kill the picture
+  else args.push('-map', '0:a', '-map', '1:0');
+  args.push('-c:a', 'libmp3lame', '-q:a', '0', '-id3v2_version', '3');
+  args.push('-metadata', `title=${title}`);
+  if (artist) args.push('-metadata', `artist=${artist}`);
+  if (album) args.push('-metadata', `album=${album}`);
+  if (artTmp) {
+    args.push('-metadata:s:v', 'title=Album cover', '-metadata:s:v', 'comment=Cover (front)');
+  }
+  args.push(out);
+
+  try {
+    await runFfmpegTool(args, 15 * 60 * 1000);
+  } catch (error) {
+    try { fsSync.unlinkSync(out); } catch {}
+    throw error;
+  } finally {
+    if (artTmp) { try { fsSync.unlinkSync(artTmp); } catch {} }
+  }
+  return { path: out, dir: musicDir, title };
 });
 ipcMain.handle('player:media-list-with-thumbs', async () => {
   const items = await downloader.listDownloadsFolder('video');
