@@ -557,10 +557,10 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
   <div class="folder-note">Party mode only reacts to this exact frequency, not everything below it — set 60 Hz and only a real 60 Hz hit lights the room.</div>
   <div class="pop-label">Bass shake (blown-up art)</div>
   <div class="fx-toggle-row"><b>Shake the full-screen album art when it hears your frequency</b><button class="text-btn" id="shakeToggle" type="button">Off</button></div>
-  <div class="slider-row"><span>Shake amount</span><input type="range" id="shakeIntensity" min="0" max="20" step="0.5" aria-label="Bass shake intensity in pixels"><b id="shakeIntensityValue"></b></div>
+  <div class="slider-row"><span>Shake amount</span><input type="range" id="shakeIntensity" min="0" max="20" step="0.5" aria-label="Maximum bass shake distance in pixels — the hardest bass hits shake at this strength"><b id="shakeIntensityValue"></b></div>
   <div class="slider-row"><span>Shake speed</span><input type="range" id="shakeSpeed" min="40" max="400" step="10" aria-label="Bass shake speed in milliseconds per cycle"><b id="shakeSpeedValue"></b></div>
   <div class="slider-row"><span>Listen to frequency</span><input type="range" id="shakeHzSlider" min="20" max="500" step="5" aria-label="Bass shake frequency in hertz"><b id="shakeHzValue"></b></div>
-  <div class="folder-note">Listens for a band around this frequency (±25%), so long notes and sustained hits keep shaking as long as they sound — set it to any note, not just bass. The shake only touches the blown-up now-playing art; the small player cover stays still.</div>
+  <div class="folder-note">Works like a dubstep visualizer: every bass hit shakes the blown-up art by how hard it hits — soft bass rumbles gently, a hard 808 slam throws it around at full force, with a quick punch-and-decay on each hit. Listens to a band around this frequency (±25%), so sustained notes keep shaking while they sound. The shake only touches the blown-up now-playing art; the small player cover stays still.</div>
 </div>
 <div class="settings-pop" id="layoutPop" role="dialog" aria-label="Layout and sliders">
   <h4>Layout</h4>
@@ -2775,18 +2775,23 @@ function freqBandLevel(data,hz){const rate=audioGraph&&audioGraph.ctx?audioGraph
 let partyMode=false;try{partyMode=localStorage.getItem('yourplayer.party.v1')==='1'}catch{}
 let partyHz=fxLoad('partyHz',100),partyBrightness=fxLoad('partyBrightness',42),partyGap=fxLoad('partyGap',170);
 let shakeMode=false,shakeHz=fxLoad('shakeHz',60),shakeIntensity=fxLoad('shakeIntensity',6),shakeMs=fxLoad('shakeMs',120),shakeHoldUntil=0;
+// Envelope for hit-hardness: shakePeak = loudest recent bass (decays slowly), shakeEnv = current
+// punch (fast attack, quick release). Every hit shakes the art by how hard it hits — the
+// dubstep-visualizer feel — instead of one fixed displacement while the band is merely loud.
+let shakeEnv=0,shakePeak=0,fxLastTs=0;
 const partyFlash=$('#partyFlash'),shakeFx=$('#shakeFx');
 let fxRaf=0,partyLast=0,partyColorIdx=0;
 function fxFrame(){
   fxRaf=0;
   if(!partyMode&&!shakeMode)return;
   const g=audioGraph;
-  if(!playing||!g||g.failed||!g.analyser){if(partyFlash)partyFlash.style.opacity='0';if(shakeFx)shakeFx.style.opacity='0';fxRaf=requestAnimationFrame(fxFrame);return}
+  if(!playing||!g||g.failed||!g.analyser){if(partyFlash)partyFlash.style.opacity='0';if(shakeFx)shakeFx.style.opacity='0';shakeEnv=0;shakePeak=0;shakeHoldUntil=0;fxLastTs=0;document.documentElement.removeAttribute('data-bass-shake');fxRaf=requestAnimationFrame(fxFrame);return}
   try{
     if(g.ctx.state==='suspended')g.ctx.resume().catch(()=>{});
     const data=new Uint8Array(g.analyser.frequencyBinCount);
     g.analyser.getByteFrequencyData(data);
     const now=performance.now();
+    const dt=fxLastTs?Math.min(50,Math.max(4,now-fxLastTs)):16;fxLastTs=now;
     if(partyMode){
       const raw=freqBandLevel(data,partyHz);
       const threshold=Math.max(.12,.5-partyBrightness/250);
@@ -2801,16 +2806,23 @@ function fxFrame(){
     }
     if(shakeMode){
       const sRaw=freqBandLevel(data,shakeHz);
-      const on=sRaw>Math.max(.12,.5-(partyMode?partyBrightness:45)/250);
-      const fxNow=performance.now();
-      // Shake for as long as the frequency is heard (plus a short release so gaps don't flicker) —
-      // a long bass hit or a sustained note keeps shaking, it is not a one-shot burst.
-      if(on)shakeHoldUntil=fxNow+180;
-      const burst=fxNow<shakeHoldUntil;
-      if(shakeFx)shakeFx.style.opacity=burst?String(Math.max(.25,Math.min(1,sRaw*1.6))):'0';
+      // How hard the bass hits: level above a silence gate, relative to the loudest recent
+      // hit. A soft bassline rumbles gently; an 808 slam throws the art around at full force.
+      const gate=Math.max(.1,(partyMode?partyBrightness:45)/600);
+      shakePeak=Math.max(shakePeak*Math.pow(.5,dt/1200),sRaw,.3);
+      const rel=Math.max(0,(sRaw-gate))/(shakePeak-gate+.05);
+      const target=Math.min(1,rel*1.15);
+      // Punch envelope: instant attack on the hit, ~190 ms release so every hit reads as a
+      // punch instead of a steady blur — sustained notes keep a strong-but-decaying shake.
+      shakeEnv=target>shakeEnv?target:shakeEnv*Math.pow(.5,dt/190);
+      const fxNow=now;
+      if(shakeEnv>.03)shakeHoldUntil=fxNow+180;
+      const burst=fxNow<shakeHoldUntil&&shakeEnv>.03;
+      const punch=Math.pow(shakeEnv,1.35);
+      if(shakeFx)shakeFx.style.opacity=burst?String(Math.max(0,Math.min(1,.2+punch*.8))):'0';
       if(burst)document.documentElement.dataset.bassShake='1';else document.documentElement.removeAttribute('data-bass-shake');
       const rootStyle=document.documentElement.style;
-      if(burst){const px=shakeIntensity*(0.5+sRaw*.9);rootStyle.setProperty('--shake-x',px.toFixed(2)+'px');rootStyle.setProperty('--shake-y',px.toFixed(2)+'px')}
+      if(burst){const px=shakeIntensity*(0.25+punch*.85);rootStyle.setProperty('--shake-x',px.toFixed(2)+'px');rootStyle.setProperty('--shake-y',px.toFixed(2)+'px')}
     }
   }catch{}
   fxRaf=requestAnimationFrame(fxFrame)}
