@@ -158,7 +158,7 @@ body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12
 .dl-pill .dl-bar{margin:0}
 .dl-pill-cancel{flex:none;width:24px;height:24px;border:1px solid var(--line);background:transparent;border-radius:50%;color:#a7aeaa;display:grid;place-items:center;cursor:pointer;padding:0}
 .dl-pill-cancel:hover{border-color:#ff7b6b;color:#ff9d8f}
-.dl-cancel{flex:none;width:26px;height:26px;border:1px solid var(--line);background:transparent;border-radius:50%;color:#b9c0bb;display:grid;place-items:center;cursor:pointer}.dl-cancel:hover{border-color:#ff7b6b;color:#ff9d8f}.dl-preview{margin:0 0 18px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:720px}.dl-preview-frame{position:relative;background:#000}
+.dl-cancel{flex:none;width:26px;height:26px;border:1px solid var(--line);background:transparent;border-radius:50%;color:#b9c0bb;display:grid;place-items:center;cursor:pointer}.dl-cancel:hover{border-color:#ff7b6b;color:#ff9d8f}.dl-preview{margin:0 0 18px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:720px}.dl-preview-frame{position:relative;background:#000}.dl-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:#8d9692;font-size:12px}
 /* ── Scale system: one root factor for every knob with a text rule of its own ── */
 html{--text-scale:1}
 html[data-text-scale] body{font-size:calc(14px*var(--text-scale))}
@@ -1732,7 +1732,23 @@ function openAppPreview(item){
   $('#dlPreviewTitle').textContent=item.title;
   if(frame.dataset.videoId!==item.id){
     frame.dataset.videoId=item.id;
-    frame.innerHTML=`<webview src="https://www.youtube.com/embed/${encodeURIComponent(item.id)}?autoplay=1&rel=0&modestbranding=1&playsinline=1" partition="persist:yt-preview" allowtransparency allow="autoplay; encrypted-media; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000"></webview>`;
+    // YouTube's embedder check rejects the app origin with "Error 153", so
+    // previews stream the video directly through the yt-dlp engine (same
+    // engine and cookies as downloads); a <video> element plays the result.
+    frame.innerHTML='<div class="dl-preview-loading">Loading preview…</div>';
+    preview.hidden=false;
+    (async()=>{
+      try{
+        const streamUrl=await desktop.getPreviewStream(item.id);
+        if(frame.dataset.videoId!==item.id)return;
+        frame.innerHTML=`<video src="${streamUrl}" controls autoplay playsinline style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
+      }catch(error){
+        console.error('Preview stream failed:',error);
+        if(frame.dataset.videoId!==item.id)return;
+        // Fallback to the old embed (works when YouTube permits it)
+        frame.innerHTML=`<webview src="https://www.youtube.com/embed/${encodeURIComponent(item.id)}?autoplay=1&rel=0&modestbranding=1&playsinline=1" partition="persist:yt-preview" allowtransparency allow="autoplay; encrypted-media; picture-in-picture" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000"></webview>`;
+      }
+    })();
   }
   preview.hidden=false;
 }

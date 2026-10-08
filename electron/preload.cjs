@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   setDownloadsDir: dir => ipcRenderer.invoke('player:set-downloads-dir', dir),
   initDownloader: payload => ipcRenderer.invoke('player:downloader-init', payload ?? null),
   searchYouTube: query => ipcRenderer.invoke('player:search', query),
+  getPreviewStream: videoId => ipcRenderer.invoke('player:preview-stream', videoId),
   searchSuggestions: query => ipcRenderer.invoke('player:suggest', query),
   startDownload: payload => ipcRenderer.invoke('player:download', payload),
   downloadActive: () => ipcRenderer.invoke('player:active'),

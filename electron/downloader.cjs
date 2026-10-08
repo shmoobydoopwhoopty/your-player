@@ -240,6 +240,35 @@ async function resolveEntry(url) {
   return normalized.find(item => item.id) || null;
 }
 
+// Direct stream URL for in-app previews: the embedded player can no longer be
+// used (YouTube's embedder check rejects the app's file:// origin with
+// "Error 153"), so previews stream the progressive mp4 via yt-dlp instead —
+// same engine and cookies the downloads already use.
+async function resolveStreamUrl(url) {
+  const { ytDlpPath } = await resolveTools();
+  // YouTube's default web client only ships split DASH/HLS streams now; the
+  // android client still exposes the muxed 360p mp4 (format 18) that a plain
+  // <video> element can play, so try it first, then fall back to any muxed
+  // https stream the default client offers.
+  const attempts = [
+    ['--extractor-args', 'youtube:player_client=android', '-f', '18/b[acodec!=none][vcodec!=none][protocol^=https]'],
+    ['-f', 'b[acodec!=none][vcodec!=none][protocol^=https]'],
+  ];
+  let lastError = null;
+  for (const attempt of attempts) {
+    try {
+      const results = await runYtDlpJson(
+        ytDlpPath,
+        [...youtubeCookieArgs(), '--no-warnings', '--no-playlist', '--skip-download', ...attempt, '--dump-json', url],
+        SEARCH_TIMEOUT_MS,
+      );
+      const urls = results.flatMap(r => [r && r.url, ...(((r && r.requested_formats) || []).map(f => f && f.url))]).filter(Boolean);
+      if (urls.length) return urls[0];
+    } catch (error) { lastError = error; }
+  }
+  throw lastError || new Error('No stream URL found for this video');
+}
+
 const activeDownloads = new Map();
 let nextDownloadId = 0;
 
@@ -523,6 +552,7 @@ module.exports = {
   searchYouTube,
   fetchYouTubeSuggestions,
   resolveEntry,
+  resolveStreamUrl,
   listDownloadsFolder,
   findVideoForYouTubeId,
   removeMediaItem,

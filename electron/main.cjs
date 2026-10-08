@@ -62,6 +62,26 @@ app.on('web-contents-created', (_event, contents) => {
 // Debounce handle so a flood of cookie-change events during sign-in refreshes
 // the downloader's view at most twice a second instead of on every byte.
 let cookieRefreshTimer = null;
+// YouTube's 2025 embedder check rejects players whose Referer isn't a real
+// https origin — the downloader preview loads youtube.com/embed in a <webview>
+// from the app's file:// page, so no valid referer goes out and YouTube shows
+// “Error 153: Video player configuration error”. Give the preview session's
+// embed requests a Referer YouTube accepts and a UA without the Electron
+// token (also flagged by the embedder check), so previews play again.
+function patchPreviewSession() {
+  try {
+    const { session } = require('electron');
+    const ses = session.fromPartition('persist:yt-preview');
+    const ua = ses.getUserAgent().replace(/\s*Electron\/[\d.]+/i, '');
+    ses.setUserAgent(ua);
+    ses.webRequest.onBeforeSendHeaders({ urls: ['https://www.youtube.com/*', 'https://www.youtube-nocookie.com/*', 'https://googlevideo.com/*'] }, (details, callback) => {
+      const headers = details.requestHeaders;
+      headers['Referer'] = 'https://www.youtube.com/';
+      headers['Origin'] = 'https://www.youtube.com';
+      callback({ requestHeaders: headers });
+    });
+  } catch (error) { console.error('preview session patch failed:', error); }
+}
 async function refreshYouTubeCookies(ses) {
   try {
     const cookies = await ses.cookies.get({ url: 'https://www.youtube.com' });
@@ -761,6 +781,11 @@ ipcMain.handle('player:download', async (event, payload) => {
 });
 
 ipcMain.handle('player:active', () => downloader.activeData());
+ipcMain.handle('player:preview-stream', async (_event, videoId) => {
+  const id = String(videoId || '').trim();
+  if (!/^[\w-]{11}$/.test(id)) throw new Error('Invalid video id');
+  return downloader.resolveStreamUrl(`https://www.youtube.com/watch?v=${id}`);
+});
 ipcMain.handle('player:cancel', (_event, id) => downloader.cancelDownload(id || null));
 ipcMain.handle('player:list-media', () => downloader.listDownloadsFolder('video'));
 ipcMain.handle('player:get-cookie-header', async () => {
@@ -1462,6 +1487,7 @@ app.whenReady().then(async () => {
       }, 500);
     });
   } catch {}
+  patchPreviewSession();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
