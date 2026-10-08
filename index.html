@@ -1436,12 +1436,14 @@ function wireDownloader(){
   $('#dlCancelAll').addEventListener('click',()=>{if(!desktop)return;desktop.cancelDownloads(null);showToast('Canceling all downloads…')});
   wireDownloaderSignin();
 }
-let dlSigninWired=false;
 function wireDownloaderSignin(){
   const row=$('#dlSigninRow');if(!row)return;
   row.style.display='flex';
-  if(dlSigninWired)return;dlSigninWired=true;
-  $('#dlSigninBtn').addEventListener('click',()=>{
+  // The downloader view's HTML is rebuilt on every visit, so wire the CURRENT
+  // button element — a module-level "wired once" flag left it dead after
+  // switching tabs away and back.
+  const btn=$('#dlSigninBtn');if(!btn||btn.dataset.signinWired)return;btn.dataset.signinWired='1';
+  btn.addEventListener('click',()=>{
     if(!desktop){showToast('Sign in needs the desktop app');return}
     openYtSigninModal();
   });
