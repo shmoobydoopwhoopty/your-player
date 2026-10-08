@@ -106,6 +106,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   miniShow: () => ipcRenderer.invoke('mini:show'),
   miniClose: () => ipcRenderer.invoke('mini:close'),
   miniIsOpen: () => ipcRenderer.invoke('mini:is-open'),
+  miniMoveBy: (dx, dy) => ipcRenderer.send('mini:move-by', dx, dy),
   miniPushState: state => ipcRenderer.send('mini:push-state', state),
   miniCommand: (cmd, arg) => ipcRenderer.send('mini:command', cmd, arg),
   miniGetState: () => ipcRenderer.invoke('mini:get-state'),

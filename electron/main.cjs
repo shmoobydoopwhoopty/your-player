@@ -1154,13 +1154,22 @@ function createMiniWindow() {
     },
   });
   miniWindow.setAlwaysOnTop(true, 'floating');
+  // The mini window is a separate renderer; it gets its first paint via the
+  // state handoff: lastMiniState (set by the player's miniPushState) is served
+  // through mini:get-state when the mini bootstrap asks for it.
   miniWindow.loadFile(path.join(__dirname, '..', 'index.html'), { hash: 'mini' });
   miniWindow.on('closed', () => { miniWindow = null; try { mainWindow?.webContents.send('mini:closed'); } catch {} });
   return miniWindow;
 }
 let lastMiniState = null;
 ipcMain.handle('mini:get-state', () => lastMiniState || null);
-ipcMain.handle('mini:show', () => { createMiniWindow(); return true; });
+ipcMain.handle('mini:show', () => {
+  createMiniWindow();
+  // The mini player replaces the main window: minimize the app so only the
+  // mini player stays visible (restoring the app is the mini player's ↩ button).
+  try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize(); } catch {}
+  return true;
+});
 ipcMain.handle('mini:close', () => {
   if (miniWindow && !miniWindow.isDestroyed()) miniWindow.close();
   miniWindow = null;
@@ -1173,7 +1182,17 @@ ipcMain.on('mini:push-state', (_event, state) => {
     try { miniWindow.webContents.send('mini:state', state); } catch {}
   }
 });
+ipcMain.on('mini:move-by', (event, dx, dy) => {
+  if (event.sender !== miniWindow?.webContents || !miniWindow || miniWindow.isDestroyed()) return;
+  try {
+    const [x, y] = miniWindow.getPosition();
+    miniWindow.setPosition(Math.round(x + (Number(dx) || 0)), Math.round(y + (Number(dy) || 0)));
+  } catch {}
+});
 ipcMain.on('mini:command', (event, cmd, arg) => {
+  if (event.sender === miniWindow?.webContents && cmd === 'restore' && mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.show(); mainWindow.focus(); } catch {}
+  }
   if (event.sender === miniWindow?.webContents && mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('mini:command', cmd, arg);
   }

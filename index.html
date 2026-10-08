@@ -218,9 +218,7 @@ html[data-mini] #miniRoot{display:block!important}
 .miniwin-controls{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:9px}
 .miniwin-controls .control-btn{color:var(--player-controls,var(--text))}
 .miniwin-bar{height:3px;border-radius:2px;background:#ffffff19;margin-top:10px;overflow:hidden;cursor:default}
-.miniwin-bar .progress-fill{height:100%;width:0;background:var(--accent-grad)}
-.miniwin-back{position:absolute;top:10px;left:10px;z-index:3;width:30px;height:30px;border-radius:50%;border:1px solid #ffffff30;background:#000000a6;color:#fff;display:grid;place-items:center;cursor:pointer}
-.miniwin-back:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.miniwin-bar .progress-fill{height:100%;width:0;background:var(--accent-grad)}.miniwin-back{position:absolute;top:10px;right:10px;z-index:3;width:30px;height:30px;border-radius:50%;border:1px solid #ffffff30;background:#000000a6;color:#fff;display:grid;place-items:center;cursor:pointer}.miniwin-back:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.miniwin-dragzone{position:absolute;top:8px;left:10px;z-index:3;height:26px;padding:0 10px;display:flex;align-items:center;border-radius:13px;border:1px solid #ffffff26;background:#00000096;color:#ffffffc4;cursor:grab;touch-action:none;-webkit-app-region:no-drag}.miniwin-dragzone:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.miniwin-dragzone:active{cursor:grabbing}
 /* ── FX sections in the customize panel ── */
 .fx-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:9px}
 .fx-toggle-row b{font-size:11px}
@@ -630,7 +628,7 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
 <div class="toast" id="toast"></div><div class="drop-overlay" id="dropOverlay">Drop your music here</div>
 <div class="np-overlay" id="npOverlay"><div class="np-overlay-frame" id="npOverlayFrame"><img id="npOverlayArt" alt="Album artwork, enlarged"></div><button class="np-settings-btn" id="npCustomizeBtn" type="button" title="Themes, colors &amp; sliders" aria-label="Themes, colors and sliders"></button><div class="np-overlay-hint">Click anywhere to return</div><div class="np-overlay-meta"><div class="np-title" id="npOverlayTitle"></div><div class="np-artist" id="npOverlayArtist"></div><div class="np-album" id="npOverlayAlbum"></div></div></div>
 <div id="miniRoot" hidden><div class="miniwin">
-  <div class="miniwin-art"><img id="miniArt" alt=""><div class="miniwin-empty" id="miniEmpty">Nothing playing yet</div><button class="miniwin-back" id="miniBack" type="button" aria-label="Return to the main app" title="Return to the main app">↩</button></div>
+  <div class="miniwin-art"><img id="miniArt" alt=""><div class="miniwin-empty" id="miniEmpty">Nothing playing yet</div><div class="miniwin-dragzone" id="miniDrag" title="Drag to move the mini player"><svg width="16" height="10" viewBox="0 0 24 14" fill="currentColor" stroke="none" aria-hidden="true"><circle cx="5" cy="3" r="1.6"/><circle cx="12" cy="3" r="1.6"/><circle cx="19" cy="3" r="1.6"/><circle cx="5" cy="11" r="1.6"/><circle cx="12" cy="11" r="1.6"/><circle cx="19" cy="11" r="1.6"/></svg></div><button class="miniwin-back" id="miniBack" type="button" aria-label="Return to the main app" title="Return to the main app">↩</button></div>
   <div class="miniwin-ctl">
     <div class="miniwin-title" id="miniTitle">Nothing playing yet</div>
     <div class="miniwin-artist" id="miniArtist"></div>
@@ -2897,7 +2895,13 @@ const miniPlayer=(()=>{
   function show(){
     if(!desktop||typeof desktop.miniShow!=='function'){showToast('The pop-out player needs the desktop app');return}
     persist();sync();
-    desktop.miniShow().then(ok=>{if(!ok){clear();showToast('Could not open the pop-out player')}}).catch(()=>{clear()});
+    desktop.miniShow().then(ok=>{
+      if(!ok){clear();showToast('Could not open the pop-out player');return}
+      // Handoff: the mini window exists now — push the live snapshot again so
+      // it receives the real song/artist over its own miniOnState listener
+      // (and lastMiniState is fresh for its miniGetState call on load).
+      setTimeout(sync,150);setTimeout(sync,700);
+    }).catch(()=>{clear()});
   }
   function close(){clear();const g=desktop;if(g&&g.miniClose)try{g.miniClose()}catch{}}
   function start(){
@@ -2918,8 +2922,8 @@ function handleMiniCommand(cmd){
   if(cmd==='shuffle'){$('#shuffleBtn').click();return}
   if(cmd==='repeat'){$('#repeatBtn').click();return}
 }
-if(desktop&&desktop.onMiniCommand)desktop.onMiniCommand(cmd=>{handleMiniCommand(cmd);setTimeout(()=>miniPlayer.sync(),60)});
-if(desktop&&desktop.onMiniClosed)desktop.onMiniClosed(()=>{try{localStorage.removeItem('yourplayer.miniOpen.v1')}catch{}});
+if(desktop&&desktop.miniOnCommand)desktop.miniOnCommand(cmd=>{handleMiniCommand(cmd);setTimeout(()=>miniPlayer.sync(),60)});
+if(desktop&&desktop.miniOnClosed)desktop.miniOnClosed(()=>{try{localStorage.removeItem('yourplayer.miniOpen.v1')}catch{}});
 if(desktop&&desktop.miniIsOpen)desktop.miniIsOpen().then(open=>{if(open){miniPlayer.start();miniPlayer.sync()}}).catch(()=>{});
 window.addEventListener('beforeunload',()=>{if(desktop&&desktop.miniClose&&!document.documentElement.hasAttribute('data-app-closing')){try{desktop.miniClose()}catch{}}});
 
@@ -3065,6 +3069,26 @@ g.miniOnState&&g.miniOnState(s=>apply(s));
 const post=(cmd,arg)=>{try{g.miniCommand(cmd,arg)}catch{}};
 $('#miniPlay').addEventListener('click',()=>post('play'));$('#miniNext').addEventListener('click',()=>post('next'));$('#miniPrev').addEventListener('click',()=>post('previous'));$('#miniShuffle').addEventListener('click',()=>post('shuffle'));$('#miniRepeat').addEventListener('click',()=>post('repeat'));
 $('#miniBack').addEventListener('click',()=>{try{g.miniCommand('restore')}catch{}});
+// Drag the grip to move the mini player — screen pixels map 1:1 to window position
+(function(){
+ const zone=$('#miniDrag');if(!zone)return;
+ zone.addEventListener('pointerdown',event=>{
+  if(event.button!==0)return;
+  event.preventDefault();   try{
+   const moveBy=g.miniMoveBy;
+   if(typeof moveBy!=='function')return;
+   zone.setPointerCapture&&zone.setPointerCapture(event.pointerId);
+   let last=event.screenX, lastY=event.screenY, moveId=event.pointerId;
+   const onMove=moveEvent=>{
+    if(moveEvent.pointerId!==moveId)return;
+    try{moveBy(moveEvent.screenX-last,moveEvent.screenY-lastY)}catch{}
+    last=moveEvent.screenX;lastY=moveEvent.screenY;
+   };
+   const onUp=()=>{zone.removeEventListener('pointermove',onMove);zone.removeEventListener('pointerup',onUp);zone.removeEventListener('pointercancel',onUp)};
+   zone.addEventListener('pointermove',onMove);zone.addEventListener('pointerup',onUp);zone.addEventListener('pointercancel',onUp);
+  }catch{}
+ });
+})();
 })()
 </script>
 </body>
