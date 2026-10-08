@@ -73,7 +73,7 @@ html[data-surface="nebula"]{--bg:#0d0a14;--glow:#2a1740;--sidebar-bg:rgba(11,8,1
 .spotlight-layout[data-queue-side="left"]{grid-template-columns:290px minmax(0,1fr)}
 .spotlight-layout[data-queue-side="left"] .queue-card{order:-1}
 @media(max-width:880px){.spotlight-layout[data-queue-side="left"]{grid-template-columns:1fr}}
-.home-grid{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:17px;align-items:stretch}
+.home-grid{display:grid;grid-template-columns:minmax(0,1fr) var(--queue-w,290px);gap:17px;align-items:stretch}
 .home-grid>.queue-card{grid-column:span 2 / span 2}
 .home-grid>#homeSongs,.home-grid>#homeSuggest,.home-grid>#homeEmpty,.home-grid>#homeMore{grid-column:1 / -1;min-width:0}
 body[data-view]:not([data-view="home"]) .home-grid>.queue-card{display:none}
@@ -386,6 +386,10 @@ body.layout-edit .sidebar,body.layout-edit .queue-card,body.layout-edit .top-act
 .layout-grip[data-key="search"]{top:50%;right:-8px;transform:translateY(-50%)}
 .layout-grip[data-key="history"]{top:-40px;left:50%;transform:translateX(-50%)}
 .layout-resize{position:absolute;z-index:8;background:color-mix(in srgb,var(--accent) 55%,transparent);border-radius:4px;touch-action:none}
+.layout-corner{right:2px;bottom:2px;width:26px;height:26px;cursor:nwse-resize;border-radius:6px}
+.library-table{zoom:var(--table-zoom,1)}
+.home-songs .sugg-row{padding:calc(8px*var(--sugg-scale,1)) 7px}
+.home-songs .sugg-cover{width:calc(40px*var(--sugg-scale,1));height:calc(40px*var(--sugg-scale,1))}
 .layout-resize:hover{background:var(--accent)}
 .layout-resize[data-key="sidebar"]{top:0;bottom:0;right:-3px;width:6px;cursor:ew-resize}
 .app[data-sidebar-side="right"] .layout-resize[data-key="sidebar"]{right:auto;left:-3px}
@@ -2304,7 +2308,7 @@ function refreshCustomColorInputs(){const grid=$('#ccGrid');if(!grid)return;grid
 applyCustomColors();
 // ── Moveable sections, snap zones & layout presets ─────────────────────────
 const layoutKey='yourplayer.layout.v1';
-const LAYOUT_DEFAULTS={sidebarSide:'left',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',playerArtSize:49,npArtW:100,npArtH:100,playBtnSize:44,ctrlBtnSize:30,volScale:100,spotW:0,spotH:366,textScale:100,albumGridMin:145,artistGridMin:145,historySide:'left'};
+const LAYOUT_DEFAULTS={sidebarSide:'left',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',playerArtSize:49,npArtW:100,npArtH:100,playBtnSize:44,ctrlBtnSize:30,volScale:100,spotW:0,spotH:366,textScale:100,albumGridMin:145,artistGridMin:145,historySide:'left',queueWidth:290,suggScale:100,tableScale:100};
 const PLAYER_PART_SELECTORS={now:'[data-part="now"]',controls:'[data-part="controls"]',volume:'[data-part="volume"]',extras:'[data-part="extras"]'};
 const PLAYER_PART_LABELS={now:'Song info',controls:'Controls & times',volume:'Volume slider',extras:'EQ & Up Next buttons'};
 const DEFAULT_PLAYER_ORDER='now,controls,volume,extras';
@@ -2327,6 +2331,9 @@ layout.playerHidden=sanitizePlayerHidden(layout.playerHidden);
 layout.npArtW=Math.max(40,Math.min(200,Number(layout.npArtW)||100));
 layout.npArtH=Math.max(40,Math.min(200,Number(layout.npArtH)||100));
 layout.spotW=Math.max(0,Math.min(1400,Number(layout.spotW)||0));
+layout.queueWidth=Math.max(230,Math.min(460,Number(layout.queueWidth)||290));
+layout.suggScale=Math.max(60,Math.min(200,Number(layout.suggScale)||100));
+layout.tableScale=Math.max(60,Math.min(200,Number(layout.tableScale)||100));
 layout.spotH=Math.max(240,Math.min(720,Number(layout.spotH)||366));
 layout.textScale=Math.max(70,Math.min(160,Number(layout.textScale)||100));
 layout.albumGridMin=Math.max(90,Math.min(340,Number(layout.albumGridMin)||145));
@@ -2425,6 +2432,9 @@ function applyLayout(persist=true){
  root.style.setProperty('--np-art-w',layout.npArtW+'%');root.style.setProperty('--np-art-h',layout.npArtH+'%');
  if(layout.spotW)root.style.setProperty('--spot-w',layout.spotW+'px');else root.style.removeProperty('--spot-w');
  root.style.setProperty('--spot-h',(layout.spotH||366)+'px');
+ root.style.setProperty('--queue-w',(layout.queueWidth||290)+'px');
+ root.style.setProperty('--sugg-scale',String((layout.suggScale||100)/100));
+ root.style.setProperty('--table-zoom',String((layout.tableScale||100)/100));
  root.style.setProperty('--text-scale',String((layout.textScale||100)/100));
  if(layout.textScale&&layout.textScale!==100)root.dataset.textScale='1';else delete root.dataset.textScale;
  const app=$('.app');if(app){app.dataset.sidebarSide=layout.sidebarSide;if(layout.tabbarSide==='top'||layout.tabbarSide==='bottom')app.dataset.sidebarDock=layout.tabbarSide;else delete app.dataset.sidebarDock}
@@ -2599,6 +2609,8 @@ function buildLayoutHandles(){
   el.append(grip);
   const resizable=key==='sidebar'||key==='player'||key==='search';
   if(resizable){const bar=document.createElement('div');bar.className='layout-resize';bar.dataset.key=key;bar.title=`Drag to resize the ${label.toLowerCase()}`;bar.addEventListener('pointerdown',event=>beginSectionResize(key,event));el.append(bar)}
+  // Home modules: a corner handle in the bottom-right stretches the module.
+  if(HOME_SECTIONS.has(key)){const corner=document.createElement('div');corner.className='layout-resize layout-corner';corner.dataset.key=key;corner.title=`Drag the corner to stretch ${label.toLowerCase()}`;corner.addEventListener('pointerdown',event=>beginHomeCornerResize(key,event));el.append(corner)}
  }
 }
 function removeLayoutDragArtifacts(){$$('.layout-zone,.layout-ghost').forEach(el=>el.remove())}
@@ -2701,20 +2713,64 @@ function beginSectionResize(key,event){
  const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);persistLayout();showToast(key==='sidebar'?(layout.tabbarSide==='top'||layout.tabbarSide==='bottom'?`Tab bar ${layout.tabbarHeight||64}px`:`Tab bar ${layout.sidebarWidth}px`):key==='player'?(layout.playerDock==='left'||layout.playerDock==='right'?`Player ${layout.playerWidth||230}px`:`Player ${layout.playerHeight}px`):`Search ${layout.searchWidth||275}px`)};
  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);
 }
+// Corner-drag resize for the home modules (Now Playing, Up next, Song list):
+// dragging the bottom-right corner stretches the module live — width for the
+// spotlight/queue, width for the song list column, and height/size where the
+// module's existing sliders control it.
+function beginHomeCornerResize(key,event){
+ if(!layoutEditing)return;
+ event.preventDefault();event.stopPropagation();
+ const el=layoutSectionEl(key);if(!el)return;
+ const startX=event.clientX,startY=event.clientY;
+ const startQW=layout.queueWidth||290,startSpotW=layout.spotW||0,startSpotH=layout.spotH||366,startSugg=layout.suggScale||100;
+ const rect=el.getBoundingClientRect();
+ const move=moveEvent=>{
+  const dx=moveEvent.clientX-startX,dy=moveEvent.clientY-startY;
+  if(key==='queue'){
+   // Queue card grows to the LEFT of its corner; its height follows the row.
+   setLayout({queueWidth:Math.max(230,Math.min(460,Math.round(startQW-dx)))},false);
+  }else if(key==='hero'){
+   if(Math.abs(dy)>Math.abs(dx))setLayout({spotH:Math.max(240,Math.min(720,Math.round(startSpotH+dy)))},false);
+   else if(startSpotW||dx>20)setLayout({spotW:Math.max(420,Math.min(1400,Math.round((startSpotW||rect.width)+dx)))},false);
+  }else if(key==='songs'){
+   // Stretch scales the suggestion rows up/down.
+   const pct=Math.max(60,Math.min(200,Math.round(startSugg+dx/3)));
+   if(pct!==(layout.suggScale||100))setLayout({suggScale:pct},false);
+  }
+ };
+ const up=()=>{
+  window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);
+  persistLayout();requestAnimationFrame(syncQueueListHeight);
+  showToast(key==='queue'?`Up next ${layout.queueWidth||290}px`:key==='hero'?`Now playing ${layout.spotH||366}px tall${layout.spotW?` · ${layout.spotW}px wide`:''}`:`Suggested songs ${layout.suggScale||100}%`);
+ };
+ window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);
+}
 applyLayout(false);
-// ── Ctrl + scroll to scale album / artist cards (like zooming a web page) ──
+// ── Ctrl + scroll to scale what you're looking at (like zooming a web page) ──
+// Albums/artists scale their cards; Songs scales the whole song table; Home
+// scales the Up next card width and the Suggested-for-you rows.
 (function(){
- const gridFor=()=>view==='albums'?$('.album-grid'):view==='artists'?$('.artist-grid'):null;
- const keyFor=()=>view==='albums'?'albumGridMin':view==='artists'?'artistGridMin':null;
+ const targetFor=()=>{
+  if(view==='albums')return {el:$('.album-grid'),apply:pct=>{const g=$('.album-grid');if(g)g.style.setProperty('--card-min',pct+'px')}};
+  if(view==='artists')return {el:$('.artist-grid'),apply:pct=>{const g=$('.artist-grid');if(g)g.style.setProperty('--card-min',pct+'px')}};
+  if(view==='songs'||view==='favorites'||view==='most-listened'||view==='playlist'||view==='search')return {el:$('.library-table'),apply:pct=>{document.documentElement.style.setProperty('--table-zoom',String(pct/100))}};
+  if(view==='home')return {el:$('#homeGrid'),apply:pct=>{document.documentElement.style.setProperty('--queue-w',Math.max(230,Math.min(460,pct))+'px')}};
+  return null;
+ };
+ const clampFor=viewName=>viewName==='albums'||viewName==='artists'?[90,340]:viewName==='home'?[230,460]:[60,200];
+ const keyFor=viewName=>viewName==='albums'?'albumGridMin':viewName==='artists'?'artistGridMin':viewName==='home'?'queueWidth':'tableScale';
+ const baseFor=viewName=>viewName==='albums'||viewName==='artists'?145:viewName==='home'?290:100;
  document.addEventListener('wheel',event=>{
   if(!event.ctrlKey&&!event.metaKey)return;
-  const grid=gridFor();const key=keyFor();if(!grid||!key)return;
+  const target=targetFor();if(!target||!target.el)return;
   event.preventDefault();
-  const step=event.deltaY<0?8:-8;
-  const next=Math.max(90,Math.min(340,(layout[key]||145)+step));
+  const [min,max]=clampFor(view);
+  const key=keyFor(view);
+  const step=view==='albums'||view==='artists'?8:view==='home'?10:4;
+  const next=Math.max(min,Math.min(max,(layout[key]||baseFor(view))+(event.deltaY<0?step:-step)));
   if(next===layout[key])return;
-  layout[key]=next;grid.style.setProperty('--card-min',next+'px');
-  clearTimeout(window.__gridScaleTimer);window.__gridScaleTimer=setTimeout(()=>{persistLayout();if(view==='albums'||view==='artists')render()},320);
+  layout[key]=next;target.apply(next);
+  clearTimeout(window.__gridScaleTimer);window.__gridScaleTimer=setTimeout(()=>{persistLayout();if(view==='albums'||view==='artists')render();if(view==='home')requestAnimationFrame(syncQueueListHeight)},320);
  },{passive:false});
 })();
 // ── Custom app logo (the picture in the top corner) ──────────
