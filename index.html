@@ -419,6 +419,11 @@ body[data-sidebar-mini] .nav-btn{justify-content:center;padding:12px 0}
 body.layout-edit .nav-btn{cursor:grab}
 .nav-btn.drop-before{box-shadow:inset 0 2px 0 var(--accent)}
 .nav-btn.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
+/* ── Player bar free-move (customize-layout mode) ── */
+body.layout-edit .playerbar>[data-part]{cursor:grab;outline:1px dashed #ffffff2e;outline-offset:-1px;border-radius:10px}
+.playerbar>[data-part].drop-before{box-shadow:inset 3px 0 0 var(--accent)}
+.playerbar>[data-part].drop-after{box-shadow:inset -3px 0 0 var(--accent)}
+body.layout-edit .play-controls .control-btn{outline:1px dashed #ffffff38;outline-offset:1px;border-radius:50%;cursor:move}
 @keyframes folder-pulse{50%{outline-color:color-mix(in srgb,var(--accent) 35%,transparent);outline-offset:8px}}
 .folder-spot-wrap{position:fixed;z-index:95;display:flex;flex-direction:column;align-items:center;gap:8px}
 .folder-spot-tip{background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:800;padding:7px 13px;border-radius:14px;box-shadow:0 10px 30px #0008;white-space:nowrap}
@@ -2365,7 +2370,7 @@ function refreshCustomColorInputs(){const grid=$('#ccGrid');if(!grid)return;grid
 applyCustomColors();
 // ── Moveable sections, snap zones & layout presets ─────────────────────────
 const layoutKey='yourplayer.layout.v1';
-const LAYOUT_DEFAULTS={sidebarSide:'left',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',playerArtSize:49,npArtW:100,npArtH:100,playBtnSize:44,ctrlBtnSize:30,volScale:100,spotW:0,spotH:366,textScale:100,albumGridMin:145,artistGridMin:145,historySide:'left',queueWidth:290,suggScale:100,tableScale:100,navOrder:''};
+const LAYOUT_DEFAULTS={sidebarSide:'left',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',playerArtSize:49,npArtW:100,npArtH:100,playBtnSize:44,ctrlBtnSize:30,volScale:100,spotW:0,spotH:366,textScale:100,albumGridMin:145,artistGridMin:145,historySide:'left',queueWidth:290,suggScale:100,tableScale:100,navOrder:'',transportOffsets:{}};
 const PLAYER_PART_SELECTORS={now:'[data-part="now"]',controls:'[data-part="controls"]',volume:'[data-part="volume"]',extras:'[data-part="extras"]'};
 const PLAYER_PART_LABELS={now:'Song info',controls:'Controls & times',volume:'Volume slider',extras:'EQ & Up Next buttons'};
 const DEFAULT_PLAYER_ORDER='now,controls,volume,extras';
@@ -2431,6 +2436,7 @@ function syncLayoutUI(){
  const spw=$('#layoutSpotW');if(spw){const spot=$('.spotlight'),grid=$('#homeGrid');let avail=1400;if(spot&&grid){const prevMax=spot.style.maxWidth;spot.style.maxWidth='none';avail=spot.offsetWidth;prevMax===''?spot.style.removeProperty('max-width'):spot.style.maxWidth=prevMax}spw.max=String(Math.max(420,Math.ceil(avail/10)*10));spw.value=String(layout.spotW||spw.max)}const spwv=$('#layoutSpotWValue');if(spwv)spwv.textContent=layout.spotW?layout.spotW+'px':'Full width';
  const sph=$('#layoutSpotH');if(sph)sph.value=String(layout.spotH);const sphv=$('#layoutSpotHValue');if(sphv)sphv.textContent=layout.spotH+'px';
  const ts=$('#layoutTextScale');if(ts)ts.value=String(layout.textScale);const tsv=$('#layoutTextScaleValue');if(tsv)tsv.textContent=layout.textScale+'%';
+ const tr=$('#transportResetBtn');if(tr)tr.hidden=!Object.keys(transportOffsets()).length;
  $$('#layoutPresets .layout-preset').forEach(chip=>{const preset=LAYOUT_PRESETS[chip.dataset.preset];chip.classList.toggle('selected',Boolean(preset&&layoutMatchesPreset(preset)))});
  const ph=$('#layoutProgressHeight');if(ph)ph.value=String(layout.progressHeight||3);
  const phv=$('#layoutProgressValue');if(phv)phv.textContent=(layout.progressHeight||3)+'px';
@@ -2456,6 +2462,79 @@ function applyPlayerParts(){
   el.style.display=hidden.has(key)?'none':'';
  });
  document.body.dataset.playerArrange=(order.join(',')!==DEFAULT_PLAYER_ORDER||hidden.size)?'1':'0';
+ applyTransportOffsets();
+}
+// ── Player bar free-move ────────────────────────────────────────────────────
+// Groups (now / controls / volume / extras) reorder by dragging in customize
+// layout mode — contents always stay inside their group. The four transport
+// buttons (shuffle/prev/next/repeat) can each be dragged individually, but
+// only inside a limited box around the play button, which itself never moves.
+const TRANSPORT_DRAG_BUTTONS=['shuffleBtn','previousBtn','nextBtn','repeatBtn'];
+const TRANSPORT_X_LIMIT=120;
+const TRANSPORT_Y_LIMIT=42;
+function transportOffsets(){const o=layout.transportOffsets;return o&&typeof o==='object'?o:{}}
+function applyTransportOffsets(){
+ const offs=transportOffsets();
+ for(const id of TRANSPORT_DRAG_BUTTONS){
+  const el=document.getElementById(id);if(!el)continue;
+  const o=offs[id];
+  if(o&&Number.isFinite(Number(o.x))&&Number.isFinite(Number(o.y))){el.style.left=Math.round(Number(o.x))+'px';el.style.top=Math.round(Number(o.y))+'px'}
+  else{el.style.left='';el.style.top=''}
+ }
+}
+function clampTransport(x,y){return{x:Math.max(-TRANSPORT_X_LIMIT,Math.min(TRANSPORT_X_LIMIT,x)),y:Math.max(-TRANSPORT_Y_LIMIT,Math.min(TRANSPORT_Y_LIMIT,y))}}
+function wirePlayerFreeMove(){
+ if(wirePlayerFreeMove.done)return;wirePlayerFreeMove.done=true;
+ // Transport buttons: pointer-drag their offset around the play button.
+ document.addEventListener('pointerdown',event=>{
+  if(!layoutEditing)return;
+  const btn=event.target instanceof Element?event.target.closest('.play-controls .control-btn'):null;
+  if(!btn||!TRANSPORT_DRAG_BUTTONS.includes(btn.id))return;
+  event.preventDefault();event.stopPropagation();
+  const offs=transportOffsets();
+  const start=offs[btn.id]&&Number.isFinite(Number(offs[btn.id].x))?{x:Number(offs[btn.id].x),y:Number(offs[btn.id].y)}:{x:0,y:0};
+  const sx=event.clientX,sy=event.clientY;
+  try{btn.setPointerCapture(event.pointerId)}catch{}
+  let last={...start};
+  const move=mv=>{last=clampTransport(start.x+mv.clientX-sx,start.y+mv.clientY-sy);btn.style.left=Math.round(last.x)+'px';btn.style.top=Math.round(last.y)+'px'};
+  const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up);window.removeEventListener('pointercancel',up);
+   const before=transportOffsets()[btn.id]||{};const changed=Number(before.x)!==last.x||Number(before.y)!==last.y;
+   const next={...transportOffsets()};
+   if(last.x===0&&last.y===0)delete next[btn.id];else next[btn.id]=last;
+   if(changed){layout.transportOffsets=next;persistLayout();applyTransportOffsets()}};
+  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);window.addEventListener('pointercancel',up);
+ },true);
+ // Groups: HTML5 drag to reorder (stays inside its own group; only position changes).
+ const bar=$('.playerbar');if(!bar)return;
+ bar.addEventListener('dragstart',event=>{
+  if(!layoutEditing)return;const part=event.target instanceof Element?event.target.closest('.playerbar>[data-part]'):null;if(!part)return;
+  window.__partDragKey=part.dataset.part;
+  try{event.dataTransfer.setData('text/plain',part.dataset.part);event.dataTransfer.effectAllowed='move'}catch{}
+ });
+ bar.addEventListener('dragover',event=>{
+  if(!layoutEditing)return;event.preventDefault();
+  const over=event.target instanceof Element?event.target.closest('.playerbar>[data-part]'):null;
+  $$('.playerbar>[data-part]').forEach(p=>{if(p!==over)p.classList.remove('drop-before','drop-after')});
+  if(!over||over.dataset.part===window.__partDragKey)return;
+  const r=over.getBoundingClientRect();
+  const before=event.clientX<r.left+r.width/2;
+  over.classList.toggle('drop-before',before);over.classList.toggle('drop-after',!before);
+ });
+ bar.addEventListener('drop',event=>{
+  if(!layoutEditing)return;event.preventDefault();
+  const dragKey=window.__partDragKey||'';
+  const over=event.target instanceof Element?event.target.closest('.playerbar>[data-part]'):null;
+  $$('.playerbar>[data-part]').forEach(p=>p.classList.remove('drop-before','drop-after'));
+  if(!dragKey||!over||over.dataset.part===dragKey)return;
+  const order=sanitizePlayerOrder(layout.playerOrder).split(',').filter(k=>k!==dragKey);
+  const r=over.getBoundingClientRect();
+  const before=event.clientX<r.left+r.width/2;
+  const idx=order.indexOf(over.dataset.part);
+  if(idx<0)return;
+  order.splice(before?idx:idx+1,0,dragKey);
+  setLayout({playerOrder:order.join(',')},false);persistLayout();showToast('Player groups rearranged');
+ });
+ bar.addEventListener('dragend',()=>{window.__partDragKey='';$$('.playerbar>[data-part]').forEach(p=>p.classList.remove('drop-before','drop-after'))});
 }
 function playerMinHeight(){
  const ts=(layout.textScale||100)/100;
@@ -2512,6 +2591,7 @@ function applyLayout(persist=true){
  if(mini)document.body.dataset.sidebarMini='1';else delete document.body.dataset.sidebarMini;
  applyPlayerParts();
  applyNavOrder();
+ wirePlayerFreeMove();
  if(persist)persistLayout();
  applyHomeSlots();
  syncLayoutUI();
@@ -2553,6 +2633,9 @@ function buildPlayerPartsRow(){
   });
   row.append(item);
  }
+ const resetBtn=document.createElement('button');resetBtn.type='button';resetBtn.className='text-btn';resetBtn.id='transportResetBtn';resetBtn.textContent='Reset button spots';resetBtn.title='Put the shuffle, previous, next and repeat buttons back next to the play button';
+ resetBtn.addEventListener('click',()=>{layout.transportOffsets={};persistLayout();applyTransportOffsets();syncLayoutUI();showToast('Player buttons back in their default spots')});
+ row.append(resetBtn);
  syncLayoutUI();
 }
 function buildLayoutPanel(){
@@ -2681,6 +2764,7 @@ function enterLayoutEdit(){
  document.body.classList.add('layout-edit');
  buildLayoutHandles();
  $$('.nav-btn').forEach(b=>b.draggable=true);
+ $$('.playerbar>[data-part]').forEach(p=>p.draggable=true);
  const bar=$('#layoutEditBar');if(bar)bar.hidden=false;
  if(settingsPop)settingsPop.classList.remove('open');
  if(customizePop)customizePop.classList.remove('open');
@@ -2691,6 +2775,7 @@ function exitLayoutEdit(){
  if(!layoutEditing)return;layoutEditing=false;document.body.classList.remove('layout-edit');
  clearLayoutHandles();removeLayoutDragArtifacts();
  $$('.nav-btn').forEach(b=>{b.draggable=false;b.classList.remove('drop-before','drop-after')});
+ $$('.playerbar>[data-part]').forEach(p=>{p.draggable=false;p.classList.remove('drop-before','drop-after')});
  const bar=$('#layoutEditBar');if(bar)bar.hidden=true;
  persistLayout();
 }
