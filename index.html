@@ -356,6 +356,13 @@ input[type=color].slot-off{opacity:.28}
 .cc-item input[type=color]{width:26px;height:22px;flex:none;border:0;background:transparent;border-radius:5px;padding:0;cursor:pointer}
 .cc-item input[type=color]::-webkit-color-swatch-wrapper{padding:0}
 .cc-item input[type=color]::-webkit-color-swatch{border:1px solid #ffffff2e;border-radius:5px}
+.cc-grad-pop{position:fixed;z-index:80;width:288px;padding:10px 11px 11px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 50px #000b;display:grid;gap:8px}
+.cc-grad-pop[hidden]{display:none}
+.cc-pop-row{display:flex;align-items:center;gap:8px}
+.cc-pop-row span{flex:1;font-size:10px;color:#c2c8c6}
+.cc-pop-row input[type=color]{width:34px;height:24px;border:0;background:transparent;border-radius:5px;padding:0;cursor:pointer}
+.cc-pop-grads{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cc-pop-grads .grad-chip{width:auto;height:24px}
 .cc-actions{display:flex;align-items:center;justify-content:space-between;margin-top:9px}
 .cc-toggle{display:flex;align-items:center;gap:7px;font-size:10.5px;color:#c2c8c6;cursor:pointer}
 .cc-toggle input{accent-color:var(--accent);width:14px;height:14px;cursor:pointer}
@@ -553,6 +560,11 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
   </div>
   <div class="pop-label">Custom colors</div>
   <div class="cc-grid" id="ccGrid"></div>
+  <div class="cc-grad-pop" id="ccGradPop" hidden>
+    <div class="cc-pop-row"><span class="cc-pop-title">Color</span><input type="color" id="ccPopSolid" aria-label="Pick a solid color"></div>
+    <div class="pop-label" style="margin:0">Gradient presets</div>
+    <div class="cc-pop-grads" id="ccPopGrads"></div>
+  </div>
   <div class="cc-actions"><label class="cc-toggle"><input type="checkbox" id="ccShadowToggle"><span>Drop shadows</span></label><button class="text-btn" id="ccReset" type="button">Reset</button></div>
   <div class="slider-row"><span>Shadow strength</span><input type="range" id="ccShadowOpacity" min="0" max="1" step="0.01" aria-label="Drop shadow opacity"><b id="ccShadowOpacityValue"></b></div>
   <div class="slider-row"><span>Tab bar opacity</span><input type="range" id="ccTabbarOpacity" min="0" max="1" step="0.01" aria-label="Tab bar opacity"><b id="ccTabbarOpacityValue"></b></div>
@@ -2231,7 +2243,7 @@ const CUSTOM_SLIDER_KEYS=['shadowOp','tabbarOpacity','bgOpacity','playerOpacity'
 const GRADIENT_COLOR_KEYS=new Set(['bg','panel','player','sidebar','cardBg']);
 const surfaceOpacityVersion=2;
 const customColors={shadowOn:true,shadowOp:.55};
-try{const savedCustom=JSON.parse(localStorage.getItem(customColorsKey)||'{}');if(savedCustom&&typeof savedCustom==='object'){for(const [key] of CUSTOM_COLOR_DEFS)if(typeof savedCustom[key]==='string'&&/^#[0-9a-fA-F]{3,8}$/.test(savedCustom[key]))customColors[key]=savedCustom[key];if(typeof savedCustom.buttons==='string'&&typeof savedCustom.playerControls!=='string'&&/^#[0-9a-fA-F]{3,8}$/.test(savedCustom.buttons))customColors.playerControls=savedCustom.buttons;customColors.shadowOn=savedCustom.shadowOn!==false;const num=v=>Number.isFinite(Number(v))?Math.max(0,Math.min(1,Number(v))):null;customColors.shadowOp=num(savedCustom.shadowOp)??.55;if(Number(savedCustom.surfaceOpacityVersion)>=surfaceOpacityVersion){for(const key of CUSTOM_SLIDER_KEYS){if(key==='shadowOp')continue;const value=num(savedCustom[key]);if(value!==null)customColors[key]=value}}}}catch{}
+try{const savedCustom=JSON.parse(localStorage.getItem(customColorsKey)||'{}');if(savedCustom&&typeof savedCustom==='object'){for(const [key] of CUSTOM_COLOR_DEFS)if(typeof savedCustom[key]==='string'&&/^#[0-9a-fA-F]{3,8}$/.test(savedCustom[key]))customColors[key]=savedCustom[key];for(const key of GRADIENT_COLOR_KEYS)if(typeof savedCustom[key+'2']==='string'&&/^#[0-9a-fA-F]{3,8}$/.test(savedCustom[key+'2']))customColors[key+'2']=savedCustom[key+'2'];if(typeof savedCustom.buttons==='string'&&typeof savedCustom.playerControls!=='string'&&/^#[0-9a-fA-F]{3,8}$/.test(savedCustom.buttons))customColors.playerControls=savedCustom.buttons;customColors.shadowOn=savedCustom.shadowOn!==false;const num=v=>Number.isFinite(Number(v))?Math.max(0,Math.min(1,Number(v))):null;customColors.shadowOp=num(savedCustom.shadowOp)??.55;if(Number(savedCustom.surfaceOpacityVersion)>=surfaceOpacityVersion){for(const key of CUSTOM_SLIDER_KEYS){if(key==='shadowOp')continue;const value=num(savedCustom[key]);if(value!==null)customColors[key]=value}}}}catch{}
 surfaceOpacityReady=true;
 function persistCustomColors(){try{customColors.surfaceOpacityVersion=surfaceOpacityVersion;localStorage.setItem(customColorsKey,JSON.stringify(customColors))}catch{}}
 function hexToRgba(hex,alpha){let h=String(hex||'').replace('#','').trim();if(h.length===3)h=h.split('').map(c=>c+c).join('');if(!/^[0-9a-fA-F]{6}$/.test(h))return '';const n=parseInt(h,16);return `rgba(${(n>>16)&255}, ${(n>>8)&255}, ${n&255}, ${alpha})`}
@@ -2350,23 +2362,75 @@ function buildCustomColors(){
    item.innerHTML=`<span>${label}</span><span class="cc-duo"><input type="color" data-cc="${key}" aria-label="${label} color"><input type="color" data-cc2="${key}" aria-label="${label} gradient end" title="${label} — pick a second color to make a gradient"></span>`;
    const gradInput=item.querySelector('input[data-cc2]');
    gradInput.value=customColors[key+'2']||customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
-   gradInput.addEventListener('input',()=>{customColors[key+'2']=gradInput.value;applyCustomColors();persistCustomColors()});
+   gradInput.addEventListener('input',()=>{customColors[key+'2']=gradInput.value;applyCustomColors();persistCustomColors();if(ccPopState.key===key)$('#ccPopSolid').value=gradInput.value});
   }else{
    item.innerHTML=`<span>${label}</span><input type="color" data-cc="${key}" aria-label="${label} color">`;
   }
   const input=item.querySelector('input');
   input.value=customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
-  input.addEventListener('input',()=>{customColors[key]=input.value;applyCustomColors();persistCustomColors()});
+  input.addEventListener('input',()=>{customColors[key]=input.value;delete customColors[key+'2'];applyCustomColors();persistCustomColors()});
   grid.append(item);
  }
  const toggle=$('#ccShadowToggle');
  if(toggle){toggle.checked=customColors.shadowOn!==false;toggle.addEventListener('change',()=>{customColors.shadowOn=toggle.checked;applyCustomColors();persistCustomColors()})}
  bindColorSlider('#ccShadowOpacity','shadowOp');for(const def of SURFACE_OPACITY_DEFS)bindColorSlider('#'+def.sliderId,def.key);
+ wireCustomColorPopovers();
  syncColorSliders();
  const reset=$('#ccReset');
  if(reset)reset.addEventListener('click',()=>{for(const [key] of CUSTOM_COLOR_DEFS)delete customColors[key];customColors.shadowOn=true;for(const key of CUSTOM_SLIDER_KEYS)delete customColors[key];for(const key of GRADIENT_COLOR_KEYS)delete customColors[key+'2'];customColors.shadowOp=.55;persistCustomColors();applyCustomColors();refreshCustomColorInputs();syncColorSliders();applyAppearance();showToast('Custom colors cleared — theme defaults restored')});
 }
 function refreshCustomColorInputs(){const grid=$('#ccGrid');if(!grid)return;grid.querySelectorAll('input[data-cc]').forEach(input=>{const val=customColors[input.dataset.cc];input.value=typeof val==='string'&&val.startsWith('linear-gradient')?(CUSTOM_SWATCH_DEFAULTS[input.dataset.cc]||'#000000'):(val||CUSTOM_SWATCH_DEFAULTS[input.dataset.cc]||'#000000')});grid.querySelectorAll('input[data-cc2]').forEach(input=>{input.value=customColors[input.dataset.cc2+'2']||customColors[input.dataset.cc2]||CUSTOM_SWATCH_DEFAULTS[input.dataset.cc2]||'#000000'});syncColorSliders()}
+// ── Gradient-preset popover for the custom color pickers ──
+const ccPopState={key:null};
+function firstHexOf(css){const m=/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/.exec(String(css||''));return m?m[0]:''}
+function ccSolidFor(key){const v=customColors[key];return (typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v)?v:typeof v==='string'?firstHexOf(v):'')||CUSTOM_SWATCH_DEFAULTS[key]||'#000000'}
+function ccApplyPreset(key,css){
+ if(GRADIENT_COLOR_KEYS.has(key)){
+  const colors=[...String(css).matchAll(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/g)].map(m=>m[0]);
+  customColors[key]=colors[0]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
+  if(colors[1]&&colors[0].toLowerCase()!==colors[1].toLowerCase())customColors[key+'2']=colors[1];else delete customColors[key+'2'];
+ }else{
+  customColors[key]=firstHexOf(css)||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
+ }
+ persistCustomColors();applyCustomColors();applyAppearance();refreshCustomColorInputs();
+}
+function ccOpenPop(key,anchor){
+ ccPopState.key=key;const pop=$('#ccGradPop');if(!pop)return;
+ $('#ccPopSolid').value=ccSolidFor(key);
+ const grads=$('#ccPopGrads');grads.replaceChildren();
+ const apply=(css,label)=>{ccApplyPreset(key,css);showToast(label+' applied to '+keyLabel(key))};
+ for(const [name,colors] of Object.entries(GRADIENT_PRESETS)){
+  const chip=document.createElement('button');chip.type='button';chip.className='grad-chip';chip.title=name+' gradient';chip.style.background=gradCss(colors,135);
+  chip.addEventListener('click',()=>{const css=gradCss(colors,135);apply(css,name);ccOpenPop(key,anchor)});
+  grads.append(chip)}
+ for(const g of customGradients){
+  const chip=document.createElement('button');chip.type='button';chip.className='grad-chip custom';chip.title=g.name+' (your gradient)';chip.style.background=gradCss(g.colors,g.angle||135);
+  chip.addEventListener('click',()=>{const css=gradCss(g.colors,g.angle||135);apply(css,g.name);ccOpenPop(key,anchor)});
+  grads.append(chip)}
+ const r=anchor.getBoundingClientRect();
+ pop.hidden=false;
+ const pw=pop.offsetWidth,ph=pop.offsetHeight;
+ let x=Math.min(r.left,innerWidth-pw-12),y=r.bottom+7;
+ if(y+ph>innerHeight-10)y=r.top-ph-7;
+ pop.style.left=Math.max(12,x)+'px';pop.style.top=Math.max(12,y)+'px';
+}
+function ccClosePop(){const pop=$('#ccGradPop');if(pop)pop.hidden=true;ccPopState.key=null}
+function keyLabel(key){const def=CUSTOM_COLOR_DEFS.find(d=>d[0]===key);return def?def[1]:key}
+function wireCustomColorPopovers(){
+ const grid=$('#ccGrid');if(!grid||grid.dataset.popWired)return;grid.dataset.popWired='1';
+ grid.addEventListener('click',event=>{
+  const input=event.target.closest('input[type=color]');if(!input)return;
+  const item=input.closest('.cc-item');if(!item)return;
+  const label=item.querySelector('span');const key=(input.dataset.cc||'').replace(/2$/,'');
+  if(!key)return;event.preventDefault();event.stopPropagation();
+  ccOpenPop(key,item);const pop=$('#ccGradPop');if(pop)pop.querySelector('.cc-pop-title').textContent=keyLabel(key);
+ });
+ const solid=$('#ccPopSolid');
+ solid.addEventListener('input',()=>{if(ccPopState.key){ccApplyPreset(ccPopState.key,solid.value)}});
+ solid.addEventListener('click',event=>event.stopPropagation());
+ document.addEventListener('pointerdown',event=>{const pop=$('#ccGradPop');if(!pop||pop.hidden)return;if(!pop.contains(event.target)&&!event.target.closest('.cc-item'))ccClosePop()});
+ window.addEventListener('blur',ccClosePop);
+}
 applyCustomColors();
 // ── Moveable sections, snap zones & layout presets ─────────────────────────
 const layoutKey='yourplayer.layout.v1';
