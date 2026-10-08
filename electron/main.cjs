@@ -1030,6 +1030,53 @@ ipcMain.handle('tracks:write-art', async (_event, payload) => {
   return true;
 });
 
+// ── Identify a song from a real audio file ──────────────────────────────────
+// The renderer reads the picked file's own tags (title/artist/album) and any
+// embedded cover; this side does the online half — turning that into catalog
+// candidates via the Deezer search API (the same keyless provider the artist
+// and album lookups use) and fetching matched cover bytes so they can be
+// written straight into the file.
+ipcMain.handle('identify:search', async (_event, payload) => {
+  const title = String(payload && payload.title || '').trim();
+  const artist = String(payload && payload.artist || '').trim();
+  const queries = [];
+  if (artist && title) queries.push(`artist:"${artist}" track:"${title}"`, `${artist} ${title}`);
+  else if (title) queries.push(title);
+  else if (artist) queries.push(artist);
+  for (const query of queries) {
+    try {
+      const res = await fetch(`https://api.deezer.com/search/track?q=${encodeURIComponent(query)}&limit=6`, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) continue;
+      const data = await res.json().catch(() => null);
+      const rows = Array.isArray(data && data.data) ? data.data : [];
+      const out = rows.filter(row => row && row.title).slice(0, 6).map(row => ({
+        title: String(row.title || ''),
+        artist: String(row.artist && row.artist.name || ''),
+        album: String(row.album && row.album.title || ''),
+        duration: Number(row.duration) || 0,
+        cover: row.album && (row.album.cover_xl || row.album.cover_big || row.album.cover_medium) || '',
+        preview: String(row.preview || ''),
+      }));
+      if (out.length) return { ok: true, results: out };
+    } catch {}
+  }
+  return { ok: false, results: [] };
+});
+
+ipcMain.handle('identify:fetch-cover', async (_event, url) => {
+  const target = String(url || '');
+  if (!/^https:\/\//.test(target)) return null;
+  try {
+    const res = await fetch(target, { signal: AbortSignal.timeout(15000) });
+    if (!res.ok) return null;
+    const contentType = String(res.headers.get('content-type') || '');
+    if (contentType && !contentType.startsWith('image/')) return null;
+    const bytes = Buffer.from(await res.arrayBuffer());
+    if (bytes.length < 1024 || bytes.length > 10 * 1024 * 1024 || !looksLikeImageBuffer(bytes)) return null;
+    return { bytes: Uint8Array.from(bytes), mime: contentType || 'image/jpeg' };
+  } catch { return null; }
+});
+
 // ── Library persistence on disk (survives re-installs and storage resets) ──
 function libraryFilePath() { return path.join(app.getPath('userData'), 'library.json'); }
 
