@@ -200,9 +200,9 @@ html[data-bass-shake="1"] .np-overlay-frame img{animation:bass-shake var(--shake
 html[data-bass-shake="1"] .np-overlay-frame{overflow:visible}
 html[data-bass-shake="1"] .np-overlay{overflow:hidden}
 /* ── Dedicated update button (next to settings) ── */
-#updateBtn{position:relative}
-#updateBtn .update-dot{position:absolute;top:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#ff4b4b;box-shadow:0 0 0 2px var(--bg);pointer-events:none;animation:update-pulse 1.5s ease-in-out infinite}
-#updateBtn.has-update{border-color:#ff4b4b66;color:#ffb1a8}
+#updateBtn,#settingsBtn{position:relative}
+#updateBtn .update-dot,#settingsBtn .update-dot{position:absolute;top:1px;right:1px;width:10px;height:10px;border-radius:50%;background:#ff4b4b;box-shadow:0 0 0 2px var(--bg);pointer-events:none;animation:update-pulse 1.5s ease-in-out infinite}
+#updateBtn.has-update,#settingsBtn.has-update{border-color:#ff4b4b66;color:#ffb1a8}
 #updateBtn .progress-mini{position:absolute;left:14%;right:14%;bottom:3px;height:3px;border-radius:2px;background:var(--accent);width:auto;opacity:.9}
 /* ── Pop-out mini player ── */
 html[data-mini] body>*:not(#miniRoot){display:none!important}
@@ -604,7 +604,10 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
   <div class="pop-label">YouTube account</div>
   <div class="folder-row"><div class="folder-path" id="ytAccountRow" title="">Not signed in</div><button class="text-btn" id="ytAccountAction" type="button">Sign in</button></div>
   <div class="folder-note">Sign in so age gated or members-only videos can download. Cookies stay on this PC and are used for downloads only.</div>
-  <div class="pop-label">Downloads folder</div>
+  <div class="pop-label">yt-dlp engine</div>
+  <div class="folder-row"><div class="folder-path" id="ytdlpStatusRow" title="">yt-dlp</div><button class="text-btn" id="ytdlpUpdateBtn" type="button">Check</button></div>
+  <div class="folder-note">The engine that downloads YouTube videos — YouTube changes break old versions, so when an update is found the button turns into “Update yt-dlp” and one click swaps it in.</div>
+  <div class="pop-label">App logo</div>
   <div class="folder-row"><div class="folder-path" id="logoPathRow" title="">Default logo</div><button class="text-btn" id="logoChooseBtn" type="button">Choose</button></div>
   <div class="folder-note">Pick any picture from your computer as the app logo in the corner. Clear it to go back to the default.</div>
   <div class="pop-label">Downloads folder</div>
@@ -1921,6 +1924,7 @@ function toggleSettingsPop(){
  renderDownloadDirRow();
  renderLogoRow();
  refreshYouTubeAccountRow();
+ if(desktop&&desktop.ytdlpGetStatus)desktop.ytdlpGetStatus().then(applyYtdlpStatus).catch(()=>{});
  placePop(settingsPop,$('#settingsBtn'));
  settingsPop.classList.add('open')}
 function toggleCustomizePop(){
@@ -3046,6 +3050,53 @@ if(desktop&&desktop.onUpdateStatus){
   $('#updateInstallBtn').addEventListener('click',()=>{applyUpdateStatus({state:'downloading',percent:0});desktop.updateInstall().then(applyUpdateStatus).catch(error=>applyUpdateStatus({state:'error',error:String(error?.message||error).slice(0,90)}))});
   $('#updateRestartBtn').addEventListener('click',()=>{showToast('Restarting to finish the update…');setTimeout(()=>{try{desktop.updateRelaunch()}catch{}},400)});
   $('#updateUrlSave').addEventListener('click',async()=>{const input=$('#updateUrlInput');const value=String(input&&input.value||'').trim();try{const cfg=await desktop.updateSetConfig({url:value});if(input)input.value=cfg.url||'';showToast(cfg.hasSource?'Update source saved — checking…':'Update source cleared');if(cfg.hasSource)$('#updateCheckBtn').click()}catch{showToast('Could not save that update source')}});
+}
+// ── yt-dlp engine updates (red dot on the settings button) ──────────────────
+const ytdlpUi={state:'idle',installedVersion:'',latestVersion:'',updateAvailable:false,error:'',notified:false};
+const ytdlpDot=(()=>{const btn=$('#settingsBtn');if(!btn)return null;let dot=btn.querySelector('.update-dot');if(!dot){dot=document.createElement('span');dot.className='update-dot';dot.hidden=true;btn.append(dot)}return dot})();
+function setYtdlpButtonState(){const b=$('#settingsBtn');if(!b)return;b.classList.toggle('has-update',ytdlpUi.updateAvailable);b.title=ytdlpUi.updateAvailable?`yt-dlp ${ytdlpUi.latestVersion||'update'} available — open settings to install`:'Settings'}
+function ytdlpStatusText(){
+ switch(ytdlpUi.state){
+  case 'not-found':return 'yt-dlp was not found on this PC';
+  case 'checking':return 'Checking yt-dlp version…';
+  case 'up-to-date':return `yt-dlp ${ytdlpUi.installedVersion||''} is up to date`;
+  case 'available':return `yt-dlp ${ytdlpUi.latestVersion} is available (installed: ${ytdlpUi.installedVersion||'unknown'})`;
+  case 'downloading':return 'Downloading the latest yt-dlp…';
+  case 'updated':return `yt-dlp updated to ${ytdlpUi.installedVersion||ytdlpUi.latestVersion}`;
+  case 'error':return `yt-dlp update failed — ${ytdlpUi.error||'try again'}`;
+  default:return ytdlpUi.installedVersion?`yt-dlp ${ytdlpUi.installedVersion}`:'yt-dlp';
+ }
+}
+function applyYtdlpStatus(s){
+ if(!s||typeof s!=='object')return;
+ if(s.state)ytdlpUi.state=s.state;
+ if(s.installedVersion)ytdlpUi.installedVersion=s.installedVersion;
+ if(s.latestVersion)ytdlpUi.latestVersion=s.latestVersion;
+ if(typeof s.updateAvailable==='boolean')ytdlpUi.updateAvailable=s.updateAvailable;
+ if(s.error!==undefined)ytdlpUi.error=s.error||'';
+ if(ytdlpDot)ytdlpDot.hidden=!ytdlpUi.updateAvailable;
+ setYtdlpButtonState();
+ const row=$('#ytdlpStatusRow');if(row)row.textContent=ytdlpStatusText();
+ const btn=$('#ytdlpUpdateBtn');
+ if(btn){
+  btn.disabled=ytdlpUi.state==='checking'||ytdlpUi.state==='downloading';
+  btn.textContent=ytdlpUi.updateAvailable?'Update yt-dlp':(ytdlpUi.state==='checking'?'Checking…':(ytdlpUi.state==='downloading'?'Updating…':(ytdlpUi.state==='updated'?'Up to date':'Check')));
+ }
+ if(ytdlpUi.state==='updated')showToast(`yt-dlp updated to ${ytdlpUi.installedVersion||ytdlpUi.latestVersion} — downloads use it right away`);
+ if(ytdlpUi.updateAvailable&&!ytdlpUi.notified){ytdlpUi.notified=true;showToast(`A yt-dlp update is available — open settings to install ${ytdlpUi.latestVersion||'it'}`)}
+}
+if(desktop&&desktop.ytdlpCheck){
+ desktop.onYtdlpStatus(applyYtdlpStatus);
+ desktop.ytdlpGetStatus().then(applyYtdlpStatus).catch(()=>{});
+ $('#ytdlpUpdateBtn').addEventListener('click',()=>{
+  if(ytdlpUi.updateAvailable){
+   applyYtdlpStatus({state:'downloading'});
+   desktop.ytdlpUpdate().then(applyYtdlpStatus).catch(error=>applyYtdlpStatus({state:'error',error:String(error?.message||error).slice(0,90)}));
+  }else{
+   applyYtdlpStatus({state:'checking'});
+   desktop.ytdlpCheck().then(applyYtdlpStatus).catch(error=>applyYtdlpStatus({state:'error',error:String(error?.message||error).slice(0,90)}));
+  }
+ });
 }
 render();updatePlayButtons();
 </script>

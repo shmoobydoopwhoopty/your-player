@@ -121,6 +121,12 @@ async function resolveTools() {
   return cachedTools;
 }
 
+// After the in-app yt-dlp updater swaps the binary, drop the memoized tools so
+// the next download actually uses the fresh one.
+function resetToolsCache() {
+  cachedTools = null;
+}
+
 function runYtDlpJson(toolPath, args, timeoutMs) {
   return new Promise((resolve, reject) => {
     const child = spawn(toolPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -510,6 +516,7 @@ async function ensureDirectories() {
 module.exports = {
   setYouTubeCookies,
   resolveTools,
+  resetToolsCache,
   ensureDirectories,
   getDownloadsRoot,
   getMediaRoot,

@@ -5,6 +5,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { createHash } = require('node:crypto');
 const { spawn } = require('node:child_process');
+const https = require('node:https');
 
 const downloader = require('./downloader.cjs');
 const updater = require('./updater.cjs');
@@ -1120,6 +1121,162 @@ ipcMain.on('update:relaunch', () => {
   app.exit(0);
 });
 
+// ── yt-dlp engine updates ───────────────────────────────────────────────────
+// The bundled yt-dlp.exe is what actually talks to YouTube, and YouTube breaks
+// old builds regularly — so keep it fresh with the same red-dot pattern as the
+// app's own updater: a periodic check against the official latest release,
+// a badge on the settings button, and a one-click swap in the settings pop.
+const YTDLP_RELEASES_API = 'https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest';
+const YTDLP_LATEST_URL = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
+const YTDLP_MIN_BYTES = 5 * 1024 * 1024; // a real yt-dlp.exe is ~17 MB
+let ytdlpStatus = { state: 'idle', installedVersion: '', latestVersion: '', updateAvailable: false, error: '' };
+let ytdlpChecking = false;
+let ytdlpUpdating = false;
+
+function pushYtdlpStatus(extra = {}) {
+  const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+  if (!win) return;
+  try { win.webContents.send('ytdlp:status', { ...ytdlpStatus, ...extra }); } catch {}
+}
+
+function runYtDlpVersionBinary(toolPath, timeoutMs = 12000) {
+  return new Promise(resolve => {
+    let out = '';
+    let settled = false;
+    const child = spawn(toolPath, ['--version'], { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+    const done = value => { if (settled) return; settled = true; try { child.kill(); } catch {} resolve(value); };
+    child.stdout.on('data', chunk => { if (out.length < 64) out += chunk; });
+    child.on('error', () => done(''));
+    child.on('close', code => done(code === 0 ? String(out).trim().split(/\r?\n/).filter(Boolean).pop() || '' : ''));
+    setTimeout(() => done(''), timeoutMs);
+  });
+}
+
+async function getInstalledYtDlpVersion() {
+  const ytDlpPath = await resolveYtDlpPathSafely();
+  if (!ytDlpPath) return { path: '', version: '' };
+  const version = await runYtDlpVersionBinary(ytDlpPath);
+  return { path: ytDlpPath, version };
+}
+
+function fetchYtDlpLatestVersion() {
+  return new Promise((resolve, reject) => {
+    const req = https.get(YTDLP_RELEASES_API, { headers: { 'User-Agent': 'your-player' } }, res => {
+      if (res.statusCode !== 200) { res.resume(); return reject(new Error(`GitHub API returned HTTP ${res.statusCode}`)); }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(String(JSON.parse(data).tag_name || '').replace(/^v/, '')); }
+        catch (error) { reject(error); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => req.destroy(new Error('GitHub API request timed out')));
+  });
+}
+
+function downloadYtDlp(dest) {
+  return new Promise((resolve, reject) => {
+    const get = (target, redirects) => {
+      if (redirects > 5) return reject(new Error('Too many redirects'));
+      https.get(target, res => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
+          return get(new URL(res.headers.location, target).toString(), redirects + 1);
+        }
+        if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode} while downloading yt-dlp`)); }
+        const file = fsSync.createWriteStream(dest);
+        res.pipe(file);
+        file.on('finish', () => file.close(() => resolve()));
+        file.on('error', err => { try { fsSync.unlinkSync(dest); } catch {} reject(err); });
+      }).on('error', reject);
+    };
+    get(YTDLP_LATEST_URL, 0);
+  });
+}
+
+async function runYtdlpCheck(pushEvents = true) {
+  if (ytdlpChecking || ytdlpUpdating) return ytdlpStatus;
+  const current = await getInstalledYtDlpVersion();
+  if (!current.path) {
+    ytdlpStatus = { ...ytdlpStatus, state: 'not-found', installedVersion: '', updateAvailable: false };
+    if (pushEvents) pushYtdlpStatus();
+    return ytdlpStatus;
+  }
+  ytdlpChecking = true;
+  if (pushEvents) pushYtdlpStatus({ state: 'checking', installedVersion: current.version });
+  try {
+    const latest = await fetchYtDlpLatestVersion();
+    // yt-dlp versions are calendar dates (2026.08.19) so plain inequality is right.
+    const updateAvailable = Boolean(latest && current.version && latest !== current.version);
+    ytdlpStatus = {
+      state: updateAvailable ? 'available' : 'up-to-date',
+      installedVersion: current.version,
+      latestVersion: latest,
+      updateAvailable,
+      error: '',
+    };
+  } catch (error) {
+    ytdlpStatus = { ...ytdlpStatus, state: 'error', installedVersion: current.version, error: String(error && error.message ? error.message : error).slice(0, 140) };
+  } finally {
+    ytdlpChecking = false;
+  }
+  if (pushEvents) pushYtdlpStatus();
+  return ytdlpStatus;
+}
+
+async function runYtdlpUpdate() {
+  if (ytdlpUpdating) return ytdlpStatus;
+  const current = await getInstalledYtDlpVersion();
+  if (!current.path) {
+    ytdlpStatus = { ...ytdlpStatus, state: 'not-found', updateAvailable: false };
+    pushYtdlpStatus();
+    return ytdlpStatus;
+  }
+  ytdlpUpdating = true;
+  const dir = path.dirname(current.path);
+  const stage = path.join(dir, 'yt-dlp.new.exe'); // .exe so Windows will spawn it for the sanity check
+  const backup = path.join(dir, 'yt-dlp.exe.bak');
+  try {
+    pushYtdlpStatus({ state: 'downloading', installedVersion: current.version });
+    let latest = '';
+    try { latest = await fetchYtDlpLatestVersion(); } catch {}
+    await downloadYtDlp(stage);
+    const stat = await fs.stat(stage);
+    if (stat.size < YTDLP_MIN_BYTES) throw new Error(`downloaded file looks too small (${Math.round(stat.size / 1024)} KB)`);
+    // Prove the new binary actually runs before touching the installed one.
+    const stagedVersion = await runYtDlpVersionBinary(stage);
+    if (!stagedVersion) throw new Error('the downloaded yt-dlp did not run — it may be corrupted');
+    try { await fs.rename(current.path, backup); } catch {}
+    try {
+      await fs.rename(stage, current.path);
+    } catch (swapError) {
+      try { await fs.rename(backup, current.path); } catch {}
+      throw swapError;
+    }
+    try { await fs.unlink(backup); } catch {}
+    try { await fs.unlink(stage); } catch {}
+    // The path didn't change, but tool resolution is memoized — clear it so the
+    // fresh binary is what downloads actually use.
+    try { downloader.resetToolsCache(); } catch {}
+    try { ytDlpPathCache = null; } catch {}
+    ytdlpStatus = { state: 'updated', installedVersion: stagedVersion, latestVersion: latest || stagedVersion, updateAvailable: false, error: '' };
+    pushYtdlpStatus();
+  } catch (error) {
+    try { await fs.unlink(stage); } catch {}
+    ytdlpStatus = { ...ytdlpStatus, state: 'error', error: String(error && error.message ? error.message : error).slice(0, 160) };
+    pushYtdlpStatus();
+  } finally {
+    ytdlpUpdating = false;
+  }
+  return ytdlpStatus;
+}
+
+ipcMain.handle('ytdlp:status', () => ytdlpStatus);
+ipcMain.handle('ytdlp:check', () => runYtdlpCheck());
+ipcMain.handle('ytdlp:update', () => runYtdlpUpdate());
+
 // ── Pop-out mini player ──
 // A tiny always-on-top window showing album art and the transport controls.
 // It loads the same index.html; the page detects mini state via a boot script
@@ -1231,9 +1388,13 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-  // Look for updates shortly after launch, then every 30 minutes.
+  // Look for updates shortly after launch, then every 30 minutes. The yt-dlp
+  // engine check piggybacks on the same schedule so the settings badge shows
+  // up without any user action.
   setTimeout(runUpdateCheck, 10000);
   setInterval(runUpdateCheck, 30 * 60 * 1000);
+  setTimeout(() => runYtdlpCheck().catch(() => {}), 12000);
+  setInterval(() => runYtdlpCheck().catch(() => {}), 30 * 60 * 1000);
 });
 
 app.on('window-all-closed', () => {

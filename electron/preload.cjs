@@ -137,4 +137,14 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
     ipcRenderer.on('update:status', listener);
     return () => ipcRenderer.removeListener('update:status', listener);
   },
+
+  // yt-dlp engine updates (settings pop + badge on the settings button)
+  ytdlpGetStatus: () => ipcRenderer.invoke('ytdlp:status'),
+  ytdlpCheck: () => ipcRenderer.invoke('ytdlp:check'),
+  ytdlpUpdate: () => ipcRenderer.invoke('ytdlp:update'),
+  onYtdlpStatus: callback => {
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('ytdlp:status', listener);
+    return () => ipcRenderer.removeListener('ytdlp:status', listener);
+  },
 });
