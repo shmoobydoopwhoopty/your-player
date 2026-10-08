@@ -410,6 +410,35 @@ ipcMain.handle('app-logo:clear', async () => {
   return true;
 });
 
+// ── Custom app background photo ──────────────────────────────────────────
+// The renderer picks the picture and upscales it to 2K before sending the
+// finished bytes; this just stores the file and hands back a file URL.
+const appBackgroundBase = () => path.join(app.getPath('userData'), 'app-background');
+const appBackgroundExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+async function removeAppBackgroundFiles() {
+  for (const ext of appBackgroundExtensions) {
+    try { await fs.rm(`${appBackgroundBase()}.${ext}`, { force: true }); } catch {}
+  }
+}
+ipcMain.handle('app-bg:save', async (_event, payload) => {
+  const bytes = payload && payload.bytes;
+  const mime = String((payload && payload.mime) || 'image/jpeg');
+  if (!bytes || !bytes.length || bytes.length > 25 * 1024 * 1024) return null;
+  try {
+    await removeAppBackgroundFiles();
+    const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : mime.includes('jpeg') ? 'jpg' : 'img';
+    const target = `${appBackgroundBase()}.${ext}`;
+    await fs.writeFile(target, Buffer.from(bytes));
+    return { path: target, url: pathToFileURL(target).href };
+  } catch {
+    return null;
+  }
+});
+ipcMain.handle('app-bg:clear', async () => {
+  await removeAppBackgroundFiles();
+  return true;
+});
+
 // ── Artist photos ───────────────────────────────────────────────────────────
 // Display-only artist picture lookup: the app searches a public music API for
 // the artist's name and caches a photo locally. It never renames files, edits

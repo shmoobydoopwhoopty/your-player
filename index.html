@@ -36,7 +36,7 @@ html[data-surface="deepsea"]{--bg:#070b12;--glow:#0e2a38;--sidebar-bg:rgba(6,9,1
 html[data-surface="nebula"]{--bg:#0d0a14;--glow:#2a1740;--sidebar-bg:rgba(11,8,17,.72);--player-bg:#110d1af2;--card:#141021;--spot:#191430;--spot-fade:#100d1c;--drop-bg:#0f0c19ef;--panel:#130f22;--panel2:#1a1530;--wash:linear-gradient(155deg,#1d1030 0%,#160f24 50%,#0d0a14 100%)}
 #partyFlash{position:fixed;inset:0;z-index:80;pointer-events:none;opacity:0;transition:opacity .18s ease-out}
 #shakeFx{position:fixed;inset:0;z-index:80;pointer-events:none;opacity:0}
-*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;text-shadow:var(--text-shadow)}button,input{font:inherit}button{color:inherit}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}svg{display:block}.app{height:100dvh;min-height:560px;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;background:radial-gradient(ellipse at 70% -10%,var(--glow) 0,transparent 44%),var(--wash,linear-gradient(rgba(0,0,0,0),rgba(0,0,0,0))),var(--bg)}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;text-shadow:var(--text-shadow)}button,input{font:inherit}button{color:inherit}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}svg{display:block}.app{height:100dvh;min-height:560px;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;background:radial-gradient(ellipse at 70% -10%,var(--glow) 0,transparent 44%),var(--wash,linear-gradient(rgba(0,0,0,0),rgba(0,0,0,0))),var(--bg);position:relative}.app>.sidebar,.app>.main-shell{position:relative;z-index:1}#appBgLayer{position:absolute;inset:0;z-index:0;pointer-events:none;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:var(--app-bg-opacity,1);filter:blur(var(--app-bg-blur,0px));transform:scale(1.07);display:none}body[data-app-bg] #appBgLayer{display:block}
 .app[data-sidebar-dock] .main-shell{grid-row:1;grid-column:1/-1;height:auto;min-height:0}
 .app[data-sidebar-dock="top"]{grid-template-rows:auto minmax(0,1fr)}
 .app[data-sidebar-dock="top"] .main-shell{grid-row:2}
@@ -440,6 +440,7 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
 </head>
 <body>
 <div class="app">
+    <div id="appBgLayer" aria-hidden="true"></div>
   <aside class="sidebar">
     <div class="brand"><div class="brand-mark" id="brandIcon"></div><div class="brand-name" id="brandName">Your<span> Player</span></div></div>
     <div class="side-label">Your space</div>
@@ -541,6 +542,11 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
   <div class="slider-row"><span>Menus &amp; panels</span><input type="range" id="ccPanelOpacity" min="0" max="1" step="0.01" aria-label="Menus and panels opacity"><b id="ccPanelOpacityValue"></b></div>
   <div class="slider-row"><span>Home spotlight</span><input type="range" id="ccSpotOpacity" min="0" max="1" step="0.01" aria-label="Home spotlight card opacity"><b id="ccSpotOpacityValue"></b></div>
   <div class="slider-row"><span>Drop overlay</span><input type="range" id="ccDropOpacity" min="0" max="1" step="0.01" aria-label="Drag and drop overlay opacity"><b id="ccDropOpacityValue"></b></div>
+  <div class="pop-label">Background photo</div>
+  <div class="folder-row"><div class="folder-path" id="bgPathRow" title="">No photo yet</div><button class="text-btn" id="bgChooseBtn" type="button">Choose</button><button class="text-btn" id="bgRemoveBtn" type="button" hidden>Remove</button></div>
+  <div class="slider-row"><span>Blur</span><input type="range" id="bgBlurSlider" min="0" max="40" step="1" aria-label="Background photo blur in pixels"><b id="bgBlurValue"></b></div>
+  <div class="slider-row"><span>Transparency</span><input type="range" id="bgOpacitySlider" min="0" max="100" step="5" aria-label="Background photo transparency in percent"><b id="bgOpacityValue"></b></div>
+  <div class="folder-note">The picture fills the whole app behind everything — small pictures are upscaled to 2K in smooth steps first. Blur softens it and transparency fades it toward your theme colors.</div>
   <div class="pop-label">Party mode</div>
   <div class="fx-toggle-row"><b>Flash the whole app on a beat</b><button class="text-btn" id="partyToggle" type="button">Off</button></div>
   <div class="party-colors" id="partyColors"></div>
@@ -1910,7 +1916,7 @@ function toggleCustomizePop(){
  const wasOpen=customizePop.classList.contains('open');
  customizePop.classList.remove('open');settingsPop.classList.remove('open');updatePop.classList.remove('open');layoutPop.classList.remove('open');
  if(wasOpen)return;
- if(!customizePop.dataset.built){buildAppearancePanel();buildCustomColors();bindFxControls();customizePop.dataset.built='1'}
+ if(!customizePop.dataset.built){buildAppearancePanel();buildCustomColors();buildBackgroundControls();bindFxControls();customizePop.dataset.built='1'}
  applyAppearance();refreshCustomColorInputs();syncColorSliders();syncFxUi();
  placePop(customizePop,$('#customizeBtn'));
  customizePop.classList.add('open')}
@@ -2510,7 +2516,83 @@ function buildLogoPicker(){
   customLogo={path:'',url:''};try{localStorage.removeItem(logoKey)}catch{}applyCustomLogo();renderLogoRow();showToast('Back to the default logo')
  });
 }
+
 applyCustomLogo();
+// ── Custom background photo (whole app, 2K upscaled, blur + transparency) ──
+const appBgKey='yourplayer.background.v1';
+let appBg={path:'',url:'',blur:0,transparency:0};
+try{const savedBg=JSON.parse(localStorage.getItem(appBgKey)||'null');if(savedBg&&(typeof savedBg.url==='string'||typeof savedBg.path==='string')){appBg={path:String(savedBg.path||''),url:typeof savedBg.url==='string'?savedBg.url:'',blur:Number.isFinite(Number(savedBg.blur))?Math.max(0,Math.min(40,Number(savedBg.blur))):0,transparency:Number.isFinite(Number(savedBg.transparency))?Math.max(0,Math.min(100,Number(savedBg.transparency))):0}}}catch{}
+function persistAppBg(){try{localStorage.setItem(appBgKey,JSON.stringify(appBg))}catch{}}
+function applyAppBackground(){
+ const layer=$('#appBgLayer');if(!layer)return;
+ if(appBg.url){document.body.dataset.appBg='1';layer.style.backgroundImage=`url("${appBg.url}")`}
+ else{delete document.body.dataset.appBg;layer.style.backgroundImage=''}
+ const root=document.documentElement;
+ root.style.setProperty('--app-bg-blur',(appBg.blur||0)+'px');
+ root.style.setProperty('--app-bg-opacity',String(Math.max(0,1-(appBg.transparency||0)/100)));
+ syncBgUi();
+}
+function syncBgUi(){
+ const row=$('#bgPathRow');if(row){row.textContent=appBg.path?appBg.path.split(/[\\/]/).pop():'No photo yet';row.title=appBg.path||''}
+ const rm=$('#bgRemoveBtn');if(rm)rm.hidden=!appBg.url;
+ const bl=$('#bgBlurSlider');if(bl)bl.value=String(appBg.blur||0);
+ const blv=$('#bgBlurValue');if(blv)blv.textContent=(appBg.blur||0)+'px';
+ const op=$('#bgOpacitySlider');if(op)op.value=String(appBg.transparency||0);
+ const opv=$('#bgOpacityValue');if(opv)opv.textContent=(appBg.transparency||0)+'%';
+}
+function bytesToDataUrl(bytes,mime){const arr=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);let binary='';const chunk=0x8000;for(let i=0;i<arr.length;i+=chunk)binary+=String.fromCharCode.apply(null,arr.subarray(i,i+chunk));return `data:${mime};base64,${btoa(binary)}`}
+// 2K upscaler: doubles the picture in high-quality steps, then lands exactly on a 2560px long edge.
+// Pictures already at 2K or bigger are left untouched — never downscaled.
+function upscaleTo2K(source){
+ return new Promise((resolve,reject)=>{
+  const img=new Image();
+  img.onload=()=>{
+   try{
+    const w0=img.naturalWidth,h0=img.naturalHeight;
+    if(!w0||!h0){reject(new Error('empty image'));return}
+    const target=2560;
+    if(Math.max(w0,h0)>=target){resolve({source:img,width:w0,height:h0,upscaled:false});return}
+    let cw=w0,ch=h0,src=img;
+    while(Math.max(cw,ch)*2<=target){
+     const c=document.createElement('canvas');c.width=cw*2;c.height=ch*2;
+     const ctx=c.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+     ctx.drawImage(src,0,0,c.width,c.height);src=c;cw=c.width;ch=c.height;
+    }
+    if(Math.max(cw,ch)<target){
+     const ratio=target/Math.max(cw,ch);
+     const c=document.createElement('canvas');c.width=Math.round(cw*ratio);c.height=Math.round(ch*ratio);
+     const ctx=c.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+     ctx.drawImage(src,0,0,c.width,c.height);src=c;
+    }
+    resolve({source:src,width:src.width,height:src.height,upscaled:true});
+   }catch(error){reject(error)}
+  };
+  img.onerror=()=>reject(new Error('Could not read that image'));
+  img.src=source;
+ });
+}
+function canvasToJpegBytes(canvas){return new Promise((resolve,reject)=>{canvas.toBlob(blob=>{if(!blob){reject(new Error('Could not encode the picture'));return}blob.arrayBuffer().then(buffer=>resolve({bytes:new Uint8Array(buffer),mime:'image/jpeg'})).catch(reject)},'image/jpeg',0.92)})}
+async function chooseAppBackground(){
+ if(!desktop||!desktop.chooseImageFile){showToast('A background photo needs the desktop app');return}
+ try{
+  const data=await desktop.chooseImageFile('Choose your background photo');
+  if(!data)return;
+  showToast('Preparing your photo…');
+  const up=await upscaleTo2K(bytesToDataUrl(data.bytes,data.mime));
+  const payload=up.upscaled?await canvasToJpegBytes(up.source):{bytes:data.bytes,mime:data.mime};
+  const saved=desktop.saveAppBackground?await desktop.saveAppBackground(payload):null;
+  if(saved&&saved.url){appBg={path:saved.path||data.path||'',url:saved.url,blur:appBg.blur,transparency:appBg.transparency};persistAppBg();applyAppBackground();showToast(up.upscaled?`Background set — upscaled to 2K (${up.width}×${up.height})`:'Background set')}
+  else showToast('Could not use that picture');
+ }catch(error){console.warn('Background update failed:',error);showToast('Could not set that background')}
+}
+function buildBackgroundControls(){
+ const choose=$('#bgChooseBtn');if(!choose||choose.dataset.built)return;choose.dataset.built='1';
+ choose.addEventListener('click',chooseAppBackground);
+ const rm=$('#bgRemoveBtn');if(rm)rm.addEventListener('click',async()=>{try{if(desktop&&desktop.clearAppBackground)await desktop.clearAppBackground()}catch{}appBg={path:'',url:'',blur:appBg.blur,transparency:appBg.transparency};persistAppBg();applyAppBackground();showToast('Background removed')});
+ const bl=$('#bgBlurSlider');if(bl&&!bl.dataset.bound){bl.dataset.bound='1';bl.addEventListener('input',()=>{appBg.blur=Number(bl.value);persistAppBg();applyAppBackground()})}
+ const op=$('#bgOpacitySlider');if(op&&!op.dataset.bound){op.dataset.bound='1';op.addEventListener('input',()=>{appBg.transparency=Number(op.value);persistAppBg();applyAppBackground()})}
+}
+applyAppBackground();
 // ── Rename the app from settings ───────────────────────────────
 function renderDownloadDirRow(){const el=$('#dlDirPath');if(!el)return;const p=customDownloadDir||dlState.downloadsRoot||'';el.textContent=p||'Default — inside your Music folder';el.title=p||'Default: your Music folder → '+displayBrand()+' Player Downloads'}
 $('#dlDirChange').addEventListener('click',async()=>{

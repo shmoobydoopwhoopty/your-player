@@ -86,6 +86,10 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   saveAppLogo: payload => ipcRenderer.invoke('app-logo:save', payload),
   clearAppLogo: () => ipcRenderer.invoke('app-logo:clear'),
 
+  // Custom app background photo
+  saveAppBackground: payload => ipcRenderer.invoke('app-bg:save', payload),
+  clearAppBackground: () => ipcRenderer.invoke('app-bg:clear'),
+
   // YouTube sign in for the downloader
   libraryLoad: () => ipcRenderer.invoke('library:load'),
   librarySave: data => ipcRenderer.invoke('library:save', data),
