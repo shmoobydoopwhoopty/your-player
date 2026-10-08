@@ -1864,7 +1864,7 @@ function openYtSigninModal(){
  if(ytSigninModalPoll)clearInterval(ytSigninModalPoll);
  ytSigninModalPoll=setInterval(async()=>{
   if(!ytSigninModalOpen){if(ytSigninModalPoll){clearInterval(ytSigninModalPoll);ytSigninModalPoll=0}return}
-  try{const st=await desktop.youtubeSigninStatus();if(st&&st.signedIn){closeYtSigninModal();if(desktop.getCookieHeader)desktop.getCookieHeader().catch(()=>{});showToast('Signed in to YouTube — downloads can use your account');refreshYouTubeAccountRow()}}catch{}
+  try{const st=await desktop.youtubeSigninStatus();if(st&&st.signedIn){closeYtSigninModal();if(desktop.getCookieHeader)desktop.getCookieHeader().catch(()=>{});if(view==='downloader')wireDownloaderSignin();refreshYouTubeAccountRow();showToast('Signed in to YouTube — downloads can use your account')}}catch{}
  },3000);
 }
 if(desktop&&typeof desktop.onYouTubeSigninRequested==='function')desktop.onYouTubeSigninRequested(()=>openYtSigninModal());

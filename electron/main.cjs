@@ -20,6 +20,45 @@ const trackedFoldersStore = new Set();
 const allowedAudioFiles = new Set();
 let mainWindow;
 
+// Every login/navigation the user does in the in-app sign-in modal happens in
+// the same webview (same partition session); we count them purely for logging
+// so we can debug “no window appeared / sign-in didn't register” reports.
+let sameSessionOpenCount = 0;
+// Every window-opening attempt — from the player window or from the sign-in
+// webview's embedded page (Google's account chooser, OAuth pop-ups) — goes
+// through “setWindowOpenHandler”. That's the modern, deterministic hook: it
+// fires on ALL guest <webview> contents, letting us keep the sign-in flow
+// inside the app (load in the same webview) instead of letting Electron pop
+// a separate browser-style window — the historical bug where “Sign in to
+// YouTube” launched its own Google window outside the player.
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    const inWebview = contents.getType() === 'webview';
+    const isHttp = url.startsWith('https://') || url.startsWith('http://');
+    if (inWebview && isHttp) {
+      // Keep sign-in navigation inside the SAME webview (same partition, so
+      // the cookies that feed the downloader stay in one session).
+      sameSessionOpenCount += 1;
+      contents.loadURL(url).catch(() => {});
+      return { action: 'deny' };
+    }
+    // The player window: never allow Electron to spawn browser windows; the
+    // renderer opens real links externally via its own click handler.
+    return { action: 'deny' };
+  });
+});
+// Debounce handle so a flood of cookie-change events during sign-in refreshes
+// the downloader's view at most twice a second instead of on every byte.
+let cookieRefreshTimer = null;
+async function refreshYouTubeCookies(ses) {
+  try {
+    const cookies = await ses.cookies.get({ url: 'https://www.youtube.com' });
+    const header = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    if (header) downloader.setYouTubeCookies(header);
+    return header;
+  } catch { return ''; }
+}
+
 // The user can rename the app (“Your” by default) from settings; the renderer
 // persists the choice in localStorage and we mirror it for native titles.
 const BRAND_KEY = 'yourplayer.brand.v1';
@@ -241,8 +280,11 @@ function createWindow() {
   mainWindow.webContents.on('render-process-gone', (_event, details) => logRendererProblem({ type: 'render-process-gone', ...details }));
   mainWindow.on('unresponsive', () => logRendererProblem({ type: 'window-unresponsive' }));
   mainWindow.on('responsive', () => logRendererProblem({ type: 'window-responsive' }));
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {     if (url.startsWith('https://') || url.startsWith('http://')) shell.openExternal(url);
-     return { action: 'deny' };
+  // Popups/navigations live in a global “web-contents-created” trap below —
+  // this window itself never opens child windows.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://')) { sameSessionOpenCount += 1; }
+    return { action: 'deny' };   // renderer opens links via its own pointerdown → shell shortcut
   });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
@@ -1144,11 +1186,21 @@ app.whenReady().then(async () => {
     if (applied && applied.applied) console.log(`Finished installing update ${applied.version}`);
   } catch {}
   // Restore saved YouTube cookies so the downloader stays signed in.
+  try { const { session } = require('electron'); await refreshYouTubeCookies(session.fromPartition('persist:youtube-signin')); } catch {}
+  // Keep them fresh: Google rotates session cookies on every request, and the
+  // downloader needs the newest value every time yt-dlp runs.
   try {
     const { session } = require('electron');
     const ses = session.fromPartition('persist:youtube-signin');
-    const cookies = await ses.cookies.get({ url: 'https://www.youtube.com' });
-    if (cookies.length) downloader.setYouTubeCookies(cookies.map(c => `${c.name}=${c.value}`).join('; '));
+    ses.cookies.on('changed', (_event, cookie, _cause, removed) => {
+      if (removed) return;
+      const domain = String(cookie.domain || '');
+      if (!domain.endsWith('youtube.com') && !domain.endsWith('google.com')) return;
+      cookieRefreshTimer = cookieRefreshTimer || setTimeout(() => {
+        cookieRefreshTimer = null;
+        refreshYouTubeCookies(ses).catch(() => {});
+      }, 500);
+    });
   } catch {}
   createWindow();
   app.on('activate', () => {
