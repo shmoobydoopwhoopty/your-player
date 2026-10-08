@@ -3028,7 +3028,7 @@ const idState={busy:false,record:null,file:null,local:null,candidates:[],current
 function renderIdentifyView(){
  if(!desktop)return '<div class="empty-library"><div><div class="empty-icon">'+svg('search',20)+'</div><strong>'+escBrand()+' Identify needs the desktop app</strong>Open '+escBrand()+' Player from its desktop build to identify songs.</div></div>';
  return `<div class="section-heading"><h3>Identify a song</h3></div>
- <div class="folder-note" style="margin:0 0 16px">Pick any music file and the app listens to it — it reads the audio's length and the tags stored inside, then matches that against the online catalog. You'll get the song name, artist, album and album cover in a popup: confirm them if they look right, or fix any of them yourself. Saving writes the details straight into the file, same as the tag editor.</div>
+ <div class="folder-note" style="margin:0 0 16px">Pick any music file and the app listens to it — it reads the tags stored inside the audio (song name, artist, album) and any embedded cover art, then matches those details against the online catalog. You'll get the song name, artist, album and album cover in a popup: confirm them if they look right, or fix any of them yourself. Saving writes the details straight into the file, same as the tag editor.</div>
  <button class="accent-btn" id="idPickBtn" type="button">${svg('search',15)}<span>Choose a music file</span></button>`;
 }
 function wireIdentify(){
