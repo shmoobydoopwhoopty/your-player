@@ -1,6 +1,6 @@
 {
   "name": "your-player",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "description": "Your Player, a local music player for Windows with album artwork front and center.",
   "main": "electron/main.cjs",
