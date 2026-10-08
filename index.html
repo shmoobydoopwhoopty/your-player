@@ -2911,7 +2911,7 @@ function startOnboarding(){
  const stepDownloads=()=>{
   const pickable=Boolean(desktop&&desktop.chooseDirectory);
   const shown=dlState.downloadsRoot||('Your Music folder → '+displayBrand()+' Player Downloads');
-  obShell(`<h2>Pick your downloads folder</h2><p class="ob-text">Songs you grab in the app — and videos for ${escBrand()} Media — save to their own folder. It's kept separate from the folders where you keep your own music.</p><div class="ob-path" id="obDlPath"></div>${pickable?'<button class="ob-ghost" id="obPickDl" type="button">Choose a different folder…</button>':''}<div class="ob-input-note">Keep the default or point it anywhere — you can change it later in settings.</div>`,{step:1,total:5});
+  obShell(`<h2>Pick your downloads folder</h2><p class="ob-text">Songs you grab in the app — and videos for ${escBrand()} Media — save to their own folder. It's kept separate from the folders where you keep your own music.</p><div class="ob-path" id="obDlPath"></div>${pickable?'<button class="ob-ghost" id="obPickDl" type="button">Choose a different folder…</button>':''}<div class="ob-input-note">Keep the default or point it anywhere — you can change it later in settings.</div>`,{step:1,total:10});
   const pathEl=$('#obDlPath');pathEl.textContent=shown;pathEl.title=shown;
   const pick=$('#obPickDl');
   if(pick)pick.addEventListener('click',async()=>{
@@ -2923,7 +2923,7 @@ function startOnboarding(){
   });
  };
  const stepMusic=()=>{
-  obShell(`<h2>Bring in your own music</h2><p class="ob-text">The folder button in the top bar adds folders of songs you already have. That's separate from the downloads folder — one holds your library, the other holds what you download in-app.</p><div class="ob-input-note">You can also just drag files straight into the window.</div><button class="ob-ghost" id="obShowBtn" type="button">Show me where it is</button>`,{step:2,total:5});
+  obShell(`<h2>Bring in your own music</h2><p class="ob-text">The folder button in the top bar adds folders of songs you already have. That's separate from the downloads folder — one holds your library, the other holds what you download in-app.</p><div class="ob-input-note">You can also just drag files straight into the window.</div><button class="ob-ghost" id="obShowBtn" type="button">Show me where it is</button>`,{step:2,total:10});
   $('#obShowBtn').addEventListener('click',showFolderSpot);
   $('#obNext').addEventListener('click',stepDownloader);
  };
@@ -2947,15 +2947,40 @@ function startOnboarding(){
   if(onboardingActive){$('#obModal').classList.add('open');stepMusic();}
  }
  const stepDownloader=()=>{
-  obShell(`<h2>${escBrand()} Downloader</h2><p class="ob-text">This tab searches YouTube. Grab any song as an MP3 straight into your library — or send it to the music folder you picked on the next screen. Videos save to ${escBrand()} Media, and you can pull their audio out as an MP3 anytime.</p>`,{step:3,total:5});
+  obShell(`<h2>${escBrand()} Downloader</h2><p class="ob-text">This tab searches YouTube. Grab any song as an MP3 straight into your library — or send it to the music folder you picked on the next screen. Videos save to ${escBrand()} Media, and you can pull their audio out as an MP3 anytime.</p>`,{step:3,total:10});
   $('#obNext').addEventListener('click',stepMedia);
  };
  const stepMedia=()=>{
-  obShell(`<h2>${escBrand()} Media</h2><p class="ob-text">Videos you download live here — click any card to watch right inside ${escBrand()} Player.</p>`,{step:4,total:5});
-  $('#obNext').addEventListener('click',stepAllSet);
+  obShell(`<h2>${escBrand()} Media</h2><p class="ob-text">Videos you download live here — click any card to watch right inside ${escBrand()} Player. There's also an Identify tab that names a song just by reading its file.</p>`,{step:4,total:10});
+  $('#obNext').addEventListener('click',stepPersonalize);
+ };
+ // ── Personalize: the four top-bar buttons, highlighted one at a time ──
+ function obSpotButton(btnId,tip,next){
+  const btn=$(btnId);
+  if(!btn){next();return}
+  $('#obModal').classList.remove('open');
+  btn.classList.add('folder-spot');
+  const rect=btn.getBoundingClientRect();
+  const tipEl=document.createElement('div');tipEl.className='folder-spot-wrap';
+  tipEl.innerHTML=`<span class="folder-spot-tip">${tip}</span><button class="accent-btn" type="button">Continue tour</button>`;
+  document.body.append(tipEl);
+  tipEl.style.left=Math.max(12,Math.min(rect.left+rect.width/2-115,window.innerWidth-240))+'px';
+  tipEl.style.top=Math.min(rect.bottom+10,window.innerHeight-96)+'px';
+  let done=false;
+  const finish=()=>{if(done)return;done=true;clearTimeout(timer);btn.classList.remove('folder-spot');tipEl.remove();$('#obModal').classList.add('open');next()};
+  tipEl.querySelector('button').addEventListener('click',finish);
+  const timer=setTimeout(finish,20000);
+ }
+ const stepPersonalize=()=>{
+  obShell(`<h2>Make it yours</h2><p class="ob-text">Four buttons in the top bar run the look and feel of the whole app. They'll light up one at a time — each takes a second.</p>`,{step:5,total:10});
+  // One-shot: the modal's Next must not re-run the tour if it gets clicked
+  // again while a spotlight tip is up (the button stays in the DOM).
+  const next=$('#obNext');
+  const go=()=>{next.removeEventListener('click',go);obSpotButton('#customizeBtn','Color settings — themes, custom colors, background photo & effects',()=>obSpotButton('#layoutBtn','Layout & sliders — drag sections anywhere, stretch them by the corner',()=>obSpotButton('#updateBtn','App updates — checks for new versions and installs them in one click',()=>obSpotButton('#settingsBtn','Settings — downloads folder, YouTube sign-in, yt-dlp engine & more',stepAllSet))))};
+  next.addEventListener('click',go);
  };
  const stepAllSet=()=>{
-  obShell(`<h2>You're All Set!</h2><p class="ob-text">Everything's ready. Hit play, or open the ${escBrand()} Downloader to grab your first song. Enjoy ${escBrand()} Player!</p>`,{step:5,total:5});
+  obShell(`<h2>You're All Set!</h2><p class="ob-text">Everything's ready. Hit play, or open the ${escBrand()} Downloader to grab your first song. Enjoy ${escBrand()} Player!</p>`,{step:10,total:10});
   const next=$('#obNext');next.textContent="Let's go";
   next.addEventListener('click',obFinish);
  };
