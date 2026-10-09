@@ -84,6 +84,10 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   // Identify a song from a file (Deezer-backed matching, cover fetch)
   identifySearch: payload => ipcRenderer.invoke('identify:search', payload),
   identifyFetchCover: url => ipcRenderer.invoke('identify:fetch-cover', url),
+  // Spot a copy of the picked file already living in the tracked music folders
+  findSimilarInFolders: payload => ipcRenderer.invoke('identify:find-similar', payload),
+  // Swap the folder copy for the newly tagged file after the user confirms
+  replaceFileInFolder: payload => ipcRenderer.invoke('identify:replace-file', payload),
 
   // Album cover lookup (Google Images picker + fetch of the picked image)
   coverLookupFetchImage: url => ipcRenderer.invoke('coverlookup:fetch-image', url),

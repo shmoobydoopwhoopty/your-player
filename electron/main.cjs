@@ -1066,6 +1066,70 @@ ipcMain.handle('tracks:write-art', async (_event, payload) => {
   return true;
 });
 
+// ── Identify: match the picked file against the tracked music folders ──────
+// Scans each tracked folder for an audio file with the same name as the one the
+// user picked in the Identify tab. If a copy already lives in the user's music
+// collection, the app offers to replace it with the newly tagged file.
+ipcMain.handle('identify:find-similar', async (_event, payload) => {
+  const pickedName = String(payload?.name || '').trim();
+  const folders = Array.isArray(payload?.folders) ? payload.folders.map(f => String(f || '').trim()).filter(Boolean) : [];
+  if (!pickedName || !folders.length) return null;
+  const pickedLow = pickedName.toLowerCase();
+  for (const folder of folders) {
+    const root = String(folder || '').trim();
+    if (!root) continue;
+    const pending = [root];
+    let scanned = 0;
+    while (pending.length && scanned < 15000) {
+      const current = pending.pop();
+      let directory;
+      try { directory = await fs.opendir(current); } catch { continue; }
+      scanned++;
+      try {
+        for await (const entry of directory) {
+          if (scanned >= 15000) break;
+          if (entry.isFile()) {
+            if (entry.name.toLowerCase() === pickedLow) {
+              const found = await describeAudioFile(path.join(current, entry.name));
+              if (found) return { found: true, path: found.path, name: found.name, size: found.size, lastModified: found.lastModified };
+            }
+          } else if (entry.isDirectory()) {
+            const lower = entry.name.toLowerCase();
+            if (!SKIPPED_FOLDERS.has(lower) && lower !== 'node_modules') pending.push(path.join(current, entry.name));
+          }
+        }
+      } catch {}
+    }
+  }
+  return null;
+});
+
+// Copy the picked file over the folder copy that Identify matched, byte for
+// byte, after the user confirms in the popup. The old file is swapped out via a
+// temp file so a failed copy leaves the original untouched.
+ipcMain.handle('identify:replace-file', async (_event, payload) => {
+  const source = path.resolve(String(payload?.source || ''));
+  const target = path.resolve(String(payload?.target || ''));
+  if (!allowedAudioFiles.has(source)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);
+  if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);
+  if (source.toLowerCase() === target.toLowerCase()) return true;
+  if (!audioExtensions.has(path.extname(target).toLowerCase())) throw new Error('That file type cannot be replaced.');
+  const backup = `${target}.your-player-backup.tmp`;
+  try {
+    await fs.rename(target, backup);
+  } catch (error) {
+    throw new Error('Could not move the existing file out of the way — make sure it is not playing or in use.');
+  }
+  try {
+    await fs.copyFile(source, target);
+  } catch (error) {
+    try { await fs.rename(backup, target); } catch {}
+    throw new Error('Could not copy the new file into your music folder — the original was restored.');
+  }
+  try { await fs.rm(backup, { force: true }); } catch {}
+  return true;
+});
+
 // ── Identify a song from a real audio file ──────────────────────────────────
 // The renderer reads the picked file's own tags (title/artist/album) and any
 // embedded cover; this side does the online half — turning that into catalog

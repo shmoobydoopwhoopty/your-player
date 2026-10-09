@@ -3665,7 +3665,52 @@ window.addEventListener('resize',closeDlSuggest);
 initAppDownloader();
 window.addEventListener('error',event=>console.error(`${appTitle()} renderer error:`,event.message,event.error));window.addEventListener('unhandledrejection',event=>console.error(`${appTitle()} unhandled promise rejection:`,event.reason));
 // ── Identify tab: figure out what a song is, from the file itself ───────────
-const idState={busy:false,record:null,file:null,local:null,candidates:[],current:null,coverUrl:'',localArtUrl:'',editCoverUrl:'',coverDirty:false,coverBytes:null,coverMime:''};
+const idState={busy:false,record:null,file:null,local:null,candidates:[],current:null,coverUrl:'',localArtUrl:'',editCoverUrl:'',coverDirty:false,coverBytes:null,coverMime:'',folderMatch:null};
+function idShowModalShell(){const modal=$('#identifyModal');if(modal)modal.classList.add('open')}
+// Notice shown when the picked file has a same-named twin in the tracked music
+// folders — the user decides whether to swap the folder copy for this file.
+function openIdentifyMatchModal(){
+ const modal=$('#identifyModal'),body=$('#idBody');if(!modal||!body)return;
+ const m=idState.folderMatch;if(!m){openIdentifyModal('result');return}
+ modal.classList.add('open');
+ body.innerHTML=`
+  <div class="id-question" style="margin-top:0">This song looks like it's already in your music folder</div>
+  <div class="folder-note" style="margin:10px 0 4px">I found <b id="idMatchName"></b> in your tracked music folder — it has the same file name as the one you just picked. Want to replace it with this file? The current tags and cover you see here will be written to the folder copy.</div>
+  <div class="folder-row" style="margin:8px 0"><div class="folder-path" id="idMatchPath" title=""></div></div>
+  <div class="id-actions"><button class="accent-btn" id="idMatchReplace" type="button">Yes — replace it</button><button class="text-btn" id="idMatchCancel" type="button">No — don't change anything</button></div>`;
+ $('#idMatchName').textContent=m.name||'a file with the same name';
+ const pathEl=$('#idMatchPath');pathEl.textContent=m.path||'';pathEl.title=m.path||'';
+ $('#idMatchReplace').addEventListener('click',()=>{replaceIdentifyFile().catch(()=>{})});
+ $('#idMatchCancel').addEventListener('click',()=>{modal.classList.remove('open');showToast('Nothing was changed')});
+}
+async function replaceIdentifyFile(){
+ const m=idState.folderMatch,record=idState.record;if(!m||!record)return;
+ const btn=$('#idMatchReplace');if(btn){btn.disabled=true;btn.textContent='Replacing…'}
+ try{
+  if(!desktop||!desktop.replaceFileInFolder)throw new Error('The desktop app is needed to replace files');
+  await desktop.replaceFileInFolder({source:record.path,target:m.path});
+  // The folder copy now holds the picked file's audio. Relink the library track
+  // onto the folder path so play counts and favorites follow the song.
+  const srcTrack=tracks.find(t=>t.file.path===record.path);
+  const dstTrack=tracks.find(t=>t.file.path===m.path);
+  const folderFile=await (desktop.restoreAudioFiles?desktop.restoreAudioFiles([m.path]).catch(()=>[]):Promise.resolve([]));
+  const freshFile=folderFile&&folderFile[0]?desktopFile(folderFile[0]):{path:m.path,name:m.name||record.name,size:m.size||0,lastModified:Date.now()};
+  if(dstTrack){dstTrack.file=freshFile;dstTrack.artUrl=null;dstTrack.artFullChecked=false;dstTrack.enrichDone=false;enqueueEnrichment([dstTrack])}
+  if(srcTrack&&srcTrack!==dstTrack){
+   if(dstTrack){dstTrack.favorite=dstTrack.favorite||srcTrack.favorite;dstTrack.playCount=Math.max(dstTrack.playCount||0,srcTrack.playCount||0)}
+   const idx=tracks.indexOf(srcTrack);if(idx>=0)tracks.splice(idx,1);
+   if(current>=0){const cur=currentTrack();if(cur===srcTrack){audio.pause();playing=false;current=tracks.indexOf(dstTrack);if(current>=0)updateCurrent();else{current=-1;updatePlayButtons()}}else current=tracks.indexOf(currentTrack())}
+  }
+  render();renderQueue();persistLibrary();
+  $('#identifyModal').classList.remove('open');
+  idState.folderMatch=null;
+  showToast(`Replaced — your music folder now has this version of “${(idState.local&&idState.local.title)||record.name||'the song'}”`);
+ }catch(error){
+  console.warn('Replace failed:',error);
+  if(btn){btn.disabled=false;btn.textContent='Yes — replace it'}
+  showToast(error&&error.message?error.message:'Could not replace the file — nothing was changed');
+ }
+}
 function renderIdentifyView(){
  if(!desktop)return '<div class="empty-library"><div><div class="empty-icon">'+svg('search',20)+'</div><strong>'+escBrand()+' Identify needs the desktop app</strong>Open '+escBrand()+' Player from its desktop build to identify songs.</div></div>';
  return `<div class="section-heading"><h3>Identify a song</h3></div>
@@ -3747,10 +3792,20 @@ async function startIdentify(){
  const record=picks[0];
  idState.busy=true;
  idState.record=record;idState.file=desktopFile(record);
- idState.local=null;idState.candidates=[];idState.current=null;idState.coverUrl='';
+ idState.local=null;idState.candidates=[];idState.current=null;idState.coverUrl='';idState.folderMatch=null;
  idState.editCoverUrl='';idState.coverDirty=false;idState.coverBytes=null;idState.coverMime='';
  openIdentifyModal('listening');
  try{
+  // Before anything else: is this song already sitting in one of the tracked
+  // music folders? A same-named twin means the user is probably re-identifying
+  // a copy they already have — offer to swap it for this file. Skipped when the
+  // picked file itself lives in a tracked folder (it would just match itself).
+  try{
+   const lowPath=String(record.path||'').toLowerCase();
+   const insideTracked=trackedFolders.some(f=>lowPath.startsWith(normalizeFolderPath(f).toLowerCase()+'\\'));
+   if(!insideTracked&&desktop.findSimilarInFolders)idState.folderMatch=await desktop.findSimilarInFolders({name:record.name,folders:trackedFolders});
+  }catch{}
+  if(idState.folderMatch){openIdentifyMatchModal();return}
   const local=await parseTrackDetails(idState.file);
   idState.local=local||{title:'',artist:'',album:'',trackNo:null,art:null,artFull:null};
   idState.localArtUrl=idState.local.art?URL.createObjectURL(idState.local.art):'';
