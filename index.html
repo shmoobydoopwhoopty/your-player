@@ -3590,6 +3590,8 @@ function handleMiniCommand(cmd){
   if(cmd==='repeat'){$('#repeatBtn').click();return}
 }
 if(desktop&&desktop.miniOnCommand)desktop.miniOnCommand(cmd=>{handleMiniCommand(cmd);setTimeout(()=>miniPlayer.sync(),60)});
+// Keyboard media keys (⏯ ⏭ ⏮ ⏹ from the keyboard) ride the same command map.
+if(desktop&&desktop.mediaOnCommand)desktop.mediaOnCommand(cmd=>{handleMiniCommand(cmd==='stop'?'play':cmd);setTimeout(()=>miniPlayer.sync(),60)});
 if(desktop&&desktop.miniOnClosed)desktop.miniOnClosed(()=>{try{localStorage.removeItem('yourplayer.miniOpen.v1')}catch{}});
 if(desktop&&desktop.miniIsOpen)desktop.miniIsOpen().then(open=>{if(open){miniPlayer.start();miniPlayer.sync()}}).catch(()=>{});
 window.addEventListener('beforeunload',()=>{if(desktop&&desktop.miniClose&&!document.documentElement.hasAttribute('data-app-closing')){try{desktop.miniClose()}catch{}}});

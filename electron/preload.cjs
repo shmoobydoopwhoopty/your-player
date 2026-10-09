@@ -139,6 +139,13 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
     return () => ipcRenderer.removeListener('mini:closed', listener);
   },
 
+  // Keyboard media keys (play/pause, next, previous, stop) from the OS
+  mediaOnCommand: callback => {
+    const listener = (_event, command) => callback(command);
+    ipcRenderer.on('media:command', listener);
+    return () => ipcRenderer.removeListener('media:command', listener);
+  },
+
   // Self-update
   updateGetConfig: () => ipcRenderer.invoke('update:get-config'),
   updateSetConfig: partial => ipcRenderer.invoke('update:set-config', partial),

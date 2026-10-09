@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell, globalShortcut } = require('electron');
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
 const path = require('node:path');
@@ -1503,4 +1503,46 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+// ── Keyboard media keys ─────────────────────────────────────────────────────
+// The laptop/keyboard media keys (play/pause ⏯, next ⏭, previous ⏮, stop ⏹)
+// control the player even while it sits in the background. The renderer maps
+// these to the same code paths the mini player's transport commands use.
+let mediaKeysRegistered = false;
+const MEDIA_KEY_MAP = [
+  ['MediaPlayPause', 'play'],
+  ['MediaNextTrack', 'next'],
+  ['MediaPreviousTrack', 'previous'],
+  ['MediaStop', 'stop'],
+];
+function sendMediaCommand(command) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    try { mainWindow.webContents.send('media:command', command); } catch {}
+  }
+}
+function registerMediaKeys() {
+  if (process.platform === 'darwin') return; // macOS media keys map the menu bar instead
+  if (!globalShortcut) return;
+  if (mediaKeysRegistered) return;
+  let ok = 0;
+  for (const [accel, command] of MEDIA_KEY_MAP) {
+    try { const done = globalShortcut.register(accel, () => sendMediaCommand(command)); if (done) ok++; }
+    catch {}
+  }
+  mediaKeysRegistered = ok > 0;
+  if (ok) console.log(`media keys registered (${ok}/${MEDIA_KEY_MAP.length})`);
+}
+function unregisterMediaKeys() {
+  if (!globalShortcut || !mediaKeysRegistered) return;
+  for (const [accel] of MEDIA_KEY_MAP) {
+    try { globalShortcut.unregister(accel); } catch {}
+  }
+  mediaKeysRegistered = false;
+}
+app.whenReady().then(() => {
+  registerMediaKeys();
+});
+app.on('will-quit', () => {
+  unregisterMediaKeys();
 });
