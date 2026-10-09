@@ -1546,38 +1546,65 @@ function sharpenCanvas(canvas,amount){
   }
   ctx.putImageData(new ImageData(out,w,h),0,0);return canvas;
 }
+// ── 4K upscaler for blown-up (now playing) art ──────────────────────────────
+// Grows low-res art to the screen's size (up to 4K, 3840px long edge) using
+// stepped bilinear growth with an unsharp mask between steps, then a gentle
+// final pass. Cache keys include the target so a resize re-upscales once.
+const UPSCALE_MAX_EDGE=3840;
 async function upscaleArt(src){
   if(!src)return null;
-  if(upscaleCache.has(src))return upscaleCache.get(src);
+  const target=Math.min(UPSCALE_MAX_EDGE,Math.max(1920,Math.round(Math.max(window.innerWidth,window.innerHeight)*1.5)));
+  const cacheKey=src+'@'+target;
+  if(upscaleCache.has(cacheKey))return upscaleCache.get(cacheKey);
   let bmp=null;
   try{
-    const target=Math.min(3200,Math.max(1920,Math.round(Math.max(window.innerWidth,window.innerHeight)*1.5)));
     bmp=await loadToBitmap(src);
-    if(bmp.width>=720){upscaleCache.set(src,src);return src}
+    const longest=Math.max(bmp.width,bmp.height);
+    if(longest>=target){upscaleCache.set(cacheKey,src);return src}
+    // Only tiny art needs the heavy pipeline; >=720px art is smooth enough at
+    // 1.5x screen size — a single high-quality step beats many sharpen passes.
+    if(longest>=720&&target/longest<=2){
+      const c=document.createElement('canvas');
+      c.width=target;c.height=Math.max(1,Math.round(bmp.height*target/bmp.width));
+      const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';
+      cx.drawImage(bmp,0,0,c.width,c.height);
+      try{sharpenCanvas(c,.25)}catch{}
+      const outBlob=await new Promise(res=>c.toBlob(res,'image/jpeg',.94));
+      try{bmp.close()}catch{}
+      if(!outBlob){upscaleCache.set(cacheKey,src);return src}
+      const url=URL.createObjectURL(outBlob);upscaleCache.set(cacheKey,url);return url;
+    }
+    // Small source: grow in ~2x steps; each step blends 4 bilinear draws at
+    // sub-pixel offsets (poor man's Lanczos) so edges stay soft, then a mild
+    // unsharp mask restores crispness without halos.
     let cw=bmp.width,ch=bmp.height,cur=bmp,isBitmap=true;
     while(cw<target){
       const nw=Math.min(target,cw*2),nh=Math.max(1,Math.round(ch*nw/cw));
       const c=document.createElement('canvas');c.width=nw;c.height=nh;
-      const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';cx.drawImage(cur,0,0,nw,nh);
+      const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';
+      const ox=(nw/cw-1)*.25,oy=(nh/ch-1)*.25;
+      cx.drawImage(cur,-ox,-oy,nw+2*ox,nh+2*oy);cx.drawImage(cur,ox,-oy,nw-2*ox,nh+2*oy);
+      cx.drawImage(cur,-ox,oy,nw+2*ox,nh-2*oy);cx.drawImage(cur,ox,oy,nw-2*ox,nh-2*oy);
+      cx.globalAlpha=.25;cx.drawImage(cur,0,0,nw,nh);cx.globalAlpha=1;
       if(isBitmap)bmp.close();else cur.width=0;
       cur=c;isBitmap=false;cw=nw;ch=nh;
-      if(cw<target){try{sharpenCanvas(cur,.55)}catch{}}
+      if(cw<target){try{sharpenCanvas(cur,.3)}catch{}}
       await new Promise(r=>setTimeout(r,0));
     }
     const fin=document.createElement('canvas');fin.width=cw;fin.height=ch;
     const fx=fin.getContext('2d');
     fx.imageSmoothingEnabled=true;fx.imageSmoothingQuality='high';
-    fx.filter='saturate(1.04) contrast(1.015)';
+    fx.filter='saturate(1.03) contrast(1.01)';
     fx.drawImage(cur,0,0);
     fx.filter='none';
-    try{sharpenCanvas(fin,.35)}catch{}
+    try{sharpenCanvas(fin,.3)}catch{}
     if(!isBitmap)cur.width=0;
     const outBlob=await new Promise(res=>fin.toBlob(res,'image/jpeg',.94));
-    if(!outBlob){upscaleCache.set(src,src);return src}
+    if(!outBlob){upscaleCache.set(cacheKey,src);return src}
     const url=URL.createObjectURL(outBlob);
-    upscaleCache.set(src,url);
+    upscaleCache.set(cacheKey,url);
     return url;
-  }catch(error){try{upscaleCache.set(src,src)}catch{};return null}
+  }catch(error){try{upscaleCache.set(cacheKey,src)}catch{};return null}
   finally{try{bmp&&bmp.close()}catch{}}
 }
 const fullArtUrlCache=new Map();
