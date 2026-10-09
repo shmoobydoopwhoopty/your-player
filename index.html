@@ -100,7 +100,7 @@ body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1
 .detail-hero.artist-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .detail-hero.artist-hero .artist-photo-edit{opacity:1}
 .detail-hero img{width:100%;height:100%;object-fit:cover;display:block}.toast{position:fixed;z-index:20;bottom:118px;left:50%;transform:translate(-50%,15px);padding:10px 15px;border:1px solid #ffffff18;background:var(--panel2);color:var(--text-strong);border-radius:22px;font-size:11px;opacity:0;pointer-events:none;transition:.2s;box-shadow:0 10px 30px #0007}.toast.show{opacity:1;transform:translate(-50%,0)}.drop-overlay{position:fixed;inset:14px;z-index:30;border:2px dashed var(--accent);background:var(--drop-bg);border-radius:22px;display:none;place-items:center;text-align:center;font:700 22px Manrope,sans-serif;color:var(--accent)}.drop-overlay.show{display:grid}
-.playerbar{position:absolute;left:0;right:0;bottom:0;height:var(--player-h);background:var(--player-bg);backdrop-filter:blur(24px);border-top:1px solid #ffffff12;z-index:5;padding:0 27px 10px;display:grid;grid-template-columns:minmax(calc(175px*var(--player-zoom,1)),1fr) minmax(calc(270px*var(--player-zoom,1)),1.35fr) minmax(calc(175px*var(--player-zoom,1)),1fr);align-items:center;gap:20px}
+.playerbar{position:absolute;left:0;right:0;bottom:0;height:var(--player-h);background:var(--player-bg);backdrop-filter:blur(24px);border-top:1px solid #ffffff12;z-index:5;padding:0 27px 10px;display:grid;grid-template-columns:minmax(175px,1fr) minmax(270px,1.35fr) minmax(175px,1fr);align-items:center;gap:20px}
 .main-shell[data-player-dock="left"],.main-shell[data-player-dock="right"]{padding-left:var(--player-w);padding-right:0}
 .main-shell[data-player-dock="right"]{padding-left:0;padding-right:var(--player-w)}
 .main-shell[data-player-dock="left"] .playerbar{left:0;right:auto}
@@ -117,15 +117,38 @@ body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1
 .main-shell[data-player-dock="top"] .progress-row{top:auto;bottom:0}
 .main-shell[data-player-dock="top"] .workspace{padding-top:calc(var(--player-h) + 18px);padding-bottom:28px}
 body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12px)}
-@media(max-width:650px){.main-shell[data-player-dock="top"] .playerbar{top:63px}}.progress-wrap{position:absolute;top:0;left:27px;right:27px;cursor:pointer;display:flex;flex-direction:column}.progress-row{position:relative;height:var(--progress-h,3px);background:#ffffff19}.progress-fill{height:100%;width:0;background:var(--accent-grad);position:relative}.progress-fill:after{content:'';position:absolute;right:-5px;top:-3px;width:9px;height:9px;border-radius:50%;background:var(--accent);opacity:0;transition:.15s}.progress-row:hover{height:calc(var(--progress-h,3px) + 2px)}.progress-row:hover .progress-fill:after{opacity:1}.player-track{display:flex;align-items:center;gap:11px;min-width:0}.player-cover{height:49px;width:49px;flex:none;object-fit:cover;border-radius:6px;background:#232825}.player-title-block{min-width:0}.player-track-name{font-size:calc(11px*var(--player-text-zoom,1));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-track-name.title-scroll{text-overflow:clip}.title-scroll-inner{display:inline-block;white-space:nowrap;padding-right:34px;animation:title-scroll var(--title-scroll-dur,12s) ease-in-out 1.4s infinite}@keyframes title-scroll{0%,14%{transform:translateX(0)}50%,62%{transform:translateX(var(--title-shift,0px))}98%,100%{transform:translateX(0)}}.player-artist{color:var(--text-dim);font-size:calc(10px*var(--player-text-zoom,1));margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:4px;padding:1px 3px;margin-left:-3px}.player-artist:hover{color:var(--accent);text-decoration:underline}.listened-pill{display:flex;align-items:center;gap:5px;flex:none;color:var(--text-dim);font-size:10px;padding:4px 8px;border:1px solid var(--line);border-radius:12px;background:#ffffff06}.listened-pill svg{width:12px;height:12px;flex:none}.player-like{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;padding:6px}.player-like.liked{color:var(--accent)}.play-controls{display:flex;align-items:center;justify-content:center;gap:20px}.control-btn{height:calc(var(--ctrl-btn-size,30px)*var(--player-zoom,1));width:calc(var(--ctrl-btn-size,30px)*var(--player-zoom,1));border:0;background:transparent;color:var(--player-controls,var(--player-fg,#b5bcba));display:grid;place-items:center;cursor:pointer;position:relative}.control-btn svg{width:calc(var(--ctrl-btn-size,30px)*var(--player-zoom,1)*.57);height:calc(var(--ctrl-btn-size,30px)*var(--player-zoom,1)*.57)}.control-btn:hover{color:var(--player-controls-hover,#fff)}.control-btn.small{color:var(--player-controls-dim,var(--player-fg-dim,#848d89))}.control-btn.small.selected{color:var(--accent)}.play-main{width:calc(var(--play-btn-size,44px)*var(--player-zoom,1));height:calc(var(--play-btn-size,44px)*var(--player-zoom,1));border-radius:50%;background:var(--play-btn-bg,var(--accent-grad));color:var(--play-btn-fg,var(--on-accent));border:0;display:grid;place-items:center;cursor:pointer;transition:.15s;box-shadow:0 0 20px color-mix(in srgb,var(--play-btn-glow,var(--accent)) 14%,transparent);flex:none}.play-main:hover{background:var(--play-btn-hover,color-mix(in srgb,var(--accent) 85%,#fff));transform:scale(1.05)}.play-main svg{width:calc(var(--play-btn-size,44px)*var(--player-zoom,1)*.43);height:calc(var(--play-btn-size,44px)*var(--player-zoom,1)*.43)}.control-badge{position:absolute;right:-4px;bottom:-2px;font-size:8px;color:var(--accent)}.time-labels{display:flex;align-items:center;justify-content:space-between;order:1;margin-top:3px;color:var(--text-faint);font-size:9px;pointer-events:none}.player-right{display:flex;align-items:center;justify-content:flex-end;gap:14px}.volume-control{display:flex;align-items:center;gap:8px;color:var(--text-strong)}.volume-slider{width:calc(82px*var(--player-zoom,1));accent-color:var(--accent);height:3px;cursor:pointer}.right-btn{border:0;background:transparent;color:var(--player-fg2,#929a97);display:grid;place-items:center;cursor:pointer;padding:5px}.right-btn:hover,.right-btn.selected{color:var(--accent)}.audio{display:none}.modal-backdrop{position:fixed;inset:0;background:#0009;z-index:40;display:none;place-items:center;padding:20px}.modal-backdrop.open{display:grid}.modal{width:min(390px,100%);background:var(--panel2);border:1px solid #ffffff18;border-radius:16px;padding:23px;box-shadow:0 24px 90px #0009}.modal h3{font:700 17px Manrope,sans-serif;margin:0 0 7px}.modal p{font-size:11px;color:var(--text-dim);margin:0 0 18px}.modal input{height:40px;width:100%;border:1px solid #ffffff20;background:#0d1110;color:white;border-radius:8px;padding:0 12px}.edit-scope{margin:-8px 0 13px!important}.modal label{display:grid;gap:5px;font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:9px}.modal label span{color:var(--danger)}.modal label input[type=text]{height:36px}.modal label input[type=text]:focus{outline:1px solid var(--accent)}.modal textarea{width:100%;min-height:54px;resize:vertical;border:1px solid #ffffff20;background:#0d1110;color:white;border-radius:8px;padding:8px 12px;font:inherit;font-size:11.5px;outline:0}.modal .row2{display:flex;gap:8px}.modal .row2 label{flex:1;min-width:0}.edit-art-row{display:flex;align-items:center;gap:11px;margin-bottom:13px}.edit-art-row img{width:64px;height:64px;border-radius:9px;object-fit:cover;background:#232825}.edit-art-btns{display:grid;gap:6px}.edit-art-btns .dl-dl-btn{width:100%}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.modal-actions button{border-radius:20px;padding:9px 15px;font-size:11px;cursor:pointer}.cancel-btn{background:transparent;border:1px solid #ffffff24}.create-btn{background:var(--accent-grad);color:var(--on-accent);border:0;font-weight:700}
+@media(max-width:650px){.main-shell[data-player-dock="top"] .playerbar{top:63px}}
+/* ── Proportional player-bar scaling ──
+   The transport (album art, buttons, text, volume) steps down as the window
+   shrinks and steps back up when it grows again. The vars are set on the bar
+   itself so they override the JS-applied root vars at these widths, while the
+   player's own size sliders still rule above them. */
+@media(max-width:1120px){
+ .playerbar{--ctrl-btn-size:26px;--play-btn-size:38px;--p-art-size:42px;--vol-scale:.85}
+ .playerbar .player-track-name{font-size:calc(11px*var(--player-text-zoom,1)*.85)}
+ .playerbar .player-artist{font-size:calc(10px*var(--player-text-zoom,1)*.85);margin-top:3px}
+ .main-shell:not([data-player-dock="left"]):not([data-player-dock="right"]) .playerbar{grid-template-columns:minmax(115px,1fr) minmax(215px,1.35fr) minmax(115px,1fr)}
+}
+@media(max-width:880px){
+ .playerbar{--ctrl-btn-size:22px;--play-btn-size:32px;--p-art-size:36px;--vol-scale:.7}
+ .playerbar .player-track-name{font-size:calc(11px*var(--player-text-zoom,1)*.72)}
+ .playerbar .player-artist{font-size:calc(10px*var(--player-text-zoom,1)*.72);margin-top:2px}
+}
+@media(max-width:650px){
+ .playerbar{--ctrl-btn-size:19px;--play-btn-size:28px;--p-art-size:34px;--vol-scale:.55}
+ .playerbar .player-track-name{font-size:calc(11px*var(--player-text-zoom,1)*.68)}
+ .playerbar .player-artist{font-size:calc(10px*var(--player-text-zoom,1)*.68);margin-top:1px}
+}.progress-wrap{position:absolute;top:0;left:27px;right:27px;cursor:pointer;display:flex;flex-direction:column}.progress-row{position:relative;height:var(--progress-h,3px);background:#ffffff19}.progress-fill{height:100%;width:0;background:var(--accent-grad);position:relative}.progress-fill:after{content:'';position:absolute;right:-5px;top:-3px;width:9px;height:9px;border-radius:50%;background:var(--accent);opacity:0;transition:.15s}.progress-row:hover{height:calc(var(--progress-h,3px) + 2px)}.progress-row:hover .progress-fill:after{opacity:1}.player-track{display:flex;align-items:center;gap:11px;min-width:0}.player-cover{height:49px;width:49px;flex:none;object-fit:cover;border-radius:6px;background:#232825}.player-title-block{min-width:0}.player-track-name{font-size:calc(11px*var(--player-text-zoom,1));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-track-name.title-scroll{text-overflow:clip}.title-scroll-inner{display:inline-block;white-space:nowrap;padding-right:34px;animation:title-scroll var(--title-scroll-dur,12s) ease-in-out 1.4s infinite}@keyframes title-scroll{0%,14%{transform:translateX(0)}50%,62%{transform:translateX(var(--title-shift,0px))}98%,100%{transform:translateX(0)}}.player-artist{color:var(--text-dim);font-size:calc(10px*var(--player-text-zoom,1));margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:4px;padding:1px 3px;margin-left:-3px}.player-artist:hover{color:var(--accent);text-decoration:underline}.listened-pill{display:flex;align-items:center;gap:5px;flex:none;color:var(--text-dim);font-size:10px;padding:4px 8px;border:1px solid var(--line);border-radius:12px;background:#ffffff06}.listened-pill svg{width:12px;height:12px;flex:none}.player-like{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;padding:6px}.player-like.liked{color:var(--accent)}.play-controls{display:flex;align-items:center;justify-content:center;gap:20px}.control-btn{height:var(--ctrl-btn-size,30px);width:var(--ctrl-btn-size,30px);border:0;background:transparent;color:var(--player-controls,var(--player-fg,#b5bcba));display:grid;place-items:center;cursor:pointer;position:relative}.control-btn svg{width:calc(var(--ctrl-btn-size,30px)*.57);height:calc(var(--ctrl-btn-size,30px)*.57)}.control-btn:hover{color:var(--player-controls-hover,#fff)}.control-btn.small{color:var(--player-controls-dim,var(--player-fg-dim,#848d89))}.control-btn.small.selected{color:var(--accent)}.play-main{width:var(--play-btn-size,44px);height:var(--play-btn-size,44px);border-radius:50%;background:var(--play-btn-bg,var(--accent-grad));color:var(--play-btn-fg,var(--on-accent));border:0;display:grid;place-items:center;cursor:pointer;transition:.15s;box-shadow:0 0 20px color-mix(in srgb,var(--play-btn-glow,var(--accent)) 14%,transparent);flex:none}.play-main:hover{background:var(--play-btn-hover,color-mix(in srgb,var(--accent) 85%,#fff));transform:scale(1.05)}.play-main svg{width:calc(var(--play-btn-size,44px)*.43);height:calc(var(--play-btn-size,44px)*.43)}.control-badge{position:absolute;right:-4px;bottom:-2px;font-size:8px;color:var(--accent)}.time-labels{display:flex;align-items:center;justify-content:space-between;order:1;margin-top:3px;color:var(--text-faint);font-size:9px;pointer-events:none}.player-right{display:flex;align-items:center;justify-content:flex-end;gap:14px}.volume-control{display:flex;align-items:center;gap:8px;color:var(--text-strong)}.volume-slider{width:82px;accent-color:var(--accent);height:3px;cursor:pointer}.right-btn{border:0;background:transparent;color:var(--player-fg2,#929a97);display:grid;place-items:center;cursor:pointer;padding:5px}.right-btn:hover,.right-btn.selected{color:var(--accent)}.audio{display:none}.modal-backdrop{position:fixed;inset:0;background:#0009;z-index:40;display:none;place-items:center;padding:20px}.modal-backdrop.open{display:grid}.modal{width:min(390px,100%);background:var(--panel2);border:1px solid #ffffff18;border-radius:16px;padding:23px;box-shadow:0 24px 90px #0009}.modal h3{font:700 17px Manrope,sans-serif;margin:0 0 7px}.modal p{font-size:11px;color:var(--text-dim);margin:0 0 18px}.modal input{height:40px;width:100%;border:1px solid #ffffff20;background:#0d1110;color:white;border-radius:8px;padding:0 12px}.edit-scope{margin:-8px 0 13px!important}.modal label{display:grid;gap:5px;font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:9px}.modal label span{color:var(--danger)}.modal label input[type=text]{height:36px}.modal label input[type=text]:focus{outline:1px solid var(--accent)}.modal textarea{width:100%;min-height:54px;resize:vertical;border:1px solid #ffffff20;background:#0d1110;color:white;border-radius:8px;padding:8px 12px;font:inherit;font-size:11.5px;outline:0}.modal .row2{display:flex;gap:8px}.modal .row2 label{flex:1;min-width:0}.edit-art-row{display:flex;align-items:center;gap:11px;margin-bottom:13px}.edit-art-row img{width:64px;height:64px;border-radius:9px;object-fit:cover;background:#232825}.edit-art-btns{display:grid;gap:6px}.edit-art-btns .dl-dl-btn{width:100%}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.modal-actions button{border-radius:20px;padding:9px 15px;font-size:11px;cursor:pointer}.cancel-btn{background:transparent;border:1px solid #ffffff24}.create-btn{background:var(--accent-grad);color:var(--on-accent);border:0;font-weight:700}
 .coverlookup-modal .modal{width:min(860px,96vw)!important;height:min(720px,94vh)!important}
 .cl-webview-wrap{position:relative;flex:1;min-height:0;background:#fff}.cl-webview-wrap webview{position:absolute;inset:0;width:100%;height:100%;border:0}.cl-hint{padding:8px 16px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--line)}#clCropUI{display:flex;flex-direction:column;flex:1;min-height:0}
 .cl-crop-stage{position:relative;flex:1;min-height:0;display:grid;place-items:center;background:#0d1110;overflow:hidden;cursor:grab;touch-action:none}.cl-crop-stage.dragging{cursor:grabbing}.cl-crop-stage img{position:absolute;transform-origin:center center;user-select:none;-webkit-user-drag:none;max-width:none}.cl-crop-stage{--cl-dark:rgba(0,0,0,.85)}.cl-crop-box{position:absolute;border:2px solid var(--accent);border-radius:6px;pointer-events:none;box-shadow:0 0 0 9999px var(--cl-dark)}.cl-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;border-top:1px solid var(--line)}.cl-actions{display:flex;gap:8px;align-items:center}.id-result-grid{display:flex;gap:14px;align-items:flex-start}.id-result-grid img{width:110px;height:110px;flex:none;border-radius:10px;object-fit:cover;background:#232825;box-shadow:0 10px 30px #0006}.id-fields{min-width:0}.id-song{font:700 14px Manrope,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.id-artist{font-size:12px;color:var(--text-strong);margin-top:5px}.id-album{font-size:11px;color:var(--muted);margin-top:3px}.id-dur{font-size:10px;color:var(--text-faint);margin-top:3px}.id-question{font-weight:700;font-size:12px;margin:15px 0 9px}.id-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:4px}.id-cover-btns{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}.id-edit-fields{display:grid;gap:8px}.id-label{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text-dim)}.id-edit-fields input{height:36px!important;padding:0 10px}
 @media(max-width:1120px){:root{--sidebar:205px}.spotlight-layout{grid-template-columns:minmax(0,1fr) 255px}.spotlight{gap:25px;padding:22px}.cover-frame{min-width:205px;min-height:205px;width:min(30vw,275px);height:min(30vw,275px)}.spot-inner .cover-frame{min-width:96px;min-height:0;width:clamp(96px,calc(100cqw - 288px),min(30vw,275px))}.workspace{padding-left:25px;padding-right:25px}.topbar{padding:0 25px}.playerbar{padding-left:20px;padding-right:20px;gap:12px}.progress-row{left:20px;right:20px}.progress-wrap{left:20px;right:20px}.play-controls{gap:13px}}
-@media(max-width:880px){:root{--sidebar:68px;--player-zoom:.85}.sidebar{padding:22px 9px 20px}.app[data-sidebar-dock] .sidebar{padding:8px 9px}.app[data-sidebar-dock] .brand-name{display:none}.brand{justify-content:center;padding:0;margin-bottom:33px}.brand-name,.side-label,.nav-btn span,.nav-count,.playlist-head,.playlist-links,.side-divider,.sidebar-bottom{display:none}.nav-btn{justify-content:center;padding:12px 0}.nav-btn svg{width:20px;height:20px}.spotlight-layout{grid-template-columns:1fr}.queue-card{display:none}.spotlight{height:330px}.cover-frame{min-width:205px;min-height:205px}.spot-inner .cover-frame{min-width:96px;min-height:0}.playerbar{grid-template-columns:minmax(calc(150px*var(--player-zoom,1)),1fr) minmax(calc(230px*var(--player-zoom,1)),1.4fr) minmax(calc(105px*var(--player-zoom,1)),.7fr)}.player-right{gap:8px}.volume-slider{width:58px}}
+@media(max-width:880px){:root{--sidebar:68px}.sidebar{padding:22px 9px 20px}.app[data-sidebar-dock] .sidebar{padding:8px 9px}.app[data-sidebar-dock] .brand-name{display:none}.brand{justify-content:center;padding:0;margin-bottom:33px}.brand-name,.side-label,.nav-btn span,.nav-count,.side-divider,.sidebar-bottom{display:none}.nav-btn{justify-content:center;padding:12px 0}.nav-btn svg{width:20px;height:20px}.spotlight-layout{grid-template-columns:1fr}.queue-card{display:none}.spotlight{height:330px}.cover-frame{min-width:205px;min-height:205px}.spot-inner .cover-frame{min-width:96px;min-height:0}.playerbar{grid-template-columns:minmax(150px,1fr) minmax(230px,1.4fr) minmax(105px,.7fr)}.player-right{gap:8px}.volume-slider{width:58px}}
+/* Narrow sidebar: keep the Playlists section (new-playlist button + links) visible */
+@media(max-width:880px){.sidebar .playlist-head{padding:0 4px;margin:0 0 5px;justify-content:center}.sidebar .playlist-head .add-playlist{width:20px;height:20px}.sidebar .playlist-links{padding:0 3px;max-height:120px}}
 @media(max-width:1050px){.topbar{padding:0 25px}.search-wrap{width:min(200px,22vw)}.upnext-btn span{display:none}.upnext-btn{padding:0 12px}}
-@media(max-width:880px){.search-wrap{width:min(150px,20vw)}.import-btn span:not(#importIcon){display:none}.import-btn{width:38px;padding:0;justify-content:center;border-radius:50%}.topbar{gap:9px}}
-@media(max-width:650px){:root{--sidebar:52px;--player-zoom:.68}.sidebar{padding:16px 6px 16px}.brand{margin-bottom:22px}.nav-btn{padding:11px 0}.nav-btn svg{width:19px;height:19px}.topbar{height:63px;padding:0 15px;gap:8px}.top-label{font-size:11px}.search-wrap{width:38px;border-radius:50%;padding:0 10px;justify-content:center;border-color:transparent;background:transparent}.search-wrap svg{flex:none}.search-wrap input{display:none}.search-wrap:focus-within{position:absolute;left:12px;right:95px;width:auto;background:#181d1c;border-color:var(--line);border-radius:20px;z-index:4}.search-wrap:focus-within input{display:block}.import-btn{width:37px;padding:0;justify-content:center;border-radius:50%}.import-btn span:not(#importIcon){display:none}.top-actions{gap:5px}.top-actions .icon-btn{display:none}.workspace{padding:7px 14px calc(var(--player-h) + 25px)}.page-heading{margin:7px 0 16px}.page-heading h1{font-size:25px}.page-subtitle{font-size:10px}.heading-actions .secondary-btn{padding:0 10px;font-size:10px}.spotlight{height:auto;min-height:510px;padding:20px}.spot-inner{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:20px}.cover-frame{width:min(68vw,275px);height:min(68vw,275px);min-width:0;min-height:0;align-self:center}.spot-copy{width:100%}.spot-kicker{margin-bottom:9px}.spot-copy h2{font-size:25px;-webkit-line-clamp:2}.spot-actions{margin-top:17px}.section-heading{margin-top:24px}.album-grid,.artist-grid,.playlist-grid{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:8px}.album-card,.artist-card{padding:8px}.playerbar{grid-template-columns:minmax(calc(110px*var(--player-zoom,1)),1fr) minmax(calc(170px*var(--player-zoom,1)),1.25fr) minmax(calc(84px*var(--player-zoom,1)),.8fr);gap:9px;padding:0 12px 8px}.player-track{gap:8px}.player-like{display:none}.play-controls{gap:11px}.control-btn.small{width:calc(24px*var(--player-zoom,1));height:calc(24px*var(--player-zoom,1))}.play-main{width:calc(40px*var(--player-zoom,1));height:calc(40px*var(--player-zoom,1))}.player-right{gap:calc(7px*var(--player-zoom,1))}.volume-slider{width:calc(40px*var(--player-zoom,1))}.progress-row{left:12px;right:12px}.progress-wrap{left:12px;right:12px}.time-labels{display:none}.library-table th:nth-child(3),.library-table td:nth-child(3),.library-table th:nth-child(4),.library-table td:nth-child(4){display:none}.library-table th:first-child,.library-table td:first-child{padding-left:2px}.library-table th:last-child,.library-table td:last-child{width:44px}}
+@media(max-width:880px){.search-wrap{width:min(150px,20vw)}.import-btn span+span{display:none}.import-btn{width:38px;padding:0;justify-content:center;border-radius:50%}.topbar{gap:9px}}
+@media(max-width:650px){:root{--sidebar:0px;--player-h:88px}.sidebar{display:none}.topbar{height:63px;padding:0 15px;gap:8px}.top-label{font-size:11px}.search-wrap{width:38px;border-radius:50%;padding:0 10px;justify-content:center;border-color:transparent;background:transparent}.search-wrap svg{flex:none}.search-wrap input{display:none}.search-wrap:focus-within{position:absolute;left:12px;right:95px;width:auto;background:#181d1c;border-color:var(--line);border-radius:20px;z-index:4}.search-wrap:focus-within input{display:block}.import-btn{width:37px;padding:0;justify-content:center;border-radius:50%}.import-btn span+span{display:none}.top-actions{gap:5px}.top-actions .icon-btn{display:none}.workspace{padding:7px 14px calc(var(--player-h) + 25px)}.page-heading{margin:7px 0 16px}.page-heading h1{font-size:25px}.page-subtitle{font-size:10px}.heading-actions .secondary-btn{padding:0 10px;font-size:10px}.spotlight{height:auto;min-height:510px;padding:20px}.spot-inner{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:20px}.cover-frame{width:min(68vw,275px);height:min(68vw,275px);min-width:0;min-height:0;align-self:center}.spot-copy{width:100%}.spot-kicker{margin-bottom:9px}.spot-copy h2{font-size:25px;-webkit-line-clamp:2}.spot-actions{margin-top:17px}.section-heading{margin-top:24px}.album-grid,.artist-grid,.playlist-grid{grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:8px}.album-card,.artist-card{padding:8px}.playerbar{grid-template-columns:minmax(0,1fr) auto;gap:9px;padding:0 12px 8px}.player-track{gap:8px}.player-cover{width:var(--p-art-size,49px);height:var(--p-art-size,49px)}.player-title-name{font-size:10px}.player-like{display:none}.play-controls{gap:11px}.control-btn.small{display:none}.play-main{width:var(--play-btn-size,44px);height:var(--play-btn-size,44px)}.player-right{display:none}.progress-row{left:12px;right:12px}.progress-wrap{left:12px;right:12px}.time-labels{display:none}.library-table th:nth-child(3),.library-table td:nth-child(3),.library-table th:nth-child(4),.library-table td:nth-child(4){display:none}.library-table th:first-child,.library-table td:first-child{padding-left:2px}.library-table th:last-child,.library-table td:last-child{width:44px}}
 </style>
 <style>
 /* ── Downloader & Media tabs ── */
@@ -186,14 +209,14 @@ html[data-np-h] .cover-frame{height:var(--np-h,318px);min-height:0;max-height:no
 /* Blown-up now-playing art size */
 .np-overlay-frame img{display:block;width:var(--np-art-w,100%);height:var(--np-art-h,100%);object-fit:cover;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 /* Player cover art size */
-.player-cover{height:calc(var(--p-art-size,49px)*var(--player-zoom,1));width:calc(var(--p-art-size,49px)*var(--player-zoom,1))}
+.player-cover{height:var(--p-art-size,49px);width:var(--p-art-size,49px)}
 /* Text scale also scales the player's buttons, so enlarged controls stay proportional */
 @media(min-width:651px){
-html[data-text-scale] .playerbar .control-btn{width:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1)*var(--player-zoom,1));height:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1)*var(--player-zoom,1))}
-html[data-text-scale] .playerbar .control-btn svg{width:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1)*var(--player-zoom,1)*.57);height:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1)*var(--player-zoom,1)*.57)}
-html[data-text-scale] .playerbar .play-main{width:calc(var(--play-btn-size,44px)*var(--text-scale,1)*var(--player-zoom,1));height:calc(var(--play-btn-size,44px)*var(--text-scale,1)*var(--player-zoom,1))}
-html[data-text-scale] .playerbar .play-main svg{width:calc(var(--play-btn-size,44px)*var(--text-scale,1)*var(--player-zoom,1)*.43);height:calc(var(--play-btn-size,44px)*var(--text-scale,1)*var(--player-zoom,1)*.43)}
-.playerbar .volume-control{gap:calc(8px*var(--vol-scale,1))}.playerbar .volume-slider{width:calc(82px*var(--vol-scale,1)*var(--player-zoom,1))}.playerbar #volumeBtn{padding:calc(5px*var(--vol-scale,1))}.playerbar #volumeBtn svg{width:calc(18px*var(--vol-scale,1));height:calc(18px*var(--vol-scale,1))}
+html[data-text-scale] .playerbar .control-btn{width:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1));height:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1))}
+html[data-text-scale] .playerbar .control-btn svg{width:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1)*.57);height:calc(var(--ctrl-btn-size,30px)*var(--text-scale,1)*.57)}
+html[data-text-scale] .playerbar .play-main{width:calc(var(--play-btn-size,44px)*var(--text-scale,1));height:calc(var(--play-btn-size,44px)*var(--text-scale,1))}
+html[data-text-scale] .playerbar .play-main svg{width:calc(var(--play-btn-size,44px)*var(--text-scale,1)*.43);height:calc(var(--play-btn-size,44px)*var(--text-scale,1)*.43)}
+.playerbar .volume-control{gap:calc(8px*var(--vol-scale,1))}.playerbar .volume-slider{width:calc(82px*var(--vol-scale,1))}.playerbar #volumeBtn{padding:calc(5px*var(--vol-scale,1))}.playerbar #volumeBtn svg{width:calc(18px*var(--vol-scale,1));height:calc(18px*var(--vol-scale,1))}
 html[data-text-scale] .playerbar .player-like,html[data-text-scale] .playerbar .right-btn{padding:calc(5px*var(--text-scale,1))}
 }
 /* Artist names color + text scale color var hook done above */
@@ -227,9 +250,6 @@ html[data-mini] #miniRoot{display:block!important}
 .fx-toggle-row b{font-size:11px}
 .fx-toggle-row .text-btn{min-width:34px;text-align:center}
 .party-colors{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
-/* Bass mode: muted, disabled shake sliders */
-.fx-muted{opacity:.32;pointer-events:none;filter:saturate(.2)}
-.fx-muted .slider-row input{pointer-events:none}
 .party-colors input[type=color]{width:100%;height:26px;padding:0;border:1px solid #ffffff22;border-radius:7px;background:transparent;cursor:pointer}
 .party-slot{display:grid;place-items:center;font-size:9px;color:var(--text-dim);gap:2px}
 .party-slot .slot-n{opacity:.75}
@@ -360,11 +380,6 @@ input[type=color].slot-off{opacity:.28}
 .cc-item:hover{border-color:#ffffff2a}
 .cc-item span{flex:1;min-width:0;font-size:9.5px;color:var(--text-strong);line-height:1.35;cursor:pointer}
 .cc-item input[type=color]{width:26px;height:22px;flex:none;border:0;background:transparent;border-radius:5px;padding:0;cursor:pointer}
-/* Dedicated gradient chip beside the plain color swatch — the native picker stays usable */
-.cc-duo{display:flex;align-items:center;gap:4px;flex:none}
-.cc-grad-chip{width:26px;height:22px;flex:none;border:1px solid #ffffff2e;border-radius:5px;padding:0;cursor:pointer;background:linear-gradient(135deg,#ff6ec4,#7873f5)}
-.cc-grad-chip:hover{border-color:var(--accent)}
-.cc-item.cc-muted input[type=color],.cc-item.cc-muted input[type=color]::-webkit-color-swatch{opacity:.3}
 .cc-item input[type=color]::-webkit-color-swatch-wrapper{padding:0}
 .cc-item input[type=color]::-webkit-color-swatch{border:1px solid #ffffff2e;border-radius:5px}
 .cc-grad-pop{position:fixed;z-index:80;width:288px;padding:10px 11px 11px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 50px #000b;display:grid;gap:8px}
@@ -604,13 +619,10 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
   <div class="folder-note">Party mode only reacts to this exact frequency, not everything below it — set 60 Hz and only a real 60 Hz hit lights the room.</div>
   <div class="pop-label">Bass shake (blown-up art)</div>
   <div class="fx-toggle-row"><b>Shake the full-screen album art when it hears your frequency</b><button class="text-btn" id="shakeToggle" type="button">Off</button></div>
-  <div class="fx-toggle-row"><b>Bass mode — dubstep beat-flash visualizer</b><button class="text-btn" id="bassModeToggle" type="button">Off</button></div>
-  <div id="shakeSlidersWrap">
   <div class="slider-row"><span>Shake amount</span><input type="range" id="shakeIntensity" min="0" max="20" step="0.5" aria-label="Maximum bass shake distance in pixels — the hardest bass hits shake at this strength"><b id="shakeIntensityValue"></b></div>
   <div class="slider-row"><span>Shake speed</span><input type="range" id="shakeSpeed" min="40" max="400" step="10" aria-label="Bass shake speed in milliseconds per cycle"><b id="shakeSpeedValue"></b></div>
   <div class="slider-row"><span>Listen to frequency</span><input type="range" id="shakeHzSlider" min="20" max="500" step="5" aria-label="Bass shake frequency in hertz"><b id="shakeHzValue"></b></div>
-  </div>
-  <div class="folder-note">Works like a dubstep visualizer: every bass hit shakes the blown-up art by how hard it hits — soft bass rumbles gently, a hard 808 slam throws it around at full force, with a quick punch-and-decay on each hit. Listens to a band around this frequency (±25%), so sustained notes keep shaking while they sound. The shake only touches the blown-up now-playing art; the small player cover stays still. With Bass mode on, the shake runs fully automatic — the sliders above rest until you turn it back off.</div>
+  <div class="folder-note">Works like a dubstep visualizer: every bass hit shakes the blown-up art by how hard it hits — soft bass rumbles gently, a hard 808 slam throws it around at full force, with a quick punch-and-decay on each hit. Listens to a band around this frequency (±25%), so sustained notes keep shaking while they sound. The shake only touches the blown-up now-playing art; the small player cover stays still.</div>
 </div>
 <div class="settings-pop" id="layoutPop" role="dialog" aria-label="Layout and sliders">
   <h4>Layout</h4>
@@ -2448,12 +2460,10 @@ function buildCustomColors(){
   const item=document.createElement('label');item.className='cc-item';item.title=label;
   if(GRADIENT_COLOR_KEYS.has(key)){
    item.classList.add('cc-item-grad');
-   item.innerHTML=`<span>${label}</span><span class="cc-duo"><input type="color" data-cc="${key}" aria-label="${label} color"><button type="button" class="cc-grad-chip" data-ccgrad="${key}" title="${label} — pick a gradient" aria-label="${label} gradient"></button><input type="color" data-cc2="${key}" aria-label="${label} gradient end" hidden></span>`;
+   item.innerHTML=`<span>${label}</span><span class="cc-duo"><input type="color" data-cc="${key}" aria-label="${label} color"><input type="color" data-cc2="${key}" aria-label="${label} gradient end" title="${label} — pick a second color to make a gradient"></span>`;
    const gradInput=item.querySelector('input[data-cc2]');
    gradInput.value=customColors[key+'2']||customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
    gradInput.addEventListener('input',()=>{customColors[key+'2']=gradInput.value;applyCustomColors();persistCustomColors();if(ccPopState.key===key)$('#ccPopSolid').value=gradInput.value});
-   const chip=item.querySelector('.cc-grad-chip');
-   chip.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();ccOpenPop(key,item);const pop=$('#ccGradPop');if(pop)pop.querySelector('.cc-pop-title').textContent=keyLabel(key)});
   }else{
    item.innerHTML=`<span>${label}</span><input type="color" data-cc="${key}" aria-label="${label} color">`;
   }
@@ -2509,12 +2519,17 @@ function ccClosePop(){const pop=$('#ccGradPop');if(pop)pop.hidden=true;ccPopStat
 function keyLabel(key){const def=CUSTOM_COLOR_DEFS.find(d=>d[0]===key);return def?def[1]:key}
 function wireCustomColorPopovers(){
  const grid=$('#ccGrid');if(!grid||grid.dataset.popWired)return;grid.dataset.popWired='1';
- // The gradient chip (.cc-grad-chip, wired in buildCustomColors) opens the gradient
- // popover; the plain color input now behaves like a normal native picker again.
+ grid.addEventListener('click',event=>{
+  const input=event.target.closest('input[type=color]');if(!input)return;
+  const item=input.closest('.cc-item');if(!item)return;
+  const label=item.querySelector('span');const key=(input.dataset.cc||'').replace(/2$/,'');
+  if(!key)return;event.preventDefault();event.stopPropagation();
+  ccOpenPop(key,item);const pop=$('#ccGradPop');if(pop)pop.querySelector('.cc-pop-title').textContent=keyLabel(key);
+ });
  const solid=$('#ccPopSolid');
  solid.addEventListener('input',()=>{if(ccPopState.key){ccApplyPreset(ccPopState.key,solid.value)}});
  solid.addEventListener('click',event=>event.stopPropagation());
- document.addEventListener('pointerdown',event=>{const pop=$('#ccGradPop');if(!pop||pop.hidden)return;if(!pop.contains(event.target)&&!event.target.closest('.cc-grad-chip'))ccClosePop()});
+ document.addEventListener('pointerdown',event=>{const pop=$('#ccGradPop');if(!pop||pop.hidden)return;if(!pop.contains(event.target)&&!event.target.closest('.cc-item'))ccClosePop()});
  window.addEventListener('blur',ccClosePop);
 }
 applyCustomColors();
@@ -2745,7 +2760,6 @@ function applyLayout(persist=true){
  // bar stays usable (everything beside it is fluid and scales automatically).
  const mini=(layout.sidebarWidth||232)<150||(layout.tabbarSide==='top'||layout.tabbarSide==='bottom')&&(layout.tabbarHeight||64)<44;
  if(mini)document.body.dataset.sidebarMini='1';else delete document.body.dataset.sidebarMini;
- syncPlayerScale();
  applyPlayerParts();
  applyNavOrder();
  wirePlayerFreeMove();
@@ -2759,27 +2773,6 @@ function setLayout(partial,persist=true){
  // Keep the player big enough to hold its own album art (art can never break out of the bar)
  if(Object.prototype.hasOwnProperty.call(partial,'playerArtSize')&&!Object.prototype.hasOwnProperty.call(partial,'playerHeight'))partial.playerHeight=Math.max(partial.playerArtSize+12,layout.playerHeight);
  for(const key of Object.keys(LAYOUT_DEFAULTS))if(partial[key]!==undefined)layout[key]=partial[key];applyLayout(persist)}
-// Proportional player scaling: as the window shrinks below ~980px the whole player bar
-// (art, buttons, text columns, height) zooms down smoothly instead of dropping parts,
-// and zooms back to its full saved size as the window grows.
-let playerScaleRaf=0;
-function syncPlayerScale(){
- playerScaleRaf=0;
- const root=document.documentElement;
- const w=Math.max(320,window.innerWidth||1200);
- const h=Math.max(360,window.innerHeight||800);
- const side=layout.playerDock==='left'||layout.playerDock==='right';
- const span=side?h:w;
- const zoom=Math.max(.55,Math.min(1,span/980));
- root.style.setProperty('--player-zoom',zoom.toFixed(3));
- if(side){
-  root.style.setProperty('--player-w',Math.round((layout.playerWidth||230)*zoom)+'px');
-  root.style.setProperty('--player-h',(layout.playerHeight||96)+'px');
- }else{
-  root.style.setProperty('--player-h',Math.max(64,Math.min(200,Math.round((layout.playerHeight||96)*zoom)))+'px');
- }
-}
-window.addEventListener('resize',()=>{syncPlayerScale()});
 function playerArtChange(value){
  // Art and player height move together: growing the art lifts the player, shrinking it lets the player shrink back down (but never below the manual minimum)
  const clamped=Math.max(30,Math.min(96,value));
@@ -3422,11 +3415,6 @@ function freqBandLevel(data,hz){const rate=audioGraph&&audioGraph.ctx?audioGraph
 let partyMode=false;try{partyMode=localStorage.getItem('yourplayer.party.v1')==='1'}catch{}
 let partyHz=fxLoad('partyHz',100),partyBrightness=fxLoad('partyBrightness',42),partyGap=fxLoad('partyGap',170);
 let shakeMode=false,shakeHz=fxLoad('shakeHz',60),shakeIntensity=fxLoad('shakeIntensity',6),shakeMs=fxLoad('shakeMs',120),shakeHoldUntil=0;
-// Bass mode: the dubstep beat-flash visualizer (party-style color flash keyed to the shake
-// frequency) that takes over from the manual shake sliders while it is on.
-let bassMode=fxLoad('bassMode',false)===true;
-function bassFlashColors(){return fxColors()}
-let bassLast=0,bassColorIdx=0;
 // Envelope for hit-hardness: shakePeak = loudest recent bass (decays slowly), shakeEnv = current
 // punch (fast attack, quick release). Every hit shakes the art by how hard it hits — the
 // dubstep-visualizer feel — instead of one fixed displacement while the band is merely loud.
@@ -3435,7 +3423,7 @@ const partyFlash=$('#partyFlash'),shakeFx=$('#shakeFx');
 let fxRaf=0,partyLast=0,partyColorIdx=0;
 function fxFrame(){
   fxRaf=0;
-  if(!partyMode&&!shakeMode&&!bassMode)return;
+  if(!partyMode&&!shakeMode)return;
   const g=audioGraph;
   if(!playing||!g||g.failed||!g.analyser){if(partyFlash)partyFlash.style.opacity='0';if(shakeFx)shakeFx.style.opacity='0';shakeEnv=0;shakePeak=0;shakeHoldUntil=0;fxLastTs=0;document.documentElement.removeAttribute('data-bass-shake');fxRaf=requestAnimationFrame(fxFrame);return}
   try{
@@ -3456,7 +3444,7 @@ function fxFrame(){
         if(partyFlash){partyFlash.style.background=col;partyFlash.style.opacity=String(op);clearTimeout(partyFlash._flashTimer);partyFlash._flashTimer=setTimeout(()=>{if(partyFlash)partyFlash.style.opacity='0'},Math.max(50,partyGap*.62))}
       }
     }
-    if(shakeMode&&!bassMode){
+    if(shakeMode){
       const sRaw=freqBandLevel(data,shakeHz);
       // How hard the bass hits: level above a silence gate, relative to the loudest recent
       // hit. A soft bassline rumbles gently; an 808 slam throws the art around at full force.
@@ -3476,27 +3464,9 @@ function fxFrame(){
       const rootStyle=document.documentElement.style;
       if(burst){const px=shakeIntensity*(0.25+punch*.85);rootStyle.setProperty('--shake-x',px.toFixed(2)+'px');rootStyle.setProperty('--shake-y',px.toFixed(2)+'px')}
     }
-    if(bassMode){
-      // Dubstep beat-flash: the party-style color flash keyed to the shake frequency band.
-      const sRaw=freqBandLevel(data,shakeHz);
-      const threshold=Math.max(.12,.5-partyBrightness/250);
-      if(sRaw>threshold&&now-bassLast>partyGap){
-        bassLast=now;
-        const colors=bassFlashColors();
-        if(!colors.length)colors.push('#d8ff63');
-        const col=colors[bassColorIdx%colors.length];bassColorIdx=(bassColorIdx+1)%Math.max(1,colors.length);
-        const op=Math.max(.08,Math.min(.85,partyBrightness/100*(0.45+sRaw*.75)));
-        if(partyFlash){partyFlash.style.background=col;partyFlash.style.opacity=String(op);clearTimeout(partyFlash._flashTimer);partyFlash._flashTimer=setTimeout(()=>{if(partyFlash)partyFlash.style.opacity='0'},Math.max(50,partyGap*.62))}
-        if(shakeFx)shakeFx.style.opacity=String(Math.max(.2,Math.min(1,.2+sRaw*.8)));
-        const rootStyle=document.documentElement.style;
-        rootStyle.setProperty('--shake-x',shakeIntensity.toFixed(2)+'px');rootStyle.setProperty('--shake-y',shakeIntensity.toFixed(2)+'px');
-        document.documentElement.dataset.bassShake='1';
-        clearTimeout(window.__bassFlashTimer);window.__bassFlashTimer=setTimeout(()=>{if(!bassMode){document.documentElement.removeAttribute('data-bass-shake');if(shakeFx)shakeFx.style.opacity='0'}},Math.max(60,partyGap*.62));
-      }
-    }
   }catch{}
   fxRaf=requestAnimationFrame(fxFrame)}
-function fxKick(){if(!partyMode&&!shakeMode&&!bassMode)return;if(fxRaf)cancelAnimationFrame(fxRaf);fxRaf=requestAnimationFrame(fxFrame)}
+function fxKick(){if(!partyMode&&!shakeMode)return;if(fxRaf)cancelAnimationFrame(fxRaf);fxRaf=requestAnimationFrame(fxFrame)}
 function setPartyMode(on){
   partyMode=Boolean(on);
   try{localStorage.setItem('yourplayer.party.v1',partyMode?'1':'0')}catch{}
@@ -3504,22 +3474,13 @@ function setPartyMode(on){
   if(partyMode){ensureAudioGraph();fxKick()}
   else{if(partyFlash){partyFlash.style.opacity='0';clearTimeout(partyFlash._flashTimer)}}
   if(!partyMode&&!shakeMode&&fxRaf){cancelAnimationFrame(fxRaf);fxRaf=0}}
-function setBassMode(on){
-  bassMode=Boolean(on);
-  fxSave('bassMode',bassMode);
-  const btn=$('#bassModeToggle');if(btn)btn.textContent=bassMode?'On':'Off';
-  // Bass mode takes over from the manual shake sliders: mute + disable them until it's off.
-  const wrap=$('#shakeSlidersWrap');if(wrap){wrap.classList.toggle('fx-muted',bassMode);wrap.querySelectorAll('input[type=range]').forEach(el=>{el.disabled=bassMode})}
-  if(bassMode){ensureAudioGraph();fxKick()}
-  else{document.documentElement.removeAttribute('data-bass-shake');if(shakeFx)shakeFx.style.opacity='0'}
-  if(!partyMode&&!shakeMode&&!bassMode&&fxRaf){cancelAnimationFrame(fxRaf);fxRaf=0}}
 function setShakeMode(on){
   shakeMode=Boolean(on);
   fxSave('shakeMode',shakeMode);
   const btn=$('#shakeToggle');if(btn)btn.textContent=shakeMode?'On':'Off';
   if(!shakeMode){document.documentElement.removeAttribute('data-bass-shake');if(shakeFx)shakeFx.style.opacity='0'}
   if(shakeMode){ensureAudioGraph();fxKick()}
-  if(!partyMode&&!shakeMode&&!bassMode&&fxRaf){cancelAnimationFrame(fxRaf);fxRaf=0}}
+  if(!partyMode&&!shakeMode&&fxRaf){cancelAnimationFrame(fxRaf);fxRaf=0}}
 audio.addEventListener('play',fxKick);
 audio.addEventListener('pause',()=>{if(partyFlash)partyFlash.style.opacity='0';document.documentElement.removeAttribute('data-bass-shake');if(shakeFx)shakeFx.style.opacity='0'});
 function syncFxUi(){
@@ -3533,8 +3494,6 @@ function syncFxUi(){
   const ps=$('#partySpeed');if(ps)ps.value=String(partyGap);const psv=$('#partySpeedValue');if(psv)psv.textContent=partyGap+' ms';
   const ph=$('#partyHzSlider');if(ph)ph.value=String(partyHz);const phv=$('#partyHzValue');if(phv)phv.textContent=partyHz+' Hz';
   const st2=$('#shakeToggle');if(st2)st2.textContent=shakeMode?'On':'Off';
-  const bt=$('#bassModeToggle');if(bt)bt.textContent=bassMode?'On':'Off';
-  const shakeWrap=$('#shakeSlidersWrap');if(shakeWrap){shakeWrap.classList.toggle('fx-muted',bassMode);shakeWrap.querySelectorAll('input[type=range]').forEach(el=>{el.disabled=bassMode})}
   const si=$('#shakeIntensity');if(si)si.value=String(shakeIntensity);const siv=$('#shakeIntensityValue');if(siv)siv.textContent=shakeIntensity+' px';
   const ss=$('#shakeSpeed');if(ss)ss.value=String(shakeMs);const ssv=$('#shakeSpeedValue');if(ssv)ssv.textContent=shakeMs+' ms';
   const sh=$('#shakeHzSlider');if(sh)sh.value=String(shakeHz);const shv=$('#shakeHzValue');if(shv)shv.textContent=shakeHz+' Hz';
@@ -3542,7 +3501,6 @@ function syncFxUi(){
 function bindFxControls(){
   const partyBtn=$('#partyToggle');if(partyBtn&&!partyBtn.dataset.bound){partyBtn.dataset.bound='1';partyBtn.addEventListener('click',()=>setPartyMode(!partyMode))}
   const shakeBtn=$('#shakeToggle');if(shakeBtn&&!shakeBtn.dataset.bound){shakeBtn.dataset.bound='1';shakeBtn.addEventListener('click',()=>setShakeMode(!shakeMode))}
-  const bassBtn=$('#bassModeToggle');if(bassBtn&&!bassBtn.dataset.bound){bassBtn.dataset.bound='1';bassBtn.addEventListener('click',()=>setBassMode(!bassMode))}
   const bind=(id,fn)=>{const el=$(id);if(el&&!el.dataset.bound){el.dataset.bound='1';el.addEventListener('input',()=>fn(Number(el.value)))}};
   bind('#partyBrightness',v=>{partyBrightness=v;fxSave('partyBrightness',v);syncFxUi()});
   bind('#partySpeed',v=>{partyGap=v;fxSave('partyGap',v);syncFxUi()});
@@ -3665,52 +3623,7 @@ window.addEventListener('resize',closeDlSuggest);
 initAppDownloader();
 window.addEventListener('error',event=>console.error(`${appTitle()} renderer error:`,event.message,event.error));window.addEventListener('unhandledrejection',event=>console.error(`${appTitle()} unhandled promise rejection:`,event.reason));
 // ── Identify tab: figure out what a song is, from the file itself ───────────
-const idState={busy:false,record:null,file:null,local:null,candidates:[],current:null,coverUrl:'',localArtUrl:'',editCoverUrl:'',coverDirty:false,coverBytes:null,coverMime:'',folderMatch:null};
-function idShowModalShell(){const modal=$('#identifyModal');if(modal)modal.classList.add('open')}
-// Notice shown when the picked file has a same-named twin in the tracked music
-// folders — the user decides whether to swap the folder copy for this file.
-function openIdentifyMatchModal(){
- const modal=$('#identifyModal'),body=$('#idBody');if(!modal||!body)return;
- const m=idState.folderMatch;if(!m){openIdentifyModal('result');return}
- modal.classList.add('open');
- body.innerHTML=`
-  <div class="id-question" style="margin-top:0">This song looks like it's already in your music folder</div>
-  <div class="folder-note" style="margin:10px 0 4px">I found <b id="idMatchName"></b> in your tracked music folder — it has the same file name as the one you just picked. Want to replace it with this file? The current tags and cover you see here will be written to the folder copy.</div>
-  <div class="folder-row" style="margin:8px 0"><div class="folder-path" id="idMatchPath" title=""></div></div>
-  <div class="id-actions"><button class="accent-btn" id="idMatchReplace" type="button">Yes — replace it</button><button class="text-btn" id="idMatchCancel" type="button">No — don't change anything</button></div>`;
- $('#idMatchName').textContent=m.name||'a file with the same name';
- const pathEl=$('#idMatchPath');pathEl.textContent=m.path||'';pathEl.title=m.path||'';
- $('#idMatchReplace').addEventListener('click',()=>{replaceIdentifyFile().catch(()=>{})});
- $('#idMatchCancel').addEventListener('click',()=>{modal.classList.remove('open');showToast('Nothing was changed')});
-}
-async function replaceIdentifyFile(){
- const m=idState.folderMatch,record=idState.record;if(!m||!record)return;
- const btn=$('#idMatchReplace');if(btn){btn.disabled=true;btn.textContent='Replacing…'}
- try{
-  if(!desktop||!desktop.replaceFileInFolder)throw new Error('The desktop app is needed to replace files');
-  await desktop.replaceFileInFolder({source:record.path,target:m.path});
-  // The folder copy now holds the picked file's audio. Relink the library track
-  // onto the folder path so play counts and favorites follow the song.
-  const srcTrack=tracks.find(t=>t.file.path===record.path);
-  const dstTrack=tracks.find(t=>t.file.path===m.path);
-  const folderFile=await (desktop.restoreAudioFiles?desktop.restoreAudioFiles([m.path]).catch(()=>[]):Promise.resolve([]));
-  const freshFile=folderFile&&folderFile[0]?desktopFile(folderFile[0]):{path:m.path,name:m.name||record.name,size:m.size||0,lastModified:Date.now()};
-  if(dstTrack){dstTrack.file=freshFile;dstTrack.artUrl=null;dstTrack.artFullChecked=false;dstTrack.enrichDone=false;enqueueEnrichment([dstTrack])}
-  if(srcTrack&&srcTrack!==dstTrack){
-   if(dstTrack){dstTrack.favorite=dstTrack.favorite||srcTrack.favorite;dstTrack.playCount=Math.max(dstTrack.playCount||0,srcTrack.playCount||0)}
-   const idx=tracks.indexOf(srcTrack);if(idx>=0)tracks.splice(idx,1);
-   if(current>=0){const cur=currentTrack();if(cur===srcTrack){audio.pause();playing=false;current=tracks.indexOf(dstTrack);if(current>=0)updateCurrent();else{current=-1;updatePlayButtons()}}else current=tracks.indexOf(currentTrack())}
-  }
-  render();renderQueue();persistLibrary();
-  $('#identifyModal').classList.remove('open');
-  idState.folderMatch=null;
-  showToast(`Replaced — your music folder now has this version of “${(idState.local&&idState.local.title)||record.name||'the song'}”`);
- }catch(error){
-  console.warn('Replace failed:',error);
-  if(btn){btn.disabled=false;btn.textContent='Yes — replace it'}
-  showToast(error&&error.message?error.message:'Could not replace the file — nothing was changed');
- }
-}
+const idState={busy:false,record:null,file:null,local:null,candidates:[],current:null,coverUrl:'',localArtUrl:'',editCoverUrl:'',coverDirty:false,coverBytes:null,coverMime:''};
 function renderIdentifyView(){
  if(!desktop)return '<div class="empty-library"><div><div class="empty-icon">'+svg('search',20)+'</div><strong>'+escBrand()+' Identify needs the desktop app</strong>Open '+escBrand()+' Player from its desktop build to identify songs.</div></div>';
  return `<div class="section-heading"><h3>Identify a song</h3></div>
@@ -3792,20 +3705,10 @@ async function startIdentify(){
  const record=picks[0];
  idState.busy=true;
  idState.record=record;idState.file=desktopFile(record);
- idState.local=null;idState.candidates=[];idState.current=null;idState.coverUrl='';idState.folderMatch=null;
+ idState.local=null;idState.candidates=[];idState.current=null;idState.coverUrl='';
  idState.editCoverUrl='';idState.coverDirty=false;idState.coverBytes=null;idState.coverMime='';
  openIdentifyModal('listening');
  try{
-  // Before anything else: is this song already sitting in one of the tracked
-  // music folders? A same-named twin means the user is probably re-identifying
-  // a copy they already have — offer to swap it for this file. Skipped when the
-  // picked file itself lives in a tracked folder (it would just match itself).
-  try{
-   const lowPath=String(record.path||'').toLowerCase();
-   const insideTracked=trackedFolders.some(f=>lowPath.startsWith(normalizeFolderPath(f).toLowerCase()+'\\'));
-   if(!insideTracked&&desktop.findSimilarInFolders)idState.folderMatch=await desktop.findSimilarInFolders({name:record.name,folders:trackedFolders});
-  }catch{}
-  if(idState.folderMatch){openIdentifyMatchModal();return}
   const local=await parseTrackDetails(idState.file);
   idState.local=local||{title:'',artist:'',album:'',trackNo:null,art:null,artFull:null};
   idState.localArtUrl=idState.local.art?URL.createObjectURL(idState.local.art):'';
@@ -4001,9 +3904,6 @@ const miniIcon=(name,size)=>'<svg width="'+size+'" height="'+size+'" viewBox="0 
 $('#miniShuffle').innerHTML=miniIcon('shuffle',17);$('#miniPrev').innerHTML=miniIcon('previous',17);$('#miniNext').innerHTML=miniIcon('next',17);
 $('#miniShuffle').classList.toggle('selected',st.shuffle);$('#miniRepeat').classList.toggle('selected',st.repeatMode>0);$('#miniRepeat').innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>'+(st.repeatMode===2?'<span class="control-badge">1</span>':'');$('#miniFill').style.width=Math.max(0,Math.min(100,st.progress*100))+'%'}
 function apply(s){st={...st,...s};paint()}
-// Paint immediately: if no state has been pushed yet the controls must still show
-// their icons — waiting for the first state push left the buttons blank forever.
-paint();
 const idle=setTimeout(()=>{paint();if(!st.title)$('#miniTitle').textContent='Waiting for the player…'},3000);
 g.miniGetState&&g.miniGetState().then(s=>{clearTimeout(idle);if(s)apply(s)}).catch(()=>{});
 g.miniOnState&&g.miniOnState(s=>apply(s));
