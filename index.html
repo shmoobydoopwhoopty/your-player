@@ -1649,7 +1649,12 @@ function openNowPlaying(){if(current<0)return;$('#npOverlay').classList.add('sho
 // Prefer a genuinely high-res cover (Deezer, cached) over the embedded art,
 // then let the sharpening pipeline clean up whatever is still low-res.
 let source=full;try{const hires=await getAlbumArtHires(t);if(hires){const hiBmp=await loadToBitmap(hires).catch(()=>null);const fullBmp=full?await loadToBitmap(full).catch(()=>null):null;if(hiBmp&&(!fullBmp||hiBmp.width>fullBmp.width+40||hiBmp.height>fullBmp.height+40))source=hires;try{hiBmp&&hiBmp.close()}catch{}try{fullBmp&&fullBmp.close()}catch{}}}catch{}
-if(!source)return;const improved=await upscaleArt(source).catch(()=>null);const finalSrc=improved||source;if(current>=0&&tracks[current]===t){artEl.src=finalSrc;$('#npOverlay').style.setProperty('--np-bg',`url("${finalSrc}")`)}}).catch(()=>{})}
+if(!source)return;const improved=await upscaleArt(source).catch(()=>null);let finalSrc=improved||source;
+// Only swap in the higher-res art if it actually decodes — a failed swap left the
+// blown-up frame showing its near-black background ("the whole view went dark
+// a couple of seconds after opening"). Verify by decoding first.
+if(improved){const test=new Image();const ok=await new Promise(r=>{test.onload=()=>r(test.naturalWidth>1);test.onerror=()=>r(false);test.src=improved});if(!ok)finalSrc=source}else finalSrc=source;
+if(current>=0&&tracks[current]===t){if(finalSrc===source&&artEl.src&&!artEl.src.endsWith(finalSrc)&&artEl.src!==finalSrc){/* keep showing what already painted */}artEl.src=finalSrc;$('#npOverlay').style.setProperty('--np-bg',`url("${finalSrc}")`)}}).catch(()=>{})}
 function closeNowPlaying(){$('#npOverlay').classList.remove('show');document.body.classList.remove('np-open')}
 let crossfadeSeconds=0;
 try{const savedFade=Number(localStorage.getItem('yourplayer.crossfade.v1'));if(Number.isFinite(savedFade))crossfadeSeconds=Math.max(0,Math.min(10,savedFade))}catch{}
