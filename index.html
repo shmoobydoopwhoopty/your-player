@@ -147,6 +147,26 @@ body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12
    player's own size sliders still rule above them. */
 /* --now-zoom: window-driven factor for the whole "now playing" cluster —
    song name, artist, album, play counter and heart all shrink/grow together. */
+/* Collide-proof transport slot: the controls row must be sized BY its
+   fixed-size content (never squeezed by flex) — volume & extras too. The now
+   track tightens its internal gap as the window narrows so the pill/heart
+   still fit; the volume slider keeps a thumb-width floor. Without these,
+   narrow windows let the row overflow into the like-heart and the volume
+   group into the controls. */
+.playerbar>[data-part="controls"]{flex:0 0 auto;width:auto}
+.playerbar>[data-part="controls"] .play-controls{flex-wrap:nowrap}
+.playerbar>[data-part="volume"]{flex:0 0 auto}
+.playerbar>[data-part="extras"]{flex:0 0 auto}
+.playerbar .volume-slider{min-width:14px}
+.playerbar>[data-part="volume"]{min-width:0}
+.playerbar .player-title-block{min-width:0;max-width:100%}
+.playerbar .player-track{min-width:0;gap:clamp(4px,1.2vw,11px)}
+.playerbar .player-track .player-like,.playerbar .player-track .listened-pill{flex:none}
+/* When the squeezed now-part has no room left for its fixed tail, the fit
+   loop toggles classes on the bar: first the play-count pill goes, then the
+   like heart — never an overlap. */
+.playerbar.no-room .listened-pill{display:none}
+.playerbar.no-room-hard .player-like{display:none}
 @media(max-width:1120px){
  .playerbar{--ctrl-btn-size:26px;--play-btn-size:38px;--p-art-size:42px;--vol-scale:.85;--now-zoom:.85}
 .main-shell:not([data-player-dock="left"]):not([data-player-dock="right"]) .playerbar{gap:12px}
@@ -179,7 +199,12 @@ body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12
    selectors hold the line against the docked-sidebar nowrap/wrap variants. */
 .player-track{display:flex;align-items:center;gap:11px;min-width:0;flex-wrap:nowrap!important}
 .playerbar .player-track,.main-shell[data-player-dock="left"] .playerbar .player-track,.main-shell[data-player-dock="right"] .playerbar .player-track{min-width:0;flex-wrap:nowrap!important}
-.player-track .player-title-block,.main-shell[data-player-dock="left"] .playerbar .player-title-block,.main-shell[data-player-dock="right"] .playerbar .player-title-block{flex:1 1 0;min-width:80px;overflow:hidden}
+/* Title floor: the 80px title-block floor applies to the standalone (wrapper
+   class only), NOT inside the player bar — the bar needs the block able to
+   shrink to ~0 so the heart/pill never spill into the controls at narrow
+   widths. */
+.playertrack .player-title-block{flex:1 1 0;min-width:80px;overflow:hidden}
+.player-track .player-title-block,.main-shell[data-player-dock="left"] .playerbar .player-title-block,.main-shell[data-player-dock="right"] .playerbar .player-title-block{flex:1 1 0;min-width:0;overflow:hidden}
 .playerbar .player-track .player-title-block{width:auto}
 .player-track .listened-pill{flex:none}
 .player-track .player-like{flex:none}.player-cover{height:49px;width:49px;flex:none;object-fit:cover;border-radius:6px;background:#232825}.playerbar .player-track{min-width:0}.player-title-block{min-width:0;overflow:hidden}.player-track-name{font-size:calc(11px*var(--player-text-zoom,1)*var(--now-zoom,1));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-track-name.title-scroll{text-overflow:clip}.title-scroll-inner{display:inline-block;white-space:nowrap;padding-right:34px;animation:title-scroll var(--title-scroll-dur,12s) ease-in-out 1.4s infinite}@keyframes title-scroll{0%,14%{transform:translateX(0)}50%,62%{transform:translateX(var(--title-shift,0px))}98%,100%{transform:translateX(0)}}/* Album name in the player is a real button like the artist: click opens that
@@ -1320,6 +1345,165 @@ function updatePlayerTitleScroll(){
  });
 }
 window.addEventListener('resize',()=>{const el=$('#playerTitle');if(el&&el.classList.contains('title-scroll'))updatePlayerTitleScroll()});
+/* ── Player-bar collision guard (scaled-down windows) ─────────────────────
+   The transport slot and volume/extras groups are pinned to their content
+   width above (never squeezed by flex). What STILL overflows at very narrow
+   widths is the now-playing block's fixed tail (play-count pill + like
+   heart): the title shrinks but a pill+heart can exceed what the block is
+   given. The fit loop below first tightens the block's internal gap (CSS)
+   and, if items still poke out of the now-part, hides the pill, then the
+   heart (`.no-room` / `.no-room-hard`) — it never lets anything visually
+   collide. Everything is re-run from a ResizeObserver on the bar and from
+   window resize; classes clear as soon as the window grows back. The two
+   CSS rules for these classes live up in the collide-proof transport-slot
+   style block above (styles belong in the stylesheet, not this script).*/
+function playerBarCollisions(){
+ try{
+  const bar=$('.playerbar');if(!bar||bar.offsetParent===null)return[];
+  const cands=[];
+  const now=$('.player-track',bar),controls=$('.play-controls',bar),vol=$('.volume-control',bar),extras=$('.player-right[data-part="extras"]',bar);
+  for(const el of [now,controls,vol,extras])if(el)cands.push(el);
+  for(const el of ($$('.play-controls .control-btn,.play-controls .play-main',bar)))cands.push(el);
+  for(const el of ($$('.player-right .right-btn,.volume-slider',bar)))cands.push(el);
+  for(const el of ($$('.player-track .player-like,.player-track .listened-pill',bar)))cands.push(el);
+  const rects=cands.map(el=>({el,r:el.getBoundingClientRect()}));
+  const hits=[];
+  for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){
+   const a=rects[i],b=rects[j];
+   if(a.el.contains(b.el)||b.el.contains(a.el))continue;
+   const ra=a.r,rb=b.r;
+   const ox=Math.min(ra.right,rb.right)-Math.max(ra.left,rb.left);
+   const oy=Math.min(ra.bottom,rb.bottom)-Math.max(ra.top,rb.top);
+   if(ox>2&&oy>2)hits.push({a:a.el,b:b.el,overlap:Math.round(ox)});
+  }
+  return hits;
+ }catch{return[]}
+}
+function playerBarFitStep(){
+ // One deduped shrink step: art 1, ctrl btns 1, play btn 1, vol 2, textzoom 0.5.
+ // Reads/writes the LIVE fitted values (barFit.var) — never layout[key], which
+ // is the user's own slider value and must survive the shrink untouched so
+ // the relax pass knows what to grow back to.
+ const step=[];
+ const art=barFit.art;if(art>34)step.push({name:'art',val:art-1,key:'playerArtSize'});
+ const ctrl=barFit.ctrl;if(ctrl>20)step.push({name:'ctrl',val:ctrl-1,key:'ctrlBtnSize'});
+ const play=barFit.play;if(play>30)step.push({name:'play',val:play-1,key:'playBtnSize'});
+ if(barFit.vol>.5)step.push({name:'vol',val:Math.max(.5,barFit.vol-.04),key:'volScale'});
+ if(barFit.pt>.75)step.push({name:'pt',val:Math.max(.75,barFit.pt-.03),key:'playerTextScale'});
+ return step[0]||null;
+}
+/* barFit: the live transport sizes currently applied to the bar (inline vars
+   on .playerbar, which deterministically override both the :root layout vars
+   and the media-query step-downs). Seeded from the user's stored values on
+   first use; shrunk by the fit loop; grown back toward layout[key] by the
+   relax pass when the window widens. Users moving the real sliders update
+   layout[key] AND clear the inline overrides, so their intent always wins.*/
+const BAR_FIT_VARS={art:'--p-art-size',ctrl:'--ctrl-btn-size',play:'--play-btn-size',vol:'--vol-scale',pt:'--player-text-zoom'};
+const BAR_FIT_TO_LAYOUT={art:'playerArtSize',ctrl:'ctrlBtnSize',play:'playBtnSize',vol:'volScale',pt:'playerTextScale'};
+const BAR_FIT_DEFAULT={art:49,ctrl:30,play:44,vol:1,pt:1};
+let barFit=null;
+function barEl(){return $('.playerbar')}
+function barFitSeed(){
+ if(barFit)return barFit;
+ const bar=barEl();const cs=getComputedStyle(bar||document.documentElement);
+ const read=name=>parseFloat(cs.getPropertyValue(name))||BAR_FIT_DEFAULT[name];
+ barFit={};
+ for(const k of Object.keys(BAR_FIT_VARS)){
+  const layoutKey=BAR_FIT_TO_LAYOUT[k];
+  const user=k==='vol'||k==='pt'?(Number(layout[layoutKey])||100)/100:Number(layout[layoutKey])||BAR_FIT_DEFAULT[k];
+  barFit[k]=Number.isFinite(user)?user:read(BAR_FIT_VARS[k]);
+ }
+ return barFit;
+}
+function barFitApply(){
+ const bar=barEl();if(!bar||!barFit)return;
+ bar.style.setProperty(BAR_FIT_VARS.art,barFit.art+'px');
+ bar.style.setProperty(BAR_FIT_VARS.ctrl,barFit.ctrl+'px');
+ bar.style.setProperty(BAR_FIT_VARS.play,barFit.play+'px');
+ bar.style.setProperty(BAR_FIT_VARS.vol,String(barFit.vol));
+ bar.style.setProperty(BAR_FIT_VARS.pt,String(barFit.pt));
+}
+function barFitClear(){
+ const bar=barEl();if(!bar)return;
+ for(const name of Object.values(BAR_FIT_VARS))bar.style.removeProperty(name);
+ barFit=null;
+}
+let barFitRaf=0,barFitBusy=false;
+function schedulePlayerBarFit(){if(barFitRaf)cancelAnimationFrame(barFitRaf);barFitRaf=requestAnimationFrame(()=>{barFitRaf=0;runPlayerBarFit()})}
+/* Natural (intrinsic) width of a player-bar tail element, measured once while
+   it is visible and cached until something forces a refresh. Used by the room
+   check so hiding an element doesn't erase its width from the math.*/
+const barRoomWidths=new WeakMap();
+function barRoomNatural(el){
+ if(!el)return 0;
+ const cached=barRoomWidths.get(el);
+ if(cached!==undefined&&cached>0)return cached;
+ const w=el.getBoundingClientRect().width+11; // trailing flex gap
+ if(w>0)barRoomWidths.set(el,w);
+ return w;
+}
+function playerBarRoomClasses(){
+ // The now-part's fixed tail (pill, then heart) can exceed the squeezed slot;
+ // hide them progressively — they can't be shrunk and must not overlap.
+ const bar=barEl();if(!bar)return;
+ const now=$('.player-track',bar),pill=$('#listenedPill'),like=$('.player-like',bar);
+ if(!now||!like)return;
+ const nr=now.getBoundingClientRect();
+ // Measure natural widths STABLE while hidden: if an element is currently
+ // hidden by our classes, read its width from the cached 'natural' size
+ // (see barRoomNatural below) so toggling classes can't flip-flop between
+ // passes.
+ const pillHidden=!pill||pill.hidden||getComputedStyle(pill).display==='none';
+ const likeHidden=getComputedStyle(like).display==='none'||like.hidden;
+ const pr=pillHidden?{right:nr.left+barRoomNatural(pill)}:pill.getBoundingClientRect();
+ const lr=likeHidden?{right:nr.left+barRoomNatural(like)}:like.getBoundingClientRect();
+ const pillOver=pr.right-nr.right;
+ const likeOver=lr.right-nr.right;
+ const avail=nr.right-nr.left;
+ // Fixed tail when pill is hidden = heart only:
+ const likeNeeds=pillHidden?barRoomNatural(like):barRoomNatural(pill)+11+barRoomNatural(like);
+ bar.classList.toggle('no-room',pillOver>1||likeOver>1);
+ bar.classList.toggle('no-room-hard',pillOver>1||likeNeeds>avail+1);
+}
+function runPlayerBarFit(){
+ if(barFitBusy)return;barFitBusy=true;
+ try{
+  const bar=barEl();if(!bar||bar.offsetParent===null)return;
+  barFitSeed();barFitApply();
+  // Window GREW back (no collisions anymore)? Relax the live fitted sizes
+  // stepwise toward the user's stored slider values, so a narrow window
+  // never leaves the bar permanently mini.
+  if(!playerBarCollisions().length){
+   let grew=false;
+   for(const k of Object.keys(barFit)){
+    if(k==='vol'||k==='pt'){
+     const saved=(Number(layout[BAR_FIT_TO_LAYOUT[k]])||100)/100;
+     if(barFit[k]<saved){barFit[k]=Math.min(saved,barFit[k]+.04);grew=true}
+    }else{
+     const saved=Number(layout[BAR_FIT_TO_LAYOUT[k]])||BAR_FIT_DEFAULT[k];
+     if(barFit[k]<saved){barFit[k]=Math.min(saved,barFit[k]+2);grew=true}
+    }
+   }
+   if(grew)barFitApply();
+  }
+  let guard=0;
+  while(playerBarCollisions().length&&guard<16){
+   const step=playerBarFitStep();if(!step)break;
+   barFit[{art:'art',ctrl:'ctrl',play:'play',vol:'vol',pt:'pt'}[step.name]]=step.val;
+   barFitApply();
+   guard++;
+  }
+ }finally{barFitBusy=false}
+ playerBarRoomClasses();
+ // If the bar STILL collides after this pass, run again next frame — each pass
+ // moves at least one size, so this converges instead of stalling on a
+ // partially-settled layout right after a resize.
+ if(!barFitBusy&&barFit&&playerBarCollisions().length&&barFitPasses<4){barFitPasses++;requestAnimationFrame(()=>schedulePlayerBarFit())}
+ else barFitPasses=0;
+}
+let barFitPasses=0;
+if(typeof ResizeObserver!=='undefined'){const pbar=$('.playerbar');if(pbar)new ResizeObserver(()=>schedulePlayerBarFit()).observe(pbar)}
+window.addEventListener('resize',schedulePlayerBarFit);
 function updateListenedPill(){const t=currentTrack();const pill=$('#listenedPill');if(!pill)return;if(!t){pill.hidden=true;return}pill.hidden=false;pill.innerHTML=`${svg('play',11)} <b>${t.playCount||0}</b>`;pill.title=`${t.title} has been played ${t.playCount||0} ${((t.playCount||0)===1)?'time':'times'} — counted each time it starts over`}
 $('#playerArtist').addEventListener('click',()=>{const t=currentTrack();if(t)openArtistPage(t.artist)});
 $('#playerAlbum').addEventListener('click',()=>{const t=currentTrack();if(!(t&&t.album&&t.album!=='Single'))return;searchTerm='';const searchInput=$('#searchInput');if(searchInput)searchInput.value='';openAlbumPage(t.album)});
@@ -3162,8 +3346,10 @@ function transportCollision(aKey,bKey){
    if(overlapX>0.5&&overlapY>0.5)return true;
   }
   return false;
- }catch{return false}}
-function applyLayout(persist=true){
+ }catch{return false}} function applyLayout(persist=true){
+ // User-driven layout change: the live auto-fit override (barFit) must yield —
+ // re-seed it from the new stored values so the fit loop resumes from there.
+ barFitClear();
  const root=document.documentElement;
  // Collision-driven transport sizing: each slider (play/pause size, player
  // buttons size, album art) is INDEPENDENT — moving one never nudges a
