@@ -411,10 +411,15 @@ input[type=color].slot-off{opacity:.28}
 .win-btn:hover{background:#ffffff14;color:#fff}
 .win-btn.close:hover{background:#e81123;color:#fff}
 /* ── Appearance settings ── */
-.settings-pop{position:fixed;z-index:70;width:368px;max-height:calc(100dvh - 110px);overflow:auto;scrollbar-width:thin;padding:16px 15px 15px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 70px #000a;opacity:0;pointer-events:none;transform:scale(.97) translateY(-4px);transition:.15s ease}
+.settings-pop{position:fixed;z-index:70;width:368px;max-height:76dvh;overflow:auto;scrollbar-width:thin;padding:11px 14px 11px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 22px 70px #000a;opacity:0;pointer-events:none;transform:scale(.97) translateY(-4px);transition:.15s ease}
 .settings-pop.open{opacity:1;pointer-events:auto;transform:none}
-.settings-pop h4{margin:0;font:700 13px Manrope,sans-serif}
-.settings-pop .pop-label{font-size:9px;letter-spacing:1.3px;text-transform:uppercase;font-weight:700;color:var(--muted);margin:14px 0 8px}
+.settings-pop h4{margin:0;font:700 12px Manrope,sans-serif}
+.settings-pop .pop-label{font-size:8.5px;letter-spacing:1.15px;text-transform:uppercase;font-weight:700;color:var(--muted);margin:10px 0 5px}
+/* Compact settings panels: denser rows and smaller helpers so both panels
+   cover far less vertical space and surrounding UI stays visible. */
+.settings-pop .slider-row{margin-top:4px;gap:6px;font-size:9.5px}
+.settings-pop .slider-row b{width:32px;font-size:9px}
+.settings-pop .folder-note{margin-top:5px;font-size:8.5px;line-height:1.4}
 .swatch-row{display:flex;gap:7px;flex-wrap:wrap}
 .swatch{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;background:var(--sw);transition:.12s}
 .swatch:hover{transform:scale(1.12)}
@@ -506,13 +511,31 @@ input[type=color].slot-off{opacity:.28}
 .layout-preset{border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:8px 6px;font-size:10px;font-weight:700;color:var(--text-strong);cursor:pointer}
 .layout-preset:hover{border-color:#ffffff2a;color:#fff}
 .layout-preset.selected{border-color:var(--accent);color:var(--text);box-shadow:0 0 0 1px var(--accent)}
-.layout-slider-row{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:10px;color:var(--text-strong)}
-.layout-slider-row span{width:52px;flex:none;line-height:1.35}
+.layout-slider-row{display:flex;align-items:center;gap:7px;margin-top:4px;font-size:9.5px;color:var(--text-strong)}
+.layout-slider-row span{width:56px;flex:none;line-height:1.25}
 .slider-row{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:10px;color:var(--text-strong)}
+.settings-pop .layout-presets{gap:5px}
+.settings-pop .seg button{height:21px;padding:0 9px;font-size:9px}
+.settings-pop .fx-toggle-row{padding:6px 9px;margin-bottom:5px}
+.settings-pop .fx-toggle-row b{font-size:9.5px}
+.settings-pop .cc-actions{margin-top:5px}
+.settings-pop .pop-label{margin:7px 0 4px}
+.settings-pop .grad-preview{height:16px}
+.settings-pop .fx-toggle-row b{font-size:9px}
+.settings-pop .cc-toggle{font-size:9.5px}
+.settings-pop .theme-save-row{margin-top:5px}
+.settings-pop .theme-save-row input{height:24px;font-size:10px}
+.settings-pop .grad-builder .gb-row{gap:6px;font-size:9.5px}
+.settings-pop .grad-builder .gb-row input[type=color]{width:24px;height:20px}
+.settings-pop .swatch{width:21px;height:21px}
+.settings-pop .theme-grid{gap:5px;margin-top:2px}
+.settings-pop .theme-card{padding:5px 3px 4px;font-size:8.5px;gap:3px}
+.settings-pop .theme-chip{height:15px}
+.settings-pop .settings-pop-wide-note{font-size:8.5px}
 .slider-row span{flex:1;min-width:0;line-height:1.35}
 .slider-row b{width:34px;text-align:right;font-size:9.5px;color:var(--muted);font-weight:600;flex:none}
 .layout-slider-row input{flex:1;min-width:0;accent-color:var(--accent);height:3px;cursor:pointer}
-.layout-slider-row b{width:36px;text-align:right;font-size:9.5px;color:var(--muted);font-weight:600}
+.layout-slider-row b{width:34px;text-align:right;font-size:9px;color:var(--muted);font-weight:600}
 .layout-edit-btn{width:100%;justify-content:center;margin-top:11px;height:34px}
 body.layout-edit .sidebar,body.layout-edit .queue-card,body.layout-edit .top-actions,body.layout-edit .spotlight,body.layout-edit .home-songs{position:relative}
 .layout-grip{position:absolute;z-index:8;display:flex;align-items:center;gap:5px;border:0;border-radius:14px;background:var(--accent);color:var(--on-accent);padding:4px 10px;font-size:9.5px;font-weight:800;letter-spacing:.3px;cursor:grab;box-shadow:0 6px 18px #0007;touch-action:none;user-select:none;-webkit-user-select:none}
