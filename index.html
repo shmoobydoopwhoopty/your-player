@@ -2641,7 +2641,18 @@ applyAppearance();
 // ── Custom color pickers (per-area overrides + text shadow) ────────────────
 const customColorsKey='yourplayer.customColors.v1';
 const CUSTOM_SWATCH_DEFAULTS={accent:'#d8ff63',bg:'#0b0d0e',sidebar:'#0a0c0d',panel:'#131717',text:'#f4f5f3',textStrong:'#e6eae5',textDim:'#8b938f',textFaint:'#747d7a',muted:'#92999a',player:'#111414',buttons:'#b5bcba',shadow:'#000000',tabs:'#8f9795',cardBg:'#1b2020',cardBorder:'#3b4341',rowBg:'#000000',artistName:'#f4f5f3',danger:'#ff7b6b',link:'#8fc7ff',hoverHi:'#ffffff'};
-const CUSTOM_COLOR_DEFS=[['accent','Accent'],['bg','Background'],['sidebar','Tab bar'],['panel','Panels'],['text','Text'],['textStrong','Bright text'],['textDim','Secondary text'],['textFaint','Faint text'],['muted','Muted text'],['player','Player'],['playBtn','Play/pause button'],['playerControls','Player control buttons'],['tabs','Tab buttons'],['cardBg','Album & artist cards'],['cardBorder','Album card borders'],['rowBg','Song rows'],['shadow','Drop shadow'],['artistName','Artist names'],['danger','Error & warning text'],['link','Info & link text'],['hoverHi','Hover highlight']];
+/* Custom colors, grouped by what they color: rows share group information so
+   the Customize panel shows Songs / Albums & artists / Player / App chrome /
+   Text sections instead of one long undifferentiated list. */
+const CUSTOM_COLOR_GROUPS=[
+ ['Songs',[['rowBg','Song rows'],['textDim','Secondary text in song lists'],['textFaint','Faint text such as durations']]],
+ ['Albums & artists',[['cardBg','Album & artist cards'],['cardBorder','Album card borders'],['artistName','Artist names']]],
+ ['Player',[['player','Player'],['playBtn','Play/pause button'],['playerControls','Player control buttons']]],
+ ['App',[['accent','Accent'],['bg','Background'],['sidebar','Tab bar'],['panel','Panels'],['tabs','Tab buttons'],['shadow','Drop shadow'],['hoverHi','Hover highlight'],['danger','Error & warning text'],['link','Info & link text']]],
+ ['Text',[['text','Text'],['textStrong','Bright text'],['muted','Muted text']]],
+];
+const CUSTOM_COLOR_DEFS=CUSTOM_COLOR_GROUPS.flatMap(([,rows])=>rows);
+const CUSTOM_COLOR_LABELS=new Map(CUSTOM_COLOR_DEFS);
 const CUSTOM_SLIDER_KEYS=['shadowOp','tabbarOpacity','bgOpacity','playerOpacity','cardOpacity','panelOpacity','spotOpacity','dropOpacity','textStrongOpacity','textDimOpacity','textFaintOpacity'];
 const GRADIENT_COLOR_KEYS=new Set(['bg','panel','player','sidebar','cardBg']);
 const surfaceOpacityVersion=2;
@@ -2785,23 +2796,31 @@ function syncColorSliders(){
 }
 function bindColorSlider(id,key){const input=$(id);if(!input)return;input.addEventListener('input',()=>{customColors[key]=Number(input.value);applyCustomColors();persistCustomColors();syncColorSliders();if(key==='dropOpacity'){const overlay=$('#dropOverlay');if(overlay&&!dropPreviewTimer){overlay.classList.add('show');dropPreviewTimer=setTimeout(()=>{overlay.classList.remove('show');dropPreviewTimer=0},1400)}}})}
 let dropPreviewTimer=0;
+function makeColorItem(key,label){
+ const item=document.createElement('label');item.className='cc-item';item.title=label;
+ if(GRADIENT_COLOR_KEYS.has(key)){
+  item.classList.add('cc-item-grad');
+  item.innerHTML=`<span>${label}</span><span class="cc-duo"><input type="color" data-cc="${key}" aria-label="${label} color"><input type="color" data-cc2="${key}" aria-label="${label} gradient end" title="${label} — pick a second color to make a gradient"></span>`;
+  const gradInput=item.querySelector('input[data-cc2]');
+  gradInput.value=customColors[key+'2']||customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
+  gradInput.addEventListener('input',()=>{customColors[key+'2']=gradInput.value;applyCustomColors();persistCustomColors();if(ccPopState.key===key)$('#ccPopSolid').value=gradInput.value});
+ }else{
+  item.innerHTML=`<span>${label}</span><input type="color" data-cc="${key}" aria-label="${label} color">`;
+ }
+ const input=item.querySelector('input');
+ input.value=customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
+ input.addEventListener('input',()=>{customColors[key]=input.value;delete customColors[key+'2'];applyCustomColors();persistCustomColors()});
+ return item}
 function buildCustomColors(){
  const grid=$('#ccGrid');if(!grid||grid.dataset.built)return;grid.dataset.built='1';
- for(const [key,label] of CUSTOM_COLOR_DEFS){
-  const item=document.createElement('label');item.className='cc-item';item.title=label;
-  if(GRADIENT_COLOR_KEYS.has(key)){
-   item.classList.add('cc-item-grad');
-   item.innerHTML=`<span>${label}</span><span class="cc-duo"><input type="color" data-cc="${key}" aria-label="${label} color"><input type="color" data-cc2="${key}" aria-label="${label} gradient end" title="${label} — pick a second color to make a gradient"></span>`;
-   const gradInput=item.querySelector('input[data-cc2]');
-   gradInput.value=customColors[key+'2']||customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
-   gradInput.addEventListener('input',()=>{customColors[key+'2']=gradInput.value;applyCustomColors();persistCustomColors();if(ccPopState.key===key)$('#ccPopSolid').value=gradInput.value});
-  }else{
-   item.innerHTML=`<span>${label}</span><input type="color" data-cc="${key}" aria-label="${label} color">`;
-  }
-  const input=item.querySelector('input');
-  input.value=customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
-  input.addEventListener('input',()=>{customColors[key]=input.value;delete customColors[key+'2'];applyCustomColors();persistCustomColors()});
-  grid.append(item);
+ // Grouped sections: colors for songs, albums/artists, the player, the app
+ // shell and text — each with its own mini-heading like the Layout panel.
+ for(const [groupName,rows] of CUSTOM_COLOR_GROUPS){
+  const label=document.createElement('div');label.className='pop-label';label.style.margin='8px 0 4px';label.textContent=groupName;
+  grid.append(label);
+  const section=document.createElement('div');section.className='cc-grid';section.style.marginBottom='2px';
+  for(const [key,rowLabel] of rows)section.append(makeColorItem(key,rowLabel));
+  grid.append(section);
  }
  const toggle=$('#ccShadowToggle');
  if(toggle){toggle.checked=customColors.shadowOn!==false;toggle.addEventListener('change',()=>{customColors.shadowOn=toggle.checked;applyCustomColors();persistCustomColors()})}
