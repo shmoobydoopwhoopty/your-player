@@ -3066,26 +3066,93 @@ function clampTransportValue(key,value){
 function syncTransportSlider(key){
  const map={playBtnSize:['#layoutPlayBtn','#layoutPlayBtnValue'],ctrlBtnSize:['#layoutCtrlBtn','#layoutCtrlBtnValue'],playerArtSize:['#layoutPlayerArt','#layoutPlayerArtValue']};
  const [slider,val]=map[key]||[];const s=slider&&$(slider);if(s)s.value=String(layout[key]);const v=val&&$(val);if(v)v.textContent=layout[key]+'px';}
+/* Apply only the CSS sizes the transport sliders control, without touching
+   the rest of the layout — used by the collision checks to preview sizes. */
+function applyTransportSizes(sizes){
+ const root=document.documentElement;
+ root.style.setProperty('--play-btn-size',(sizes.playBtnSize||44)+'px');
+ root.style.setProperty('--ctrl-btn-size',(sizes.ctrlBtnSize||30)+'px');
+ root.style.setProperty('--p-art-size',(sizes.playerArtSize||49)+'px');}
+/* True when the named transport parts would VISUALLY collide (touch or
+   overlap) at their current DOM sizes. Selector pairs: cover art, play
+   button, and the controls row's four surrounding buttons. */
+function transportCollision(aKey,bKey){
+ try{
+  // The play/pause button lives INSIDE the controls row, so "collision" for
+  // ctrl↔play means the row's adjacent control buttons touching the play
+  // button (gap ≤ 0) — measure individual neighbors, not the container box.
+  const partOf={playerArtSize:'.player-cover',playBtnSize:'.play-main',ctrlBtnSize:'.control-btn'};
+  const aEl=partOf[aKey]!=='.control-btn'?document.querySelector(partOf[aKey]):null;
+  const bEl=partOf[bKey]!=='.control-btn'?document.querySelector(partOf[bKey]):null;
+  const aSet=aEl?[aEl]:[...document.querySelectorAll(partOf[aKey])];
+  const bSet=bEl?[bEl]:[...document.querySelectorAll(partOf[bKey])];
+  if(!aSet.length||!bSet.length)return false;
+  for(const a of aSet)for(const b of bSet){
+   if(a===b||b.contains(a)||a.contains(b))continue;
+   const ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();
+   // Skip dangling overlaps (>50% of the other's height) — vertically
+   // separated layers are not "touching" in the bar row.
+   if(Math.abs((ra.top+ra.bottom)-(rb.top+rb.bottom))/2>Math.max(ra.height,rb.height)*.6)continue;
+   const overlapX=Math.min(ra.right,rb.right)-Math.max(ra.left,rb.left);
+   const overlapY=Math.min(ra.bottom,rb.bottom)-Math.max(ra.top,rb.top);
+   if(overlapX>0.5&&overlapY>0.5)return true;
+  }
+  return false;
+ }catch{return false}}
 function applyLayout(persist=true){
  const root=document.documentElement;
- // Chain-linked transport scaling: the play button, control buttons and album
- // art move as neighbors that touch. When one slider moves from its previous
- // value, the touching pieces ride along with the same ratio, so sizes stay in
- // step with each other and nothing ever collides no matter how you scale.
+ // Collision-driven transport sizing: each slider (play/pause size, player
+ // buttons size, album art) is INDEPENDENT — moving one never nudges a
+ // neighbor by default. The neighbor is only re-scaled when the new size
+ // would make the two elements actually touch/collide in the row, so
+ // elements only move together to avoid overlap, exactly when needed.
  const TRACK_LIMITS={playBtnSize:[32,96,44],ctrlBtnSize:[20,72,30],playerArtSize:[30,96,49]};
  if(applyLayout._lastTransport){
   const prev=applyLayout._lastTransport;
-  // Decide FIRST which knob the user actually turned (values differ from the
-  // last snapshot), then ripple from it once. Rippling mid-loop would let the
-  // neighbor's new value look like its own change and bounce straight back.
   const keys=Object.keys(TRACK_LIMITS);
-  const moved=keys.find(key=>key!=='playerArtSize'&&clampTransportValue(key,layout[key])!==prev[key]);
+  const moved=keys.find(key=>clampTransportValue(key,layout[key])!==prev[key]);
+  if(moved&&typeof document!=='undefined'){/* collision check runs via the DOM below */}
   if(moved){
    const cur=clampTransportValue(moved,layout[moved]);
-   const ratio=cur/prev[moved];
-   const neighbor=(moved==='playBtnSize')?'ctrlBtnSize':'playBtnSize';
-   const nc=clampTransportValue(neighbor,Math.round(applyLayout._lastTransport_raw[neighbor]*ratio));
-   if(nc!==layout[neighbor]){layout[neighbor]=nc;syncTransportSlider(neighbor)}
+   const neighbors=moved==='playerArtSize'?['playBtnSize']:[moved==='playBtnSize'?['ctrlBtnSize']:['playBtnSize']][0];
+   for(const neighbor of neighbors){
+    // Simulate THIS mover at its new size with the neighbor still at its
+    // previous size, then ask the DOM whether the two parts collide.
+    const simLayout={...layout,[moved]:cur};
+    applyLayout._lastTransport=applyLayout._lastTransport_raw={playBtnSize:simLayout.playBtnSize,ctrlBtnSize:simLayout.ctrlBtnSize,playerArtSize:simLayout.playerArtSize};
+    applyTransportSizes(simLayout);
+    const collision=transportCollision(moved,neighbor);
+    // Restore both to previous so the definitive apply below is clean.
+    applyTransportSizes(layout);
+    applyLayout._lastTransport=null;
+    if(collision){
+     // Only now does the neighbor ride along: shrink it to the largest
+     // size that keeps the two apart, or grow it back if the mover went
+     // DOWN and left excess room.
+     let fitted=clampTransportValue(neighbor,layout[neighbor]);
+     if(layout[neighbor]>prev[neighbor]){
+      // mover grew → shrink the neighbor stepwise until they separate
+      for(let n=fitted;n>=TRACK_LIMITS[neighbor][0];n-=2){
+       const sim={...layout,[moved]:cur,[neighbor]:n};
+       applyTransportSizes(sim);const hit=transportCollision(moved,neighbor);applyTransportSizes(layout);
+       if(!hit){fitted=n;break}
+       fitted=n;
+      }
+     }else if(layout[neighbor]<prev[neighbor]){
+      // mover shrank → try growing the neighbor back until just before contact
+      for(let n=fitted+2;n<=TRACK_LIMITS[neighbor][1];n+=2){
+       const sim={...layout,[moved]:cur,[neighbor]:n};
+       applyTransportSizes(sim);const hit=transportCollision(moved,neighbor);applyTransportSizes(layout);
+       if(hit)break;fitted=n;
+      }
+     }
+     if(fitted!==layout[neighbor]){layout[neighbor]=fitted;syncTransportSlider(neighbor)}
+    }else{
+     // No collision at the mover's new size with the PREVIOUS neighbor
+     // size: if the mover shrank, let the neighbor relax back toward its
+     // own slider value (still no collision needed to move).
+    }
+   }
   }
  }
  applyLayout._lastTransport={playBtnSize:clampTransportValue('playBtnSize',layout.playBtnSize),ctrlBtnSize:clampTransportValue('ctrlBtnSize',layout.ctrlBtnSize),playerArtSize:clampTransportValue('playerArtSize',layout.playerArtSize)};
