@@ -668,17 +668,7 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
   </div>
   <div class="cc-actions"><label class="cc-toggle"><input type="checkbox" id="ccShadowToggle"><span>Drop shadows</span></label><button class="text-btn" id="ccReset" type="button">Reset</button></div>
   <div class="slider-row"><span>Shadow strength</span><input type="range" id="ccShadowOpacity" min="0" max="1" step="0.01" aria-label="Drop shadow opacity"><b id="ccShadowOpacityValue"></b></div>
-  <div class="slider-row"><span>Tab bar opacity</span><input type="range" id="ccTabbarOpacity" min="0" max="1" step="0.01" aria-label="Tab bar opacity"><b id="ccTabbarOpacityValue"></b></div>
-  <div class="slider-row"><span>App background</span><input type="range" id="ccBgOpacity" min="0" max="1" step="0.01" aria-label="App background opacity"><b id="ccBgOpacityValue"></b></div>
-  <div class="slider-row"><span>Player opacity</span><input type="range" id="ccPlayerOpacity" min="0" max="1" step="0.01" aria-label="Player bar opacity"><b id="ccPlayerOpacityValue"></b></div>
-  <div class="slider-row"><span>Album &amp; artist cards</span><input type="range" id="ccCardOpacity" min="0" max="1" step="0.01" aria-label="Album and artist card opacity"><b id="ccCardOpacityValue"></b></div>
-  <div class="slider-row"><span>Menus &amp; panels</span><input type="range" id="ccPanelOpacity" min="0" max="1" step="0.01" aria-label="Menus and panels opacity"><b id="ccPanelOpacityValue"></b></div>
-  <div class="slider-row"><span>Home spotlight</span><input type="range" id="ccSpotOpacity" min="0" max="1" step="0.01" aria-label="Home spotlight card opacity"><b id="ccSpotOpacityValue"></b></div>
-  <div class="slider-row"><span>Drop overlay</span><input type="range" id="ccDropOpacity" min="0" max="1" step="0.01" aria-label="Drag and drop overlay opacity"><b id="ccDropOpacityValue"></b></div>
-  <div class="pop-label">Text opacity</div>
-  <div class="slider-row"><span>Bright text</span><input type="range" id="ccTextStrongOpacity" min="0" max="1" step="0.01" aria-label="Bright text opacity"><b id="ccTextStrongOpacityValue"></b></div>
-  <div class="slider-row"><span>Secondary text</span><input type="range" id="ccTextDimOpacity" min="0" max="1" step="0.01" aria-label="Secondary text opacity"><b id="ccTextDimOpacityValue"></b></div>
-  <div class="slider-row"><span>Faint text</span><input type="range" id="ccTextFaintOpacity" min="0" max="1" step="0.01" aria-label="Faint text opacity"><b id="ccTextFaintOpacityValue"></b></div>
+  <div class="folder-note">Surface and text opacity sliders live in Layout › Surfaces &amp; text.</div>
   <div class="pop-label">Background photo</div>
   <div class="folder-row"><div class="folder-path" id="bgPathRow" title="">No photo yet</div><button class="text-btn" id="bgChooseBtn" type="button">Choose</button><button class="text-btn" id="bgRemoveBtn" type="button" hidden>Remove</button></div>
   <div class="slider-row"><span>Blur</span><input type="range" id="bgBlurSlider" min="0" max="40" step="1" aria-label="Background photo blur in pixels"><b id="bgBlurValue"></b></div>
@@ -702,26 +692,43 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
 <div class="settings-pop" id="layoutPop" role="dialog" aria-label="Layout and sliders">
   <h4>Layout</h4>
   <div class="layout-presets" id="layoutPresets"></div>
+  <div class="pop-label">Tab bar</div>
   <div class="layout-slider-row"><span>Tab bar width</span><input type="range" id="layoutSidebarWidth" min="110" max="380" step="2" aria-label="Tab bar width"><b id="layoutSidebarValue"></b></div>
-  <div class="layout-slider-row"><span>Player height</span><input type="range" id="layoutPlayerHeight" min="72" max="150" step="2" aria-label="Player height"><b id="layoutPlayerValue"></b></div>
   <div class="layout-slider-row"><span>Tab bar height</span><input type="range" id="layoutTabbarHeight" min="34" max="110" step="2" aria-label="Tab bar height when docked top or bottom" title="Height of the tab bar when docked to the top or bottom of the window"><b id="layoutTabbarValue"></b></div>
+  <div class="pop-label">Player</div>
+  <div class="layout-slider-row"><span>Player height</span><input type="range" id="layoutPlayerHeight" min="72" max="150" step="2" aria-label="Player height"><b id="layoutPlayerValue"></b></div>
   <div class="layout-slider-row"><span>Progress bar</span><input type="range" id="layoutProgressHeight" min="2" max="16" step="1" aria-label="Player progress bar thickness"><b id="layoutProgressValue"></b></div>
   <div class="layout-slider-row"><span>Progress side</span><div class="seg" id="layoutProgressSide"><button type="button" data-side="top">Top</button><button type="button" data-side="bottom">Bottom</button></div></div>
-  <div class="layout-slider-row"><span>Search bar position</span><div class="seg" id="layoutSearchSide"><button type="button" data-side="far-left">Far left</button><button type="button" data-side="left">Left of buttons</button><button type="button" data-side="right">Right of buttons</button></div></div>
-  <div class="layout-slider-row"><span>Search width</span><input type="range" id="layoutSearchWidth" min="180" max="520" step="10" aria-label="Search bar width"><b id="layoutSearchWidthValue"></b></div>
-  <div class="layout-slider-row"><span>Back / forward buttons</span><div class="seg" id="layoutHistorySide"><button type="button" data-side="left">Left edge</button><button type="button" data-side="right">Right edge</button></div></div>
   <div class="layout-slider-row"><span>Player art</span><input type="range" id="layoutPlayerArt" min="30" max="96" step="1" aria-label="Album art size in the player bar"><b id="layoutPlayerArtValue"></b></div>
   <div class="layout-slider-row"><span>Play/pause button</span><input type="range" id="layoutPlayBtn" min="32" max="96" step="2" aria-label="Play and pause button size in the player"><b id="layoutPlayBtnValue"></b></div>
   <div class="layout-slider-row"><span>Player buttons</span><input type="range" id="layoutCtrlBtn" min="20" max="72" step="2" aria-label="Shuffle, previous, next and repeat button size"><b id="layoutCtrlBtnValue"></b></div>
   <div class="layout-slider-row"><span>Volume control size</span><input type="range" id="layoutVolScale" min="60" max="250" step="5" aria-label="Volume control size in percent"><b id="layoutVolScaleValue"></b></div>
+  <div class="pop-label">Top bar</div>
+  <div class="layout-slider-row"><span>Search bar position</span><div class="seg" id="layoutSearchSide"><button type="button" data-side="far-left">Far left</button><button type="button" data-side="left">Left of buttons</button><button type="button" data-side="right">Right of buttons</button></div></div>
+  <div class="layout-slider-row"><span>Search width</span><input type="range" id="layoutSearchWidth" min="180" max="520" step="10" aria-label="Search bar width"><b id="layoutSearchWidthValue"></b></div>
+  <div class="layout-slider-row"><span>Back / forward buttons</span><div class="seg" id="layoutHistorySide"><button type="button" data-side="left">Left edge</button><button type="button" data-side="right">Right edge</button></div></div>
+  <div class="pop-label">Blown-up art</div>
   <div class="layout-slider-row"><span>Blown-up art width</span><input type="range" id="layoutNpArtW" min="40" max="200" step="2" aria-label="Blown-up album art width in percent of the screen"><b id="layoutNpArtWValue"></b></div>
   <div class="layout-slider-row"><span>Blown-up art height</span><input type="range" id="layoutNpArtH" min="40" max="200" step="2" aria-label="Blown-up album art height in percent of the screen"><b id="layoutNpArtHValue"></b></div>
+  <div class="pop-label">Home spotlight</div>
   <div class="layout-slider-row"><span>Spotlight width</span><input type="range" id="layoutSpotW" min="420" max="1400" step="10" aria-label="Home spotlight width"><b id="layoutSpotWValue"></b></div>
   <div class="layout-slider-row"><span>Spotlight height</span><input type="range" id="layoutSpotH" min="240" max="720" step="10" aria-label="Home spotlight height"><b id="layoutSpotHValue"></b></div>
   <div class="pop-label">Text size</div>
   <div class="text-scale-row"><div class="layout-slider-row"><span>Text scale</span><input type="range" id="layoutTextScale" min="70" max="160" step="5" aria-label="Text size scale in percent"><b id="layoutTextScaleValue"></b></div>
   <div class="layout-slider-row"><span>Player song text</span><input type="range" id="layoutPlayerTextScale" min="70" max="300" step="5" aria-label="Player title and artist text size in percent"><b id="layoutPlayerTextScaleValue"></b></div>
   <div class="folder-note">Scales every label, button and list with your other settings — smaller sizes let long titles wrap instead of clipping. The player's song text scales on its own and grows the player bar when it gets too big.</div></div>
+  <div class="pop-label">Surfaces & text (opacity)</div>
+  <div class="layout-slider-row"><span>Tab bar</span><input type="range" id="ccTabbarOpacity" min="0" max="1" step="0.01" aria-label="Tab bar opacity"><b id="ccTabbarOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>App background</span><input type="range" id="ccBgOpacity" min="0" max="1" step="0.01" aria-label="App background opacity"><b id="ccBgOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Player</span><input type="range" id="ccPlayerOpacity" min="0" max="1" step="0.01" aria-label="Player bar opacity"><b id="ccPlayerOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Album &amp; artist cards</span><input type="range" id="ccCardOpacity" min="0" max="1" step="0.01" aria-label="Album and artist card opacity"><b id="ccCardOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Menus &amp; panels</span><input type="range" id="ccPanelOpacity" min="0" max="1" step="0.01" aria-label="Menus and panels opacity"><b id="ccPanelOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Home spotlight</span><input type="range" id="ccSpotOpacity" min="0" max="1" step="0.01" aria-label="Home spotlight card opacity"><b id="ccSpotOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Drop overlay</span><input type="range" id="ccDropOpacity" min="0" max="1" step="0.01" aria-label="Drag and drop overlay opacity"><b id="ccDropOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Bright text</span><input type="range" id="ccTextStrongOpacity" min="0" max="1" step="0.01" aria-label="Bright text opacity"><b id="ccTextStrongOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Secondary text</span><input type="range" id="ccTextDimOpacity" min="0" max="1" step="0.01" aria-label="Secondary text opacity"><b id="ccTextDimOpacityValue"></b></div>
+  <div class="layout-slider-row"><span>Faint text</span><input type="range" id="ccTextFaintOpacity" min="0" max="1" step="0.01" aria-label="Faint text opacity"><b id="ccTextFaintOpacityValue"></b></div>
+  <div class="folder-note">How see-through each surface is — colors for these live back in Customize. Brighter text/opacities pair with the custom colors there.</div>
   <div class="pop-label">Player elements</div>
   <div id="playerPartsRow"></div>
   <div class="folder-note">Move the song info, the controls, or the volume and buttons left or right, or hide the ones you never use. In edit mode you can also drag shuffle / previous / next / repeat anywhere inside the player bar — every spot is allowed.</div>
@@ -2642,12 +2649,18 @@ const PLAYER_PART_LABELS={now:'Song info',controls:'Controls & times',volume:'Vo
 const DEFAULT_PLAYER_ORDER='now,controls,volume,extras';
 function sanitizePlayerOrder(value){const keys=String(value||'').split(',').filter(key=>PLAYER_PART_SELECTORS[key]);for(const key of Object.keys(PLAYER_PART_SELECTORS))if(!keys.includes(key))keys.push(key);return keys.join(',')}
 function sanitizePlayerHidden(value){return String(value||'').split(',').filter(key=>PLAYER_PART_SELECTORS[key]).join(',')}
+/* Presets are full looks now, not just dock positions: every one carries
+   scale values (player art / buttons / text / spotlight / blown-up art) so
+   switching a preset visibly transforms the app, and matching values keep the
+   chain-linked transport sliders in sync. */
 const LAYOUT_PRESETS={
- classic:{label:'Classic',sidebarSide:'left',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left'},
- compact:{label:'Compact',sidebarSide:'left',sidebarWidth:190,playerDock:'bottom',playerHeight:84,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:56,playerWidth:230,searchSide:'left',searchWidth:220,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left'},
- leftie:{label:'Leftie',sidebarSide:'right',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'left',queueSide:'right',tabbarSide:'right',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left'},
- cinema:{label:'Cinema',sidebarSide:'left',sidebarWidth:252,playerDock:'bottom',playerHeight:118,actionsSide:'right',queueSide:'left',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:300,progressHeight:4,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left'},
- headsup:{label:'Heads Up',sidebarSide:'left',sidebarWidth:232,playerDock:'top',playerHeight:96,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left'}};
+ classic:{label:'Balanced',sidebarSide:'left',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left',playerArtSize:49,playBtnSize:44,ctrlBtnSize:30,volScale:100,textScale:100,playerTextScale:100,spotW:0,spotH:366,npArtW:100,npArtH:100,queueWidth:290,albumGridMin:145,artistGridMin:145},
+ compact:{label:'Compact',sidebarSide:'left',sidebarWidth:190,playerDock:'bottom',playerHeight:84,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:52,playerWidth:230,searchSide:'left',searchWidth:220,progressHeight:2,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left',playerArtSize:38,playBtnSize:38,ctrlBtnSize:24,volScale:80,textScale:90,playerTextScale:90,spotW:0,spotH:320,npArtW:80,npArtH:80,queueWidth:250,albumGridMin:120,artistGridMin:120},
+ lounge:{label:'Lounge',sidebarSide:'left',sidebarWidth:250,playerDock:'bottom',playerHeight:126,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:72,playerWidth:250,searchSide:'left',searchWidth:300,progressHeight:5,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left',playerArtSize:74,playBtnSize:64,ctrlBtnSize:42,volScale:130,textScale:105,playerTextScale:135,spotW:0,spotH:430,npArtW:120,npArtH:120,queueWidth:330,albumGridMin:170,artistGridMin:170},
+ leftie:{label:'Leftie',sidebarSide:'right',sidebarWidth:232,playerDock:'bottom',playerHeight:96,actionsSide:'left',queueSide:'right',tabbarSide:'right',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left',playerArtSize:49,playBtnSize:44,ctrlBtnSize:30,volScale:100,textScale:100,playerTextScale:100,spotW:0,spotH:366,npArtW:100,npArtH:100,queueWidth:290,albumGridMin:145,artistGridMin:145},
+ cinema:{label:'Cinema',sidebarSide:'left',sidebarWidth:224,playerDock:'bottom',playerHeight:110,actionsSide:'right',queueSide:'left',tabbarSide:'left',tabbarHeight:44,playerWidth:230,searchSide:'right',searchWidth:320,progressHeight:4,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'right',playerArtSize:56,playBtnSize:54,ctrlBtnSize:34,volScale:110,textScale:100,playerTextScale:110,spotW:0,spotH:520,npArtW:150,npArtH:150,queueWidth:260,albumGridMin:160,artistGridMin:160},
+ headsup:{label:'Heads Up',sidebarSide:'left',sidebarWidth:232,playerDock:'top',playerHeight:100,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:64,playerWidth:230,searchSide:'left',searchWidth:275,progressHeight:3,progressSide:'bottom',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left',playerArtSize:49,playBtnSize:44,ctrlBtnSize:30,volScale:100,textScale:100,playerTextScale:100,spotW:0,spotH:366,npArtW:100,npArtH:100,queueWidth:290,albumGridMin:145,artistGridMin:145},
+ maxi:{label:'Roomy',sidebarSide:'left',sidebarWidth:280,playerDock:'bottom',playerHeight:132,actionsSide:'right',queueSide:'right',tabbarSide:'left',tabbarHeight:80,playerWidth:250,searchSide:'left',searchWidth:330,progressHeight:6,progressSide:'top',playerOrder:'now,controls,volume,extras',playerHidden:'',historySide:'left',playerArtSize:88,playBtnSize:78,ctrlBtnSize:50,volScale:170,textScale:110,playerTextScale:150,spotW:0,spotH:480,npArtW:135,npArtH:135,queueWidth:360,albumGridMin:190,artistGridMin:190}};
 const layout={...LAYOUT_DEFAULTS};
 try{const savedLayout=JSON.parse(localStorage.getItem(layoutKey)||'{}');for(const key of Object.keys(LAYOUT_DEFAULTS))if(savedLayout[key]!==undefined)layout[key]=savedLayout[key]}catch{}
 layout.sidebarWidth=Math.max(110,Math.min(380,Number(layout.sidebarWidth)||232));
@@ -2934,6 +2947,11 @@ function applyLayout(persist=true){
 function setLayout(partial,persist=true){
  // Keep the player big enough to hold its own album art (art can never break out of the bar)
  if(Object.prototype.hasOwnProperty.call(partial,'playerArtSize')&&!Object.prototype.hasOwnProperty.call(partial,'playerHeight'))partial.playerHeight=Math.max(partial.playerArtSize+12,layout.playerHeight);
+ // Preset/regime safety: applying many values at once (e.g. a full preset in
+ // LAYOUT_PRESETS) must bypass the chain-ripple, which would otherwise sense
+ // the play-button jump as a user slider move and drag the neighbor with it.
+ const presetSweep=Object.keys(partial).length>=3&&Object.keys(partial).some(k=>['playBtnSize','ctrlBtnSize'].includes(k));
+ if(presetSweep)applyLayout._lastTransport=null;
  for(const key of Object.keys(LAYOUT_DEFAULTS))if(partial[key]!==undefined)layout[key]=partial[key];applyLayout(persist)}
 function playerArtChange(value){
  // Art and player height move together: growing the art lifts the player, shrinking it lets the player shrink back down (but never below the manual minimum)
