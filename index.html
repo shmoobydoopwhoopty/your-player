@@ -234,7 +234,10 @@ html[data-mini] #miniRoot{display:block!important}
 .miniwin-art{flex:1;min-height:0;position:relative;background:#111}
 .miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .miniwin-empty{position:absolute;inset:0;display:grid;place-items:center;color:#5b625f;font-size:11px;text-align:center;padding:14px}
-.miniwin-ctl{container-type:size;flex:none;padding:calc(10px*var(--mini-z,.8)) calc(12px*var(--mini-z,.8)) calc(12px*var(--mini-z,.8));background:var(--player-bg);backdrop-filter:blur(18px);border-top:1px solid #ffffff14}
+/* No container-type here: size containment makes this panel's auto height
+   ignore its children, so the transport got clipped at the window's bottom
+   edge (the panel stayed padding-only while the buttons rendered below it). */
+.miniwin-ctl{flex:none;padding:calc(10px*var(--mini-z,.8)) calc(12px*var(--mini-z,.8)) calc(12px*var(--mini-z,.8));background:var(--player-bg);backdrop-filter:blur(18px);border-top:1px solid #ffffff14}
 /* Mini-window transport scales with the window — everything, buttons included,
    is sized from --mini-z, which the mini bootstrap re-derives from the window's
    inner width whenever it resizes (200–420px range → zoom .65–1.05). The var
