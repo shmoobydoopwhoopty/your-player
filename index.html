@@ -232,29 +232,68 @@ html[data-mini] body>*:not(#miniRoot){display:none!important}
 html[data-mini] #miniRoot{display:block!important}
 .miniwin{height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--text);user-select:none;-webkit-user-select:none}
 .miniwin-art{flex:1;min-height:0;position:relative;background:#111}
-.miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* Full album art: contain inside the art area with letterboxing instead of
+   cover-cropping, and never stretch if a track has non-square art. */
+.miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .miniwin-empty{position:absolute;inset:0;display:grid;place-items:center;color:#5b625f;font-size:11px;text-align:center;padding:14px}
 /* No container-type here: size containment makes this panel's auto height
    ignore its children, so the transport got clipped at the window's bottom
    edge (the panel stayed padding-only while the buttons rendered below it). */
-.miniwin-ctl{flex:none;padding:calc(10px*var(--mini-z,.8)) calc(12px*var(--mini-z,.8)) calc(12px*var(--mini-z,.8));background:var(--player-bg);backdrop-filter:blur(18px);border-top:1px solid #ffffff14}
+/* Mini player sizing: --mini-z is the window-fit zoom (set by the mini bootstrap
+   JS from the current window width), and --mini-t is the user's text/content
+   size setting (0.8–2, mini settings gear). Every text/control size inside the
+   mini player is a calc() over both, so resizing the window keeps scaling
+   everything AND the user's own text-size preference applies on top. */
+html[data-mini]{--mini-z:.9;--mini-t:1}
+.miniwin-ctl{flex:none;padding:calc(10px*var(--mini-z)) calc(12px*var(--mini-z)) calc(12px*var(--mini-z));background:var(--mini-bg,var(--player-bg));backdrop-filter:blur(18px);border-top:1px solid #ffffff14}
+.miniwin-title{font-size:calc(13px*var(--mini-z)*var(--mini-t));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.miniwin-artist{font-size:calc(11px*var(--mini-z)*var(--mini-t));color:var(--muted);margin-top:calc(3px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.miniwin-album{font-size:calc(10px*var(--mini-z)*var(--mini-t));color:var(--text-faint);margin-top:calc(2px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.miniwin-controls{display:flex;align-items:center;justify-content:center;gap:calc(14px*var(--mini-z));margin-top:calc(10px*var(--mini-z))}
+html[data-mini] .miniwin-controls .control-btn{color:var(--player-controls,var(--text));width:calc(30px*var(--mini-z)*var(--mini-t));height:calc(30px*var(--mini-z)*var(--mini-t))}
+html[data-mini] .miniwin-controls .control-btn svg{width:calc(30px*var(--mini-z)*var(--mini-t)*.57);height:calc(30px*var(--mini-z)*var(--mini-t)*.57)}
+html[data-mini] .miniwin-controls .play-main{width:calc(44px*var(--mini-z)*var(--mini-t));height:calc(44px*var(--mini-z)*var(--mini-t));background:var(--play-btn-bg,var(--accent-grad))}
+html[data-mini] .miniwin-controls .play-main svg{width:calc(44px*var(--mini-z)*var(--mini-t)*.43);height:calc(44px*var(--mini-z)*var(--mini-t)*.43)}
+/* Progress bar: readable by default (no hover trick needed) and grows on hover
+   so drag-seeking is comfortable. */
+.miniwin-bar{position:relative;width:100%;box-sizing:border-box;height:max(calc(5px*var(--mini-z)*var(--mini-t)),7px);border-radius:4px;background:#ffffff19;margin-top:calc(10px*var(--mini-z));overflow:hidden;cursor:pointer;touch-action:none}
+.miniwin-bar:hover{height:max(calc(8px*var(--mini-z)*var(--mini-t)),11px)}
+.miniwin-bar .progress-fill{position:absolute;left:0;top:0;bottom:0;height:100%;width:0;background:var(--accent-grad)}
+.miniwin-volume{display:flex;align-items:center;gap:calc(8px*var(--mini-z));margin-top:calc(9px*var(--mini-z))}
+html[data-mini] .miniwin-volume .control-btn{width:calc(22px*var(--mini-z)*var(--mini-t));height:calc(22px*var(--mini-z)*var(--mini-t));color:var(--player-fg2,#929a97)}
+html[data-mini] .miniwin-volume .control-btn svg{width:calc(22px*var(--mini-z)*var(--mini-t)*.57);height:calc(22px*var(--mini-z)*var(--mini-t)*.57)}
+.miniwin-vol-slider{flex:1;min-width:0;accent-color:var(--accent);height:calc(4px*var(--mini-t));cursor:pointer}
+.miniwin-extra{display:flex;align-items:center;justify-content:space-between;gap:calc(8px*var(--mini-z));margin-top:calc(9px*var(--mini-z))}
+.miniwin-extra-btn{height:calc(26px*var(--mini-z)*var(--mini-t));padding:0 calc(11px*var(--mini-z));display:inline-flex;align-items:center;border:1px solid #ffffff22;background:#ffffff08;border-radius:calc(14px*var(--mini-z)*var(--mini-t));color:var(--text-dim);font-size:calc(10px*var(--mini-z)*var(--mini-t));font-weight:600;cursor:pointer}
+.miniwin-extra-btn:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.miniwin-extra-btn.miniwin-open{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.miniwin-gear{width:calc(26px*var(--mini-z)*var(--mini-t));padding:0;justify-content:center}
+.miniwin-gear svg{width:calc(14px*var(--mini-z)*var(--mini-t));height:calc(14px*var(--mini-z)*var(--mini-t))}
+/* Panels (Up Next & settings) live INSIDE the flex column, so opening one
+   grows the panel naturally and content always fits the window. */
+.miniwin-queue,.miniwin-settings{flex:none;border-top:1px solid #ffffff10;background:color-mix(in srgb,#000 28%,var(--mini-bg,var(--player-bg)));max-height:45vh;overflow:auto;scrollbar-width:thin}
+.miniwin-queue-head{padding:calc(8px*var(--mini-z)) calc(12px*var(--mini-z)) calc(4px*var(--mini-z));font-size:calc(10px*var(--mini-z)*var(--mini-t));font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint)}
+.miniwin-queue-list{padding:0 calc(8px*var(--mini-z)) calc(8px*var(--mini-z))}
+.miniwin-queue-row{display:grid;grid-template-columns:calc(26px*var(--mini-z)) minmax(0,1fr);align-items:center;gap:calc(8px*var(--mini-z));padding:calc(4px*var(--mini-z)) calc(5px*var(--mini-z));border-radius:calc(7px*var(--mini-z));cursor:pointer}
+.miniwin-queue-row:hover{background:#ffffff0d}
+.miniwin-queue-row.current{background:#ffffff0c}
+.miniwin-queue-row img{width:calc(26px*var(--mini-z));height:calc(26px*var(--mini-z));border-radius:calc(5px*var(--mini-z));object-fit:cover;background:#252a27}
+.miniwin-queue-title{font-size:calc(11px*var(--mini-z)*var(--mini-t));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.miniwin-queue-artist{font-size:calc(10px*var(--mini-z)*var(--mini-t));color:var(--text-faint);margin-top:calc(2px*var(--mini-z));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.miniwin-queue-empty{padding:calc(8px*var(--mini-z));font-size:calc(10px*var(--mini-z)*var(--mini-t));color:var(--text-faint);text-align:center}
+.miniwin-settings{padding:calc(10px*var(--mini-z)) calc(12px*var(--mini-z))}
+.miniwin-set-label{display:flex;align-items:center;justify-content:space-between;font-size:calc(10px*var(--mini-z)*var(--mini-t));font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:calc(5px*var(--mini-z))}
+.miniwin-set-val{color:var(--accent);font-weight:700}
+.miniwin-set-slider{width:100%;accent-color:var(--accent);margin:0 0 calc(10px*var(--mini-z))}
+.miniwin-set-row{display:flex;align-items:center;gap:calc(8px*var(--mini-z))}
+.miniwin-set-color{width:calc(34px*var(--mini-z)*var(--mini-t));height:calc(30px*var(--mini-z)*var(--mini-t));padding:0;border:1px solid #ffffff24;border-radius:calc(7px*var(--mini-z));background:transparent;cursor:pointer}
+.miniwin-set-reset{height:calc(28px*var(--mini-z)*var(--mini-t));padding:0 calc(11px*var(--mini-z));border:1px solid #ffffff22;background:#ffffff08;border-radius:calc(16px*var(--mini-z));color:var(--text-dim);font-size:calc(10px*var(--mini-z)*var(--mini-t));cursor:pointer}
+.miniwin-set-reset:hover{color:var(--on-accent);background:var(--accent);border-color:var(--accent)}
 /* Mini-window transport scales with the window — everything, buttons included,
    is sized from --mini-z, which the mini bootstrap re-derives from the window's
    inner width whenever it resizes (200–420px range → zoom .65–1.05). The var
    is set ONLY on the root (by JS), so never re-declare it on descendants. */
-.miniwin-title{font-size:calc(11px*var(--mini-z,.8));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.miniwin-artist{font-size:calc(10px*var(--mini-z,.8));color:var(--muted);margin-top:calc(3px*var(--mini-z,.8));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.miniwin-artist:hover{color:var(--accent)}
-.miniwin-controls{display:flex;align-items:center;justify-content:center;gap:calc(14px*var(--mini-z,.8));margin-top:calc(9px*var(--mini-z,.8))}
-html[data-mini] .miniwin-controls .control-btn{color:var(--player-controls,var(--text));width:calc(30px*var(--mini-z,.8));height:calc(30px*var(--mini-z,.8))}
-html[data-mini] .miniwin-controls .control-btn svg{width:calc(30px*var(--mini-z,.8)*.57);height:calc(30px*var(--mini-z,.8)*.57)}
-html[data-mini] .miniwin-controls .play-main{width:calc(44px*var(--mini-z,.8));height:calc(44px*var(--mini-z,.8));background:var(--play-btn-bg,var(--accent-grad))}
-html[data-mini] .miniwin-controls .play-main svg{width:calc(44px*var(--mini-z,.8)*.43);height:calc(44px*var(--mini-z,.8)*.43)}
-.miniwin-bar{height:calc(3px*var(--mini-z,.8));border-radius:2px;background:#ffffff19;margin-top:calc(10px*var(--mini-z,.8));overflow:hidden;cursor:default}
-.miniwin-bar{position:relative;height:max(calc(3px*var(--mini-z,.8)),6px);cursor:pointer;touch-action:none}
-.miniwin-bar:hover{height:max(calc(5px*var(--mini-z,.8)),8px)}
-.miniwin-bar .progress-fill{position:absolute;left:0;top:0;bottom:0}
-.miniwin-bar .progress-fill{height:100%;width:0;background:var(--accent-grad)}.miniwin-back{position:absolute;top:10px;right:10px;z-index:3;width:30px;height:30px;border-radius:50%;border:1px solid #ffffff30;background:#000000a6;color:#fff;display:grid;place-items:center;cursor:pointer}.miniwin-back:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.miniwin-dragzone{position:absolute;top:8px;left:10px;z-index:3;height:26px;padding:0 10px;display:flex;align-items:center;border-radius:13px;border:1px solid #ffffff26;background:#00000096;color:color-mix(in srgb, var(--text-strong) 77%, transparent);cursor:grab;touch-action:none;-webkit-app-region:no-drag}.miniwin-dragzone:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.miniwin-dragzone:active{cursor:grabbing}
+.miniwin-back{position:absolute;top:10px;right:10px;z-index:3;width:30px;height:30px;border-radius:50%;border:1px solid #ffffff30;background:#000000a6;color:#fff;display:grid;place-items:center;cursor:pointer}.miniwin-back:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.miniwin-dragzone{position:absolute;top:8px;left:10px;z-index:3;height:26px;padding:0 10px;display:flex;align-items:center;border-radius:13px;border:1px solid #ffffff26;background:#00000096;color:color-mix(in srgb, var(--text-strong) 77%, transparent);cursor:grab;touch-action:none;-webkit-app-region:no-drag}.miniwin-dragzone:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.miniwin-dragzone:active{cursor:grabbing}
 /* ── FX sections in the customize panel ── */
 .fx-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:9px}
 .fx-toggle-row b{font-size:11px}
@@ -710,8 +749,18 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
   <div class="miniwin-ctl">
     <div class="miniwin-title" id="miniTitle">Nothing playing yet</div>
     <div class="miniwin-artist" id="miniArtist"></div>
+    <div class="miniwin-album" id="miniAlbum" hidden></div>
     <div class="miniwin-controls"><button class="control-btn" id="miniShuffle" aria-label="Shuffle"></button><button class="control-btn" id="miniPrev" aria-label="Previous track"></button><button class="play-main" id="miniPlay" aria-label="Play"></button><button class="control-btn" id="miniNext" aria-label="Next track"></button><button class="control-btn" id="miniRepeat" aria-label="Repeat"></button></div>
     <div class="miniwin-bar" id="miniBar" title="Drag to seek"><div class="progress-fill" id="miniFill"></div></div>
+    <div class="miniwin-volume"><button class="control-btn" id="miniVolBtn" aria-label="Mute volume" title="Mute / unmute"></button><input class="miniwin-vol-slider" id="miniVolSlider" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume" title="Volume"></div>
+    <div class="miniwin-extra"><button class="miniwin-extra-btn" id="miniQueue" aria-label="Up Next" title="Up Next">Up Next</button><button class="miniwin-extra-btn miniwin-gear" id="miniSettings" aria-label="Mini player settings" title="Text & colors"></button></div>
+    <div class="miniwin-queue" id="miniQueuePanel" hidden><div class="miniwin-queue-head">Up Next</div><div class="miniwin-queue-list" id="miniQueueList"></div></div>
+    <div class="miniwin-settings" id="miniSettingsPanel" hidden>
+      <div class="miniwin-set-label">Text size <span id="miniTextZVal" class="miniwin-set-val"></span></div>
+      <input type="range" id="miniTextZoom" min="0.8" max="2" step="0.05" class="miniwin-set-slider">
+      <div class="miniwin-set-label">Player background</div>
+      <div class="miniwin-set-row"><input type="color" id="miniPlayerBg" class="miniwin-set-color"><button type="button" id="miniPlayerBgReset" class="miniwin-set-reset">Use theme</button></div>
+    </div>
   </div>
 </div></div>
 <div class="art-context" id="artContextMenu" role="menu" aria-label="Album art options"></div>
@@ -3574,12 +3623,13 @@ const miniPlayer=(()=>{
   function snapshot(){
     const t=currentTrack();
     const d=audio.duration||t&&t.duration||0;
-    return {title:t?t.title:'',artist:t?t.artist:'',art:t?(t.art||''):'',playing:!!playing,shuffle:!!shuffle,repeatMode:repeatMode||0,progress:d?audio.currentTime/d:0,hasTrack:!!t,accent:appearance.accent||'lime',surface:appearance.surface||'charcoal',customColors:JSON.parse(JSON.stringify(customColors))}
+    const upcoming=typeof upcomingTrackList==='function'?upcomingTrackList(30):[];
+    return {title:t?t.title:'',artist:t?t.artist:'',album:t&&t.album&&t.album!=='Single'?t.album:'',art:t?(t.art||''):'',playing:!!playing,shuffle:!!shuffle,repeatMode:repeatMode||0,progress:d?audio.currentTime/d:0,hasTrack:!!t,volume:Number($('#volumeSlider').value),muted:!!audio.muted,accent:appearance.accent||'lime',surface:appearance.surface||'charcoal',customColors:JSON.parse(JSON.stringify(customColors)),queue:upcoming.map(x=>({id:x.id,title:x.title,artist:x.artist,album:x.album,art:x.art,duration:x.duration}))}
   }
   function sync(){const g=desktop;if(!g||!g.miniPushState)return;const s=snapshot();try{g.miniPushState(s)}catch{}}
   function show(){
     if(!desktop||typeof desktop.miniShow!=='function'){showToast('The pop-out player needs the desktop app');return}
-    persist();sync();
+    persist();start();sync();
     desktop.miniShow().then(ok=>{
       if(!ok){clear();showToast('Could not open the pop-out player');return}
       // Handoff: the mini window exists now — push the live snapshot again so
@@ -3608,6 +3658,10 @@ function handleMiniCommand(cmd,arg){
   if(cmd==='previous'){goPrevious();return}
   if(cmd==='shuffle'){$('#shuffleBtn').click();return}
   if(cmd==='repeat'){$('#repeatBtn').click();return}
+  if(cmd==='volume'){const v=Math.max(0,Math.min(1,Number(arg)));if(Number.isFinite(v)){audio.muted=false;$('#volumeSlider').value=String(v);audio.volume=v;buttonIcon($('#volumeBtn'),v?'volume':'mute',18);persistLibrary()}return}
+  if(cmd==='mute'){audio.muted=!audio.muted;buttonIcon($('#volumeBtn'),audio.muted?(audio.volume?'mute':'mute'):'volume',18);return}
+  const queuePanelArg=typeof arg==='object'&&arg?arg:{};
+  if(cmd==='queue'){const id=typeof queuePanelArg.id==='string'?queuePanelArg.id:'';const t=tracks.find(x=>x.id===id);if(t){playScope=null;playAt(tracks.indexOf(t),true)}else if(!queuePanelArg.id&&!queuePanelArg.dryRun){/* no id — ignore */}return}
   if(cmd==='seek'){
     const t=currentTrack();
     const d=audio.duration||t&&t.duration||0;
@@ -3959,25 +4013,83 @@ let q=[];try{q=JSON.parse(localStorage.getItem('yourplayer.miniState.v1')||'[]')
 const last=(Array.isArray(q)&&q.length)?q[q.length-1]||{}:{};
 document.documentElement.dataset.accent=last.accent||'lime';
 document.documentElement.dataset.surface=last.surface||'charcoal';
+try{const mz=JSON.parse(localStorage.getItem('yourplayer.miniSettings.v2')||'{}');if(mz&&typeof mz==='object'){if(Number.isFinite(Number(mz.textZoom)))document.documentElement.style.setProperty('--mini-t',String(Math.max(.8,Math.min(2,Number(mz.textZoom)))));if(typeof mz.playerBg==='string'&&/^#[0-9a-fA-F]{6}$/.test(mz.playerBg))document.documentElement.style.setProperty('--mini-bg',mz.playerBg)}}catch{}
 if(last.customColors&&typeof last.customColors==='object'){const s=document.documentElement.style;const c=last.customColors;const hexRgba=(hex,a)=>{let h=String(hex||'').replace('#','').trim();if(h.length===3)h=h.split('').map(x=>x+x).join('');if(!/^[0-9a-fA-F]{6}$/.test(h))return '';const n=parseInt(h,16);return `rgba(${(n>>16)&255}, ${(n>>8)&255}, ${n&255}, ${a})`};const isL=hex=>{let h=String(hex||'').replace('#','').trim();if(h.length===3)h=h.split('').map(x=>x+x).join('');if(!/^[0-9a-fA-F]{6}$/.test(h))return false;const n=parseInt(h,16);return (0.299*(n>>16&255)+0.587*(n>>8&255)+0.114*(n&255))/255>0.56};if(c.accent){s.setProperty('--accent',c.accent);s.setProperty('--accent2',`color-mix(in srgb, ${c.accent} 82%, #000)`);s.setProperty('--on-accent',isL(c.accent)?'#0d110a':'#f7f9ef')}if(c.bg)s.setProperty('--bg',c.bg);if(c.text)s.setProperty('--text',c.text);if(c.player)s.setProperty('--player-bg',hexRgba(c.player,.95));if(c.panel)s.setProperty('--panel2',c.panel)}
 // Transport zoom rides the window size: every button, icon, label and the
 // progress bar in the mini player scale together as the window is resized.
-(function(){const root=document.documentElement;const fit=()=>{const w=Math.max(200,Math.min(420,window.innerWidth||300));root.style.setProperty('--mini-z',(0.65+w/1400).toFixed(3))};fit();window.addEventListener('resize',fit)})();
+// The base zoom is deliberately generous (1.05–1.55 across the window's
+// 200–420px width range) — the older scale made everything miniature.
+(function(){const root=document.documentElement;const fit=()=>{const w=Math.max(200,Math.min(420,window.innerWidth||300));root.style.setProperty('--mini-z',Math.min(1.35,1.05+w/900).toFixed(3))};fit();window.addEventListener('resize',fit)})();
 const g=window.afterglowDesktop;if(!g)return;
 const $=s=>document.querySelector(s);
-let st={title:'',artist:'',art:'',playing:false,shuffle:false,repeatMode:0,progress:0,hasTrack:false};
-function paint(){$('#miniTitle').textContent=st.title||'Nothing playing yet';$('#miniArtist').textContent=st.artist||'';$('#miniArtist').style.display=st.artist?'':'none';$('#miniEmpty').style.display=st.art?'none':'';if(st.art)$('#miniArt').src=st.art;else $('#miniArt').removeAttribute('src');const playSvg=st.playing?'<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 5h3v14H8zM15 5h3v14h-3z"/></svg>':'<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 12 7-12 7z"/></svg>';$('#miniPlay').innerHTML=playSvg;$('#miniPlay').setAttribute('aria-label',st.playing?'Pause':'Play');
-// Every control paints its icon on every frame — the shuffle/prev/next buttons
-// used to start empty and stay empty because only play/repeat were painted.
-const miniIcon=(name,size)=>'<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({shuffle:'<path d="m18 14 4 4-4 4M18 2l4 4-4 4M2 18h2.5a5 5 0 0 0 4-2l7-10a5 5 0 0 1 4-2H22M2 6h2.5a5 5 0 0 1 3.3 1.2M14 16l1.5 2a5 5 0 0 0 4 2H22"/>',previous:'<path d="M19 5v14M6 12l10-7v14z"/>',next:'<path d="M5 5v14m13-7L8 5v14z"/>'}[name]||'')+'</svg>';
-$('#miniShuffle').innerHTML=miniIcon('shuffle',17);$('#miniPrev').innerHTML=miniIcon('previous',17);$('#miniNext').innerHTML=miniIcon('next',17);
-$('#miniShuffle').classList.toggle('selected',st.shuffle);$('#miniRepeat').classList.toggle('selected',st.repeatMode>0);$('#miniRepeat').innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>'+(st.repeatMode===2?'<span class="control-badge">1</span>':'');$('#miniFill').style.width=Math.max(0,Math.min(100,st.progress*100))+'%'}
+let st={title:'',artist:'',album:'',art:'',playing:false,shuffle:false,repeatMode:0,progress:0,hasTrack:false,volume:.8,muted:false,queue:[]};
+const miniIcon=(name,size)=>'<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({shuffle:'<path d="m18 14 4 4-4 4M18 2l4 4-4 4M2 18h2.5a5 5 0 0 0 4-2l7-10a5 5 0 0 1 4-2H22M2 6h2.5a5 5 0 0 1 3.3 1.2M14 16l1.5 2a5 5 0 0 0 4 2H22"/>',previous:'<path d="M19 5v14M6 12l10-7v14z"/>',next:'<path d="M5 5v14m13-7L8 5v14z"/>',volume:'<path d="M11 5 6 9H3v6h3l5 4zM15.5 8.5a5 5 0 0 1 0 7m3-10a9 9 0 0 1 0 13"/>',mute:'<path d="M11 5 6 9H3v6h3l5 4zM17 9l5 6m0-6-5 6"/>'}[name]||'')+'</svg>';
+let lastSettingsZoom=null;
+function paint(){
+ $('#miniTitle').textContent=st.title||'Nothing playing yet';
+ $('#miniArtist').textContent=st.artist||'';$('#miniArtist').style.display=st.artist?'':'none';
+ const album=$('#miniAlbum');album.textContent=st.album||'';album.hidden=!st.album;
+ $('#miniEmpty').style.display=st.art?'none':'';
+ if(st.art)$('#miniArt').src=st.art;else $('#miniArt').removeAttribute('src');
+ const playSvg=st.playing?'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 5h3v14H8zM15 5h3v14h-3z"/></svg>':'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 12 7-12 7z"/></svg>';
+ $('#miniPlay').innerHTML=playSvg;$('#miniPlay').setAttribute('aria-label',st.playing?'Pause':'Play');
+ $('#miniShuffle').innerHTML=miniIcon('shuffle',18);$('#miniPrev').innerHTML=miniIcon('previous',18);$('#miniNext').innerHTML=miniIcon('next',18);
+ $('#miniShuffle').classList.toggle('selected',st.shuffle);$('#miniRepeat').classList.toggle('selected',st.repeatMode>0);$('#miniRepeat').innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>'+(st.repeatMode===2?'<span class="control-badge">1</span>':'');
+ $('#miniFill').style.width=Math.max(0,Math.min(100,st.progress*100))+'%';
+ $('#miniVolBtn').innerHTML=miniIcon(st.muted?'mute':((Number(st.volume)||0)>0?'volume':'mute'),15);
+ if(!volDragging)$('#miniVolSlider').value=String(st.muted?0:(Number(st.volume)||.8));
+ paintQueue();
+}
+function fmtDur(d){d=Number(d)||0;const m=Math.floor(d/60),s=Math.floor(d%60);return m+':'+String(s).padStart(2,'0')}
+function paintQueue(){
+ const panel=$('#miniQueuePanel'),list=$('#miniQueueList'),btn=$('#miniQueue');
+ if(!panel||panel.hidden)return;
+ btn&&btn.classList.toggle('miniwin-open',true);
+ list.replaceChildren();
+ const items=Array.isArray(st.queue)?st.queue:[];
+ if(!items.length){const empty=document.createElement('div');empty.className='miniwin-queue-empty';empty.textContent='Nothing queued after this';list.append(empty);return}
+ items.forEach(item=>{
+  const row=document.createElement('div');row.className='miniwin-queue-row';row.title=(item.title||'')+' — '+(item.artist||'');
+  const img=document.createElement('img');img.src=item.art||'';img.alt='';
+  const info=document.createElement('div');info.style.minWidth='0';
+  const t1=document.createElement('div');t1.className='miniwin-queue-title';t1.textContent=item.title||'';
+  const t2=document.createElement('div');t2.className='miniwin-queue-artist';t2.textContent=(item.artist||'')+(item.duration?' · '+fmtDur(item.duration):'');
+  info.append(t1,t2);row.append(img,info);
+  row.addEventListener('click',()=>{if(item.id)post('queue',{id:item.id});else post('queue',{})});
+  list.append(row);
+ });
+}
 function apply(s){const prevTitle=st.title,prevArtist=st.artist;st={...st,...s};paint();if((s.title&&s.title!==prevTitle)||(s.artist&&s.artist!==prevArtist))try{g.miniFlash&&g.miniFlash()}catch{}}
 const idle=setTimeout(()=>{paint();if(!st.title)$('#miniTitle').textContent='Waiting for the player…'},3000);
 g.miniGetState&&g.miniGetState().then(s=>{clearTimeout(idle);if(s)apply(s)}).catch(()=>{});
 g.miniOnState&&g.miniOnState(s=>apply(s));
+// Heartbeat: the main window pushes state on every timeupdate/play/pause event,
+// but if that push is ever missed (app restore, focus quirks) this poll keeps
+// the progress bar and play/pause icon honest.
+setInterval(()=>{g.miniGetState&&g.miniGetState().then(s=>{if(s)apply(s)}).catch(()=>{})},1000);
 const post=(cmd,arg)=>{try{g.miniCommand(cmd,arg)}catch{}};
 $('#miniPlay').addEventListener('click',()=>post('play'));$('#miniNext').addEventListener('click',()=>post('next'));$('#miniPrev').addEventListener('click',()=>post('previous'));$('#miniShuffle').addEventListener('click',()=>post('shuffle'));$('#miniRepeat').addEventListener('click',()=>post('repeat'));
+// Volume: slider reports live while dragging; the speaker button toggles mute
+(function(){let volSlider=$('#miniVolSlider'),volBtn=$('#miniVolBtn');if(!volSlider)return;
+ volSlider.addEventListener('input',()=>{const v=Number(volSlider.value);$('#miniFill').style.width=(st.progress*100)+'%';post('volume',v)});
+ volBtn&&volBtn.addEventListener('click',()=>post('mute'));
+})();
+// Up Next panel: toggles open/closed; clicking a queued song jumps to it
+(function(){const btn=$('#miniQueue'),panel=$('#miniQueuePanel');if(!btn||!panel)return;
+ btn.addEventListener('click',()=>{panel.hidden=!panel.hidden;btn.classList.toggle('miniwin-open',!panel.hidden);const gear=$('#miniSettingsPanel');if(gear&&!gear.hidden){gear.hidden=true;$('#miniSettings')?.classList.remove('miniwin-open')}paintQueue()});
+})();
+// Settings panel: user-chosen text/content size (0.8–2) and player background
+(function(){const btn=$('#miniSettings'),panel=$('#miniSettingsPanel');if(!btn||!panel)return;
+ const zoom=$('#miniTextZoom'),zoomVal=$('#miniTextZVal'),bg=$('#miniPlayerBg'),reset=$('#miniPlayerBgReset'),root=document.documentElement;
+ let mz={};try{mz=JSON.parse(localStorage.getItem('yourplayer.miniSettings.v2')||'{}')}catch{}
+ const cur=Number.isFinite(Number(mz.textZoom))?Number(mz.textZoom):1;
+ zoom.value=String(cur);zoomVal.textContent=Math.round(cur*100)+'%';
+ bg.value=typeof mz.playerBg==='string'&&/^#[0-9a-fA-F]{6}$/.test(mz.playerBg)?mz.playerBg:'#111414';
+ btn.addEventListener('click',()=>{panel.hidden=!panel.hidden;btn.classList.toggle('miniwin-open',!panel.hidden);const qp=$('#miniQueuePanel');if(qp&&!qp.hidden){qp.hidden=true;$('#miniQueue')?.classList.remove('miniwin-open')}});
+ zoom.addEventListener('input',()=>{const v=Number(zoom.value);root.style.setProperty('--mini-t',String(v));zoomVal.textContent=Math.round(v*100)+'%';try{localStorage.setItem('yourplayer.miniSettings.v2',JSON.stringify({...mz,textZoom:v}))}catch{}});
+ bg.addEventListener('input',()=>{const v=bg.value;root.style.setProperty('--mini-bg',v);try{localStorage.setItem('yourplayer.miniSettings.v2',JSON.stringify({...mz,playerBg:v}))}catch{}});
+ reset.addEventListener('click',()=>{root.style.removeProperty('--mini-bg');try{delete mz.playerBg;localStorage.setItem('yourplayer.miniSettings.v2',JSON.stringify(mz))}catch{}bg.value='#111414'});
+})();
 // Drag the progress bar to seek — reports a 0..1 fraction to the main window
 (function(){
  const bar=$('#miniBar');if(!bar)return;

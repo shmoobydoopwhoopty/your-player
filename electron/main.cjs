@@ -1398,12 +1398,12 @@ function createMiniWindow() {
   }
   const icon = miniWindowIcon();
   miniWindow = new BrowserWindow({
-    width: 300,
-    height: 380,
-    minWidth: 200,
-    minHeight: 280,
-    maxWidth: 420,
-    maxHeight: 640,
+    width: 320,
+    height: 560,
+    minWidth: 240,
+    minHeight: 360,
+    maxWidth: 520,
+    maxHeight: 900,
     useContentSize: true,
     alwaysOnTop: true,
     backgroundColor: '#0b0d0e',
