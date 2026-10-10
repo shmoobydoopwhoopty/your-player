@@ -892,6 +892,90 @@ function parseID3(bytes){
  return meta}
 async function compactArt(blob){if(!blob)return null;let bitmap=null;try{bitmap=await createImageBitmap(blob);const scale=Math.min(1,512/Math.max(bitmap.width,bitmap.height));if(scale===1&&blob.size<400000){bitmap.close();return blob}const canvas=new OffscreenCanvas(Math.max(1,Math.round(bitmap.width*scale)),Math.max(1,Math.round(bitmap.height*scale)));const context=canvas.getContext('2d',{alpha:false});context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();return await canvas.convertToBlob({type:'image/jpeg',quality:0.82})}catch(error){return null}finally{if(bitmap)bitmap.close()}}
 function le32(b,o){return(b[o]|(b[o+1]<<8)|(b[o+2]<<16)|(b[o+3]<<24))>>>0}
+/* ── Duration sniffing ───────────────────────────────────────────────
+   Rows get a real duration without the song ever being played. All of
+   these read only bytes already handed to the worker: MP3 (CBR math or
+   Xing/VBRI frame counts for VBR), MP4 (mvhd box), FLAC (STREAMINFO),
+   and WAV (fmt + data chunk). No full decode, no main-thread work. */
+function estimateMp3Duration(bytes,size){
+ // Skip the ID3v2 tag, then look at the first MPEG frame header.
+ let o=0;
+ if(bytes[0]===0x49&&bytes[1]===0x44&&bytes[2]===0x33)o=Math.min(bytes.length,10+(syncsafe(bytes,6)||0));
+ if(o+4>bytes.length)return null;
+ while(o<bytes.length&&bytes[o]!==0xFF)o++;
+ if(o+4>bytes.length)return null;
+ const second=bytes[o+1],third=bytes[o+2],fourth=bytes[o+3];
+ if((second&0xE0)!==0xE0)return null;
+ const verBits=(second>>3)&3,layerBits=(second>>1)&3;
+ if(verBits===1||layerBits===0)return null;
+ const ver=verBits===3?3:verBits===2?2:0,layer=4-layerBits;
+ const brIdx=(third>>4)&15,srIdx=(third>>2)&3;
+ if(brIdx===0||brIdx===15)return null;
+ const kbps=mp3BitrateKbps(ver,layer,brIdx),hz=mp3SampleHz(ver,srIdx);
+ if(!hz||!kbps)return null;
+ const samples=mp3FrameSamples(ver,layer);
+ // VBR: a Xing or VBRI header gives the exact frame count.
+ const scanEnd=Math.min(bytes.length-12,o+4096);
+ for(let x=o;x<scanEnd;x++){
+  if(bytes[x]===0x58&&bytes[x+1]===0x69&&bytes[x+2]===0x6E&&bytes[x+3]===0x67){
+   if((bytes[x+7]&0x01)!==0){
+    const frames=(bytes[x+8]<<24|bytes[x+9]<<16|bytes[x+10]<<8|bytes[x+11])>>>0;
+    if(frames>0&&frames*samples/hz<3600*3)return frames*samples/hz}}
+  else if(bytes[x]===0x56&&bytes[x+1]===0x42&&bytes[x+2]===0x52&&bytes[x+3]===0x49){
+   const frames=(bytes[x+14]<<24|bytes[x+15]<<16|bytes[x+16]<<8|bytes[x+17])>>>0;
+   if(frames>0&&frames*samples/hz<3600*3)return frames*samples/hz}}
+ // CBR estimate: remaining bytes imply total play seconds.
+ const est=(size-o)*8/(kbps*1000);
+ if(Number.isFinite(est)&&est>0&&est<3600*3)return est;
+ return null}
+function mp3FrameSamples(ver,layer){
+ if(layer===3)return ver===3?1152:576;
+ if(layer===2)return 1152;
+ return 384}
+function mp3BitrateKbps(ver,layer,index){
+ const V1L1=[0,32,64,96,128,160,192,224,256,288,320,352,384,416,448],V1L2=[0,32,48,56,64,80,96,112,128,160,192,224,256,320,384],V1L3=[0,32,40,48,56,64,80,96,112,128,160,192,224,256,320],V2L1=[0,32,48,56,64,80,96,112,128,144,160,176,192,224,256],V2L=[0,8,16,24,32,40,48,56,64,80,96,112,128,144,160];
+ if(ver===3)return layer===3?V1L3[index]:layer===2?V1L2[index]:V1L1[index];
+ return layer===3?V2L[index]:layer===2?V2L[index]:V2L1[index]}
+function mp3SampleHz(ver,index){
+ const V1=[44100,48000,32000],V2=[22050,24000,16000],V25=[11025,12000,8000];
+ return ver===3?V1[index]:ver===2?V2[index]:V25[index]}
+function estimateMp4Duration(bytes){
+ for(let o=0;o+36<=bytes.length;o++){
+  if(bytes[o]===0x6D&&bytes[o+1]===0x76&&bytes[o+2]===0x68&&bytes[o+3]===0x64){
+   const version=bytes[o+4];
+   if(version===0){const ts=u32(bytes,o+16),dur=u32(bytes,o+20);if(ts>0&&dur>0)return dur/ts}
+   else{const ts=u32(bytes,o+24);const hi=u32(bytes,o+28),lo=u32(bytes,o+32);const dur=hi*4294967296+lo;if(ts>0&&dur>0)return dur/ts}}}
+ return null}
+function estimateFlacDuration(bytes){
+ let o=4;
+ while(o+4<=bytes.length){
+  const last=(bytes[o]&0x80)!==0,type=bytes[o]&0x7F;
+  const len=(bytes[o+1]<<16)|(bytes[o+2]<<8)|bytes[o+3];
+  const body=o+4;if(body+len>bytes.length)break;
+  if(type===0&&len>=18){
+   const b=bytes;
+   const hz=(b[body+10]<<12)|(b[body+11]<<4)|(b[body+12]>>4);
+   // 36-bit total-sample count spread across body+13..17
+   const totalSamples=((b[body+13]&0x0F)*1099511627776)+(b[body+14]*16777216)+(b[body+15]*65536)+(b[body+16]*256)+b[body+17];
+   if(hz>0&&totalSamples>0)return totalSamples/hz}
+  o=body+len;if(last)break}
+ return null}
+function estimateWavDuration(bytes,size){
+ if(String.fromCharCode(bytes[0],bytes[1],bytes[2],bytes[3])!=='RIFF')return null;
+ let o=12;
+ while(o+8<=Math.min(bytes.length,size)){
+  const sz=le32(bytes,o+4);const id=String.fromCharCode(bytes[o],bytes[o+1],bytes[o+2],bytes[o+3]);
+  if(sz<1||o+8+sz>bytes.length)break;
+  if(id==='fmt '&&sz>=16){
+   const byteRate=le32(bytes,o+16);
+   // Prefer the exact data-chunk size when present.
+   let p=o+8+sz+(sz&1);
+   while(p+8<=bytes.length){const dsz=le32(bytes,p+4);const did=String.fromCharCode(bytes[p],bytes[p+1],bytes[p+2],bytes[p+3]);
+    if(did==='data')return byteRate>0?dsz/byteRate:null;
+    p+=8+dsz+(dsz&1)}
+   return byteRate>0?(size-o-8)/byteRate:null}
+  o+=8+sz+(sz&1)}
+ return null}
 function parseVorbisComments(b,meta){if(b.length<12)return;const vdLen=le32(b,0);let o=4+vdLen;if(o+4>b.length)return;const count=le32(b,o);o+=4;for(let i=0;i<count&&o+4<=b.length;i++){const len=le32(b,o);o+=4;if(len>b.length-o)break;const s=readText(b.subarray(o,o+len),3);o+=len;const eq=s.indexOf('=');if(eq<1)continue;const k=s.slice(0,eq).toUpperCase(),v=s.slice(eq+1).trim();if(!v)continue;if(k==='TITLE'&&!meta.title)meta.title=v;else if(k==='ARTIST'&&!meta.artist)meta.artist=v;else if(k==='ALBUM'&&!meta.album)meta.album=v;else if(k==='ALBUMARTIST'&&!meta.artist)meta.artist=v;else if(k==='TRACKNUMBER'&&!meta.track){const m=/^(\d+)/.exec(v);if(m)meta.track=Number(m[1])||null}}}
 function parseFLAC(bytes){
  const meta={};
@@ -943,8 +1027,25 @@ self.onmessage=async function(event){const data=event.data;try{
  else if(name.endsWith('.flac'))tryPart(parseFLAC);
  else if(name.endsWith('.ogg')||name.endsWith('.opus')||name.endsWith('.oga'))tryPart(parseOGG);
  else if(name.endsWith('.wav')||name.endsWith('.wave'))tryPart(parseWAV);
+ // Play length for the song list, computed from the same bytes: MP3 casts a
+ // wide net (ID3-free frame sniffing across the tail when the head lacks a
+ // frame header), MP4/FLAC/WAV read their container headers.
+ let duration=null;
+ const head=new Uint8Array(data.head);
+ const size=Number(data.headSize||data.head.byteLength||0)+(data.tail&&data.tail.byteLength?Number(data.tailSize||data.tail.byteLength):0);
+ try{
+  if(name.endsWith('.mp3')){
+   if(size)duration=estimateMp3Duration(head,size);
+   // The head alone may be all tag (album art). Retry with the tail.
+   if(duration===null&&data.tail)duration=estimateMp3Duration(new Uint8Array(data.tail),Number(data.tailSize||data.tail.byteLength))
+  }
+  else if(name.endsWith('.m4a')||name.endsWith('.mp4')||name.endsWith('.aac')){if(size&&head.byteLength>=1e6)duration=estimateMp4Duration(head)}
+  else if(name.endsWith('.flac'))duration=estimateFlacDuration(head);
+  else if(name.endsWith('.wav')||name.endsWith('.wave')){if(size)duration=estimateWavDuration(head,size)}
+ }catch{}
+ if(!Number.isFinite(duration)||duration<=0||duration>=3600*3)duration=null;
  const art=meta.art?await compactArt(meta.art):null;
- self.postMessage({id:data.id,title:meta.title||'',artist:meta.artist||'',album:meta.album||'',track:meta.track||null,art:art||null,artFull:meta.art||null})
+ self.postMessage({id:data.id,title:meta.title||'',artist:meta.artist||'',album:meta.album||'',track:meta.track||null,duration:Number.isFinite(duration)?duration:null,art:art||null,artFull:meta.art||null})
 }catch(error){self.postMessage({id:data.id,error:String(error&&error.message?error.message:error)})}}
 </script>
 <script>
@@ -989,9 +1090,12 @@ const enrichQueue=[];let enrichRunning=false,enrichRenderTimer=null;
 function scheduleEnrichRender(){if(enrichRenderTimer)return;enrichRenderTimer=setTimeout(()=>{enrichRenderTimer=null;render()},1200)}
 const parserWorkerSource=document.getElementById('parserWorkerSource').textContent;
 const parserPool=(()=>{let slots=null;function ensure(){if(slots!==null)return slots;try{const url=URL.createObjectURL(new Blob([parserWorkerSource],{type:'text/javascript'}));slots=Array.from({length:4},()=>{const worker=new Worker(url);const slot={worker,pending:new Map(),nextId:1};worker.onmessage=event=>{const entry=slot.pending.get(event.data.id);if(!entry)return;slot.pending.delete(event.data.id);if(event.data.error)entry.reject(new Error(event.data.error));else entry.resolve(event.data)};worker.onerror=event=>{console.warn('Metadata worker crashed:',event.message);for(const entry of slot.pending.values())entry.reject(new Error('worker-crashed'));slot.pending.clear()};slot.run=(message,transfer)=>new Promise((resolve,reject)=>{const id=slot.nextId++;slot.pending.set(id,{resolve,reject});worker.postMessage({...message,id},transfer||[])});return slot})}catch(error){console.warn('Background metadata workers unavailable; using the main thread instead.',error);slots=[]}return slots}return{run(message,transfer){const pool=ensure();if(!pool.length)return Promise.reject(new Error('workers-unavailable'));const slot=pool[Math.floor(Math.random()*pool.length)];return slot.run(message,transfer)}}})();
-async function readTrackBytes(file,isMp3){const size=Number(file.size)||0;if(!size)return null;const edge=4*1024*1024;if(isMp3)return{head:await file.slice(0,Math.min(size,6*1024*1024)).arrayBuffer(),tail:null};if(size<=16*1024*1024)return{head:await file.slice(0,size).arrayBuffer(),tail:null};const headPromise=file.slice(0,edge).arrayBuffer();const tailPromise=file.slice(size-edge,size).arrayBuffer();return{head:await headPromise,tail:await tailPromise}}
-async function parseTrackDetails(file){const name=String(file.name||'').toLowerCase();const isMp3=name.endsWith('.mp3');const isMp4=name.endsWith('.m4a')||name.endsWith('.mp4')||name.endsWith('.aac');const isFlac=name.endsWith('.flac');const isOgg=name.endsWith('.ogg')||name.endsWith('.opus')||name.endsWith('.oga');const isWav=name.endsWith('.wav')||name.endsWith('.wave');if(!isMp3&&!isMp4&&!isFlac&&!isOgg&&!isWav)return{title:'',artist:'',album:'',trackNo:null,art:null,artFull:null};const bytes=await readTrackBytes(file,!isMp4);if(!bytes)return{title:'',artist:'',album:'',trackNo:null,art:null,artFull:null};try{const result=await parserPool.run({name,head:bytes.head,tail:bytes.tail},bytes.tail?[bytes.head,bytes.tail]:[bytes.head]);return{title:result.title||'',artist:result.artist||'',album:result.album||'',trackNo:Number.isFinite(Number(result.track))?Number(result.track):null,art:result.art||null,artFull:result.artFull||null}}catch(error){const meta=filenameMeta(file);if(isMp3)await readID3(file,meta);else if(isMp4)await readMP4(file,meta);let art=null;if(meta.art)art=await compactArtwork(meta.art);return{title:meta.title||'',artist:meta.artist||'',album:meta.album||'',trackNo:null,art,artFull:meta.art||null}}}
-async function enrichOne(track){try{const albumKey=`${track.artist.toLocaleLowerCase()}\u0000${track.album.toLocaleLowerCase()}`;if(!track.artUrl){const cached=await artGet(track.id);if(cached){track.artUrl=albumArtworkCache.get(albumKey)||URL.createObjectURL(cached);albumArtworkCache.set(albumKey,track.artUrl)}}let parsed=null;if(!track.artUrl||track.forceMeta){parsed=await parseTrackDetails(track.file);if((!track.metaLocked&&!track.userEdited)||(track.forceMeta&&!track.userEdited)){if(parsed.title)track.title=parsed.title;if(parsed.artist)track.artist=parsed.artist;if(parsed.album)track.album=parsed.album;if(parsed.trackNo)track.trackNo=parsed.trackNo}if(!track.artUrl&&parsed.art){track.artUrl=URL.createObjectURL(parsed.art);albumArtworkCache.set(albumKey,track.artUrl);artPut(track.id,parsed.art)}else if(!track.artUrl&&parsed.artFull){track.artUrl=URL.createObjectURL(parsed.artFull);albumArtworkCache.set(albumKey,track.artUrl);artPut(track.id,parsed.artFull)}track.forceMeta=false}if(!track.artFullChecked){track.artFullChecked=true;let full=await artGetFull(track.id);if(!full){if(!parsed)parsed=await parseTrackDetails(track.file);full=parsed.artFull||null;if(full)artPutFull(track.id,full)}track.artFullBlob=full}if(track.artUrl)track.art=track.artUrl;if(tracks[current]===track)refreshNowPlayingArt()}catch(error){console.warn('Could not read details for a track:',error)}finally{track.enriched=true;scheduleEnrichRender()}}
+async function readTrackBytes(file,isMp3){const size=Number(file.size)||0;if(!size)return null;const edge=4*1024*1024;if(isMp3)return{head:await file.slice(0,Math.min(size,6*1024*1024)).arrayBuffer(),tail:null};if(size<=16*1024*1024)return{head:await file.slice(0,size).arrayBuffer(),tail:null};const headPromise=file.slice(0,edge).arrayBuffer();const tailPromise=file.slice(size-edge,size).arrayBuffer();return{head:await headPromise,tail:await tailPromise,size}}
+async function parseTrackDetails(file){const name=String(file.name||'').toLowerCase();const isMp3=name.endsWith('.mp3');const isMp4=name.endsWith('.m4a')||name.endsWith('.mp4')||name.endsWith('.aac');const isFlac=name.endsWith('.flac');const isOgg=name.endsWith('.ogg')||name.endsWith('.opus')||name.endsWith('.oga');const isWav=name.endsWith('.wav')||name.endsWith('.wave');if(!isMp3&&!isMp4&&!isFlac&&!isOgg&&!isWav)return{title:'',artist:'',album:'',trackNo:null,art:null,artFull:null};const bytes=await readTrackBytes(file,!isMp4);if(!bytes)return{title:'',artist:'',album:'',trackNo:null,art:null,artFull:null};try{const result=await parserPool.run({name,head:bytes.head,tail:bytes.tail,size:bytes.size||file.size},bytes.tail?[bytes.head,bytes.tail]:[bytes.head]);return{title:result.title||'',artist:result.artist||'',album:result.album||'',trackNo:Number.isFinite(Number(result.track))?Number(result.track):null,duration:Number.isFinite(Number(result.duration))?Number(result.duration):null,art:result.art||null,artFull:result.artFull||null}}catch(error){const meta=filenameMeta(file);if(isMp3)await readID3(file,meta);else if(isMp4)await readMP4(file,meta);let art=null;if(meta.art)art=await compactArtwork(meta.art);return{title:meta.title||'',artist:meta.artist||'',album:meta.album||'',trackNo:null,duration:null,art,artFull:meta.art||null}}}
+async function enrichOne(track){try{const albumKey=`${track.artist.toLocaleLowerCase()}\u0000${track.album.toLocaleLowerCase()}`;if(!track.artUrl){const cached=await artGet(track.id);if(cached){track.artUrl=albumArtworkCache.get(albumKey)||URL.createObjectURL(cached);albumArtworkCache.set(albumKey,track.artUrl)}}let parsed=null;if(!track.artUrl||track.forceMeta){parsed=await parseTrackDetails(track.file);if((!track.metaLocked&&!track.userEdited)||(track.forceMeta&&!track.userEdited)){if(parsed.title)track.title=parsed.title;if(parsed.artist)track.artist=parsed.artist;if(parsed.album)track.album=parsed.album;if(parsed.trackNo)track.trackNo=parsed.trackNo}
+       /* Play length: use the sniffed duration whenever the row still shows 0 —
+          no playback needed. A real played duration later overwrites it. */
+       if(!track.duration&&Number.isFinite(parsed.duration))track.duration=parsed.duration;if(!track.artUrl&&parsed.art){track.artUrl=URL.createObjectURL(parsed.art);albumArtworkCache.set(albumKey,track.artUrl);artPut(track.id,parsed.art)}else if(!track.artUrl&&parsed.artFull){track.artUrl=URL.createObjectURL(parsed.artFull);albumArtworkCache.set(albumKey,track.artUrl);artPut(track.id,parsed.artFull)}track.forceMeta=false}if(!track.artFullChecked){track.artFullChecked=true;let full=await artGetFull(track.id);if(!full){if(!parsed)parsed=await parseTrackDetails(track.file);full=parsed.artFull||null;if(full)artPutFull(track.id,full)}track.artFullBlob=full}if(track.artUrl)track.art=track.artUrl;if(tracks[current]===track)refreshNowPlayingArt()}catch(error){console.warn('Could not read details for a track:',error)}finally{track.enriched=true;scheduleEnrichRender()}}
 async function pumpEnrichment(){if(enrichRunning)return;enrichRunning=true;const workers=Array.from({length:4},async()=>{while(enrichQueue.length&&!folderScanActive){const track=enrichQueue.shift();if(!track||track.enrichDone)continue;track.enrichDone=true;await enrichOne(track);await new Promise(resolve=>setTimeout(resolve,0))}});await Promise.all(workers);enrichRunning=false;render();persistLibrary()}
 function enqueueEnrichment(list){const fresh=list.filter(t=>!t.enrichDone);if(!fresh.length)return;enrichQueue.push(...fresh);pumpEnrichment()}
 function reconcileLibraryImports(batch){if(!batch||!batch.length)return;const seen=new Set(tracks.map(t=>t.file.path||`${t.file.name}:${t.file.size}:${t.file.lastModified}`));const fresh=[];for(const file of batch){const key=file.path||`${file.name}:${file.size}:${file.lastModified}`;if(seen.has(key))continue;seen.add(key);fresh.push(file)}if(!fresh.length)return;const added=fresh.map(f=>fastTrack(desktop&&f.path?desktopFile(f):f));tracks.push(...added);render();persistLibrary();showToast(`${added.length} new ${added.length===1?'track':'tracks'} found in your folders`);enqueueEnrichment(added)}
