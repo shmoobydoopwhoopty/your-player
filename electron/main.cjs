@@ -745,6 +745,15 @@ ipcMain.handle('afterglow:choose-dir', async (_event, title) => {
 });
 
 ipcMain.handle('player:search', async (_event, query) => downloader.searchYouTube(query));
+// Playlist/album-aware lookup for the downloader tab: returns collection cards
+// (playlists, YouTube Music albums) the UI can expand and download per track.
+ipcMain.handle('player:search-collections', async (_event, query) => downloader.searchYouTubeCollections(query));
+ipcMain.handle('player:expand-collection', async (_event, url) => {
+  const clean = String(url || '').trim();
+  if (!/^(https?:\/\/)?(www\.)?(music\.)?(youtube\.com|youtu\.be)\//i.test(clean)) throw new Error('Collection links must be YouTube playlist or album URLs.');
+  const lists = await downloader.expandCollection(clean);
+  return lists[0] || null;
+});
 ipcMain.handle('player:suggest', (_event, query) => downloader.fetchYouTubeSuggestions(query));
 
 ipcMain.handle('player:download', async (event, payload) => {
@@ -765,6 +774,8 @@ ipcMain.handle('player:download', async (event, payload) => {
     mediaDir,
     title: typeof payload?.title === 'string' && payload.title.trim() ? payload.title.trim() : url,
     channel: typeof payload?.channel === 'string' ? payload.channel : '',
+    // Album collections pass their title so downloaded MP3s get the album tag.
+    albumTitle: typeof payload?.albumTitle === 'string' && payload.albumTitle.trim() ? payload.albumTitle.trim() : '',
     onProgress: data => {
       const now = Date.now();
       if (now - dlProgressLastSent < 250) return;

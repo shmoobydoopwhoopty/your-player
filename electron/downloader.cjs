@@ -193,6 +193,142 @@ function normalizeEntry(entry) {
   };
 }
 
+// yt-dlp's output template names files "Title [dQw4w9WgXcQ].mp4" — pull the id out of that.
+// YouTube's web search accepts an "sp" filter parameter; EgIQAw== is Filters →
+// YouTube Music #albums results (MPRE… browse ids) are proper artist albums.
+const PLAYLIST_SEARCH_FILTER = 'EgIQAw%3D%3D';
+const MAX_COLLECTION_RESULTS = 12;
+const MAX_COLLECTION_TRACKS = 200;
+
+// YouTube Music album search results expose only an MPRE… browse id in flat
+// mode (no title/thumbnail) — the real name appears when the album page is
+// expanded, hand those cards the browse URL so titles arrive on open.
+// Classify what a collection most likely is. YouTube Music album pages carry
+// MPREb… ids; uploaded "full album" mixes are just one long video, so they are
+// handled as single videos and the UI's audio/MP3 buttons; everything else is a
+// plain user playlist.
+function looksLikeAlbum(collection) {
+  if (collection.source === 'ytmusic' || /^MPRE[\w-]/.test(collection.id)) return true;
+  const text = `${collection.title || ''} ${collection.description || ''}`.toLowerCase();
+  if (/\[(19|20)\d\d\]/.test(text)) return true;
+  // "Full album" in the title of a ≥4-track playlist is an album upload split
+  // into tracks; a 1-entry playlist with that phrase is just one long video
+  // and should stay a playlist card (expand will show its single video).
+  if (!/\b(full[ -]album|official album|album playlist|complete album|album with lyrics)\b/.test(text)) return false;
+  const count = collection.trackCount;
+  return count == null || count >= 4;
+}
+
+// Turn a yt-dlp flat entry into whatever the renderer expects. Playlist-type
+// entries become collection cards; ytsearch-style single URLs stay videos.
+function normalizeCollection(entry) {
+  const id = String(entry.id || '');
+  if (!id) return null;
+  const listId = listIdFromUrl(entry.url || entry.webpage_url || '');
+  const channel = entry.channel || entry.uploader || entry.uploader_id || '';
+  const isYtmAlbum = /^MPRE[\w-]/.test(id) || String(entry.url || '').includes('music.youtube.com');
+  return {
+    id: listId || id,
+    kind: 'playlist',
+    source: isYtmAlbum ? 'ytmusic' : 'youtube',
+    url: entry.url || entry.webpage_url || `https://www.youtube.com/playlist?list=${listId || id}`,
+    title: String(entry.title || 'Untitled collection'),
+    channel: String(channel && !/^https?:\/\//.test(channel) ? channel : ''),
+    trackCount: Number.isFinite(entry.playlist_count) ? entry.playlist_count : null,
+    thumbnail: collectionThumb(entry),
+    isAlbum: false, // refined by callers that have context
+  };
+}
+
+function collectionThumb(entry) {
+  let thumbnail = entry.thumbnail || '';
+  if (!thumbnail && Array.isArray(entry.thumbnails) && entry.thumbnails.length) {
+    thumbnail = entry.thumbnails[entry.thumbnails.length - 1].url || '';
+  }
+  return thumbnail;
+}
+
+function listIdFromUrl(url) {
+  const m = String(url || '').match(/[?&]list=([\w-]+)/);
+  return m ? m[1] : '';
+}
+
+// Search YouTube for playlists/browse collections matching a query. Runs a
+// video search, a playlist-filtered web search and a YouTube Music album search
+// in parallel and interleaves the results so mixed cards feel natural.
+async function searchYouTubeCollections(query) {
+  const trimmed = String(query || '').trim();
+  if (!trimmed) return [];
+  const { ytDlpPath } = await resolveTools();
+  const cookieArgs = youtubeCookieArgs();
+  const playlistUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(trimmed)}&sp=${PLAYLIST_SEARCH_FILTER}`;
+  const albumsUrl = `https://music.youtube.com/search?q=${encodeURIComponent(trimmed)}#albums`;
+  // runYtDlpJson resolves to an array of parsed records — --dump-single-json
+  // emits one playlist object, so unwrap [0] and read .entries from there.
+  const run = (url, limit) => runYtDlpJson(ytDlpPath, [...cookieArgs, '--no-warnings', '--flat-playlist', '--skip-download', '--dump-single-json', '--playlist-end', String(limit), url], SEARCH_TIMEOUT_MS)
+    .then(list => {
+      const payload = (Array.isArray(list) ? list[0] : list) || {};
+      return Array.isArray(payload.entries) ? payload.entries : [];
+    })
+    .catch(error => { console.warn('Collection search failed for', url, error.message); return []; });
+  const [web, albums] = await Promise.all([
+    run(playlistUrl, 10),
+    run(albumsUrl, 6),
+  ]);
+  const collections = [];
+  const seen = new Set();
+  const push = (entry, isAlbum) => {
+    const item = normalizeCollection(entry);
+    if (!item || seen.has(item.id)) return;
+    seen.add(item.id);
+    item.isAlbum = isAlbum || looksLikeAlbum(item);
+    collections.push(item);
+  };
+  for (const entry of albums) {
+    if (/^MPRE[\w-]/.test(String(entry.id || '')) && !String(entry.title || '')) {
+      // Untitled YTM album stub: fetch its real title/track count cheaply by
+      // expanding the album page up front (tracks are not needed yet, but the
+      // expanded payload carries the proper name + artwork), cap to keep search
+      // snappy.
+      try {
+        const detail = await expandCollection(String(entry.url || entry.id));
+        const info = detail && detail[0];
+        if (info && info.tracks && info.tracks.length) {
+          const item = normalizeCollection({ ...entry, title: info.title.replace(/^Album - /i, ''), thumbnail: info.tracks[0].thumbnail, playlist_count: info.tracks.length, uploader: info.channel });
+          if (item && !seen.has(item.id)) { seen.add(item.id); item.isAlbum = true; collections.push(item); }
+        }
+      } catch {}
+      continue;
+    }
+    if (String(entry.id || '').startsWith('MPRE') || String(entry.url || '').includes('music.youtube.com')) push(entry, true);
+  }
+  for (const entry of web) push(entry, false);
+  return collections.slice(0, MAX_COLLECTION_RESULTS);
+}
+
+// Expand a collection into its individual videos so the UI can download them
+// one by one. Album pages come through with per-track titles already; plain
+// playlists list flat video entries the same way single searches do.
+async function expandCollection(url) {
+  const { ytDlpPath } = await resolveTools();
+  const payload = await runYtDlpJson(
+    ytDlpPath,
+    [...youtubeCookieArgs(), '--no-warnings', '--flat-playlist', '--skip-download', '--dump-single-json', '--playlist-end', String(MAX_COLLECTION_TRACKS), url],
+    SEARCH_TIMEOUT_MS,
+  );
+  // --dump-single-json returns one object; expect a playlist container.
+  const container = (Array.isArray(payload) ? payload[0] : payload) || {};
+  const entryList = Array.isArray(container.entries) ? container.entries : [];
+  const collection = {
+    id: listIdFromUrl(url) || String(container.id || ''),
+    title: String(container.title || 'Collection'),
+    channel: String(container.uploader || container.channel || ''),
+    isAlbum: /^MPRE[\w-]/.test(String(container.id || '')) || String(url).includes('music.youtube.com') || looksLikeAlbum({ title: container.title, description: '' }),
+  };
+  const tracks = entryList.map(normalizeEntry).flat().filter(Boolean).slice(0, MAX_COLLECTION_TRACKS);
+  return [{ ...collection, tracks }];
+}
+
 async function searchYouTube(query) {
   const trimmed = String(query || '').trim();
   if (!trimmed) return [];
@@ -385,7 +521,13 @@ function startDownload(options) {
         ? ['-f', 'bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[vcodec^=avc1][height<=1080]/bv*[ext=mp4][height<=1080]+ba/b[height<=1080]/bv*+ba/b', '--merge-output-format', 'mp4']
         : ['-f', 'bestaudio/best', '--extract-audio', '--audio-format', 'mp3', '--audio-quality', '0'];
       const template = isVideo ? '%(title)s [%(id)s].%(ext)s' : '%(title)s.%(ext)s';
-      const args = [...youtubeCookieArgs(), ...baseYtDlpArgs(), '--ffmpeg-location', tools.ffmpegPath, ...formatArgs, '-o', path.join(outputDir, template), options.url];
+      // Playlist/album downloads can carry the collection's title so the audio
+      // gets tagged with the album (yt-dlp's metadata postprocessor reads
+      // these --parse-metadata overrides at convert time).
+      const metaArgs = !isVideo && options.albumTitle ? [
+        '--parse-metadata', `album:(?s)^${String(options.albumTitle).replace(/([&\\/])/g, '\\$1')}$`,
+      ] : [];
+      const args = [...youtubeCookieArgs(), ...baseYtDlpArgs(), '--ffmpeg-location', tools.ffmpegPath, ...formatArgs, ...metaArgs, '-o', path.join(outputDir, template), options.url];
       const child = spawn(tools.ytDlpPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 
       const item = {
@@ -543,6 +685,8 @@ async function ensureDirectories() {
 }
 
 module.exports = {
+  searchYouTubeCollections,
+  expandCollection,
   setYouTubeCookies,
   resolveTools,
   resetToolsCache,
