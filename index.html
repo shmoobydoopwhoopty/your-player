@@ -2345,7 +2345,7 @@ function escapeAttr(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':
 function thumbFor(item){return item.thumbnail||`https://i.ytimg.com/vi/${encodeURIComponent(item.id||'')}/hqdefault.jpg`}
 function renderDownloaderView(){
   if(!desktop)return '<div class="empty-library"><div><div class="empty-icon">'+svg('download',20)+'</div><strong>'+escBrand()+' Downloader needs the desktop app</strong>Open '+escBrand()+' Player from its desktop build to search YouTube and download music.</div></div>';
-  return `<div class="dl-yt-wrap" id="dlYTWrap"><div class="dl-yt-actions" id="dlYtActions"><button class="dl-dl-btn accent" id="dlYtGetVideo" type="button">${svg('video',14)} Download video</button><button class="dl-dl-btn accent" id="dlYtGetAudio" type="button">${svg('download',14)} Download MP3</button></div><div id="dlYtHost" style="position:absolute;inset:0"><webview id="dlYtView" src="https://www.youtube.com" partition="persist:youtube-signin" allowtransparency allow="autoplay; encrypted-media; picture-in-picture; fullscreen" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000"></webview></div></div>
+  return `<div class="dl-yt-wrap" id="dlYTWrap"><div class="dl-yt-actions" id="dlYtActions"><button class="dl-dl-btn accent" id="dlYtGetVideo" type="button" style="display:none">${svg('video',14)} Download video</button><button class="dl-dl-btn accent" id="dlYtGetAudio" type="button" style="display:none">${svg('download',14)} Download MP3</button><button class="dl-dl-btn accent" id="dlYtGetPlaylist" type="button" style="display:none">${svg('music',14)} Download playlist</button></div><div id="dlYtHost" style="position:absolute;inset:0"><webview id="dlYtView" src="https://www.youtube.com" partition="persist:youtube-signin" allowtransparency allow="autoplay; encrypted-media; picture-in-picture; fullscreen" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000"></webview></div></div>
   <div class="section-heading dl-queue-head"><h3>Download queue</h3><button class="text-btn" id="dlCancelAll" type="button" hidden>Cancel all</button></div>
   <div class="dl-queue" id="dlQueue"></div>`;
 }
@@ -2353,9 +2353,9 @@ function wireDownloader(){
  if(!desktop)return;
  initAppDownloader();
  renderDownloadQueue();
- $('#dlCancelAll').addEventListener('click',()=>{if(!desktop)return;desktop.cancelDownloads(null);showToast('Canceling all downloads…')});
- $('#dlYtGetVideo').addEventListener('click',()=>downloaderDownload('video'));
- $('#dlYtGetAudio').addEventListener('click',()=>downloaderDownload('audio'));
+ $('#dlCancelAll').addEventListener('click',()=>{if(!desktop)return;desktop.cancelDownloads(null);showToast('Canceling all downloads…')});  $('#dlYtGetVideo').addEventListener('click',()=>downloaderDownload('video'));
+  $('#dlYtGetAudio').addEventListener('click',()=>downloaderDownload('audio'));
+  $('#dlYtGetPlaylist').addEventListener('click',downloaderDownloadPlaylist);
  ensureDownloaderWebview();
 }
 let dlWebview=null;
@@ -2367,8 +2367,16 @@ function parseYouTubeVideoUrl(u){
 function currentVideoState(){return{videoId:dlWebview?.dataset?.videoId||'',url:dlWebview?.dataset?.videoUrl||'',title:dlWebview?.dataset?.videoTitle||''}}
 function syncDownloadButtons(){
  const actions=$('#dlYtActions');if(!actions)return;
- const {videoId}=currentVideoState();
- actions.classList.toggle('stay',Boolean(videoId));
+ // Context-aware overlay: the video buttons appear only while actually
+ // watching a video; on a playlist page the playlist button takes over.  const url=String(dlWebview?.getURL?.()||'');
+  const isWatch=/youtube\.com\/watch/.test(url);
+  const isPlaylist=/youtube\.com\/playlist/.test(url)||/[?&]list=/i.test(url)&&!/\bv=[\w-]{11}\b/.test(url);
+  const videoId=(dlWebview?.dataset?.videoId||'');
+ const v=isWatch&&videoId;
+ $('#dlYtGetVideo').style.display=v?'':'none';
+ $('#dlYtGetAudio').style.display=v?'':'none';
+ $('#dlYtGetPlaylist').style.display=isPlaylist?'':'none';
+ actions.classList.toggle('stay',Boolean(v||isPlaylist));
 }
 function ensureDownloaderWebview(){
  const host=$('#dlYtHost');if(!host)return;
@@ -2412,6 +2420,29 @@ function downloaderDownload(kind){
  const effectiveUrl=url||`https://www.youtube.com/watch?v=${videoId}`;
  if(!videoId&&!looksLikeUrl(effectiveUrl)){showToast('Open a video on YouTube first — the Download buttons appear when you are watching one');return}
  startAppDownload({id:videoId,url:effectiveUrl,title:title||effectiveUrl},kind);
+}
+// Enqueue every track of the playlist/album open in the embedded YouTube tab.
+// Uses the same expansion endpoint the old collection cards wired, then queues
+// each track as a normal audio download.
+async function downloaderDownloadPlaylist(){
+ const url=String(dlWebview?.getURL?.()||'');
+ const listId=(m=>m&&m[1])(/[?&]list=([\w-]+)/.exec(url));
+ if(!listId){showToast('Open a playlist or album page first — the playlist button appears there');return}
+ if(!desktop||typeof desktop.expandCollection!=='function'){showToast('Collection downloads need the desktop app');return}
+ showToast('Reading the playlist…');
+ try{
+  const expanded=await desktop.expandCollection(`https://www.youtube.com/playlist?list=${listId}`);
+  const items=expanded&&Array.isArray(expanded.tracks)?expanded.tracks:[];
+  if(!items.length){showToast('Could not read any tracks from that playlist');return}
+  const isAlbum=Boolean(expanded.isAlbum);
+  showToast(`Queued ${items.length} tracks from “${truncateTitle(String(expanded.title||'the playlist'))}”${isAlbum?' — album metadata attached':''}`);
+  for(const track of items){
+   const trackUrl=track.url||`https://www.youtube.com/watch?v=${track.id}`;
+   try{
+    await desktop.startDownload({url:trackUrl,kind:'audio',title:track.title,channel:track.channel||'',albumTitle:isAlbum?String(expanded.title||''):''});
+   }catch(error){console.warn('Playlist track download failed:',error)}
+  }
+ }catch(error){console.error('Playlist download failed:',error);showToast('Playlist download failed — '+String(error?.message||error).slice(0,80))}
 }
  // Results/collections cards were replaced by YouTube living inside the tab.
  async function runAppSearch(query){
