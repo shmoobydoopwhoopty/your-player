@@ -1398,13 +1398,19 @@ window.addEventListener('resize',()=>{const el=$('#playerTitle');if(el&&el.class
 function playerBarCollisions(){
  try{
   const bar=$('.playerbar');if(!bar||bar.offsetParent===null)return[];
+  // Protected padding zone around the song info block: any button entering
+  // this buffer counts as a collision, which drives the fit loop to shrink
+  // the controls until the buffer is clear again.
+  const INFO_PAD=10;
+  const inflate=(r,pad)=>({left:r.left-pad,right:r.right+pad,top:r.top-pad,bottom:r.bottom+pad,width:r.width+pad*2,height:r.height+pad*2});
+  const isInfo=el=>el.classList&&el.classList.contains('player-track');
   const cands=[];
   const now=$('.player-track',bar),controls=$('.play-controls',bar),vol=$('.volume-control',bar),extras=$('.player-right[data-part="extras"]',bar);
   for(const el of [now,controls,vol,extras])if(el)cands.push(el);
   for(const el of ($$('.play-controls .control-btn,.play-controls .play-main',bar)))cands.push(el);
   for(const el of ($$('.player-right .right-btn,.volume-slider',bar)))cands.push(el);
   for(const el of ($$('.player-track .player-like,.player-track .listened-pill',bar)))cands.push(el);
-  const rects=cands.map(el=>({el,r:el.getBoundingClientRect()}));
+  const rects=cands.map(el=>({el,r:el.getBoundingClientRect()})).map(rec=>isInfo(rec.el)?{el:rec.el,r:inflate(rec.r,INFO_PAD)}:rec);
   const hits=[];
   for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){
    const a=rects[i],b=rects[j];
@@ -1443,6 +1449,14 @@ const BAR_FIT_VARS={art:'--p-art-size',ctrl:'--ctrl-btn-size',play:'--play-btn-s
 const BAR_FIT_TO_LAYOUT={art:'playerArtSize',ctrl:'ctrlBtnSize',play:'playBtnSize',vol:'volScale',pt:'playerTextScale'};
 const BAR_FIT_DEFAULT={art:49,ctrl:30,play:44,vol:1,pt:1};
 let barFit=null;
+// Safe read of the user's layout values: `layout` is declared later in the
+// file, so referencing it directly from the fit code during early startup hits
+// its temporal dead zone and the ReferenceError silently kills the fit loop
+// (the whole reason shrunken bars never restored and at-rest overlaps never
+// corrected). This accessor returns null until layout is initialized.
+function barFitLayout(key){
+ try{const t=typeof layout!=="undefined"?layout:null;return t&&t[key]!=null?t[key]:null}catch{return null}
+}
 function barEl(){return $('.playerbar')}
 function barFitSeed(){
  if(barFit)return barFit;
@@ -1451,7 +1465,8 @@ function barFitSeed(){
  barFit={};
  for(const k of Object.keys(BAR_FIT_VARS)){
   const layoutKey=BAR_FIT_TO_LAYOUT[k];
-  const user=k==='vol'||k==='pt'?(Number(layout[layoutKey])||100)/100:Number(layout[layoutKey])||BAR_FIT_DEFAULT[k];
+  const stored=barFitLayout(layoutKey);
+  const user=k==='vol'||k==='pt'?(Number(stored)||100)/100:Number(stored)||BAR_FIT_DEFAULT[k];
   barFit[k]=Number.isFinite(user)?user:read(BAR_FIT_VARS[k]);
  }
  return barFit;
@@ -1518,10 +1533,10 @@ function runPlayerBarFit(){
    let grew=false;
    for(const k of Object.keys(barFit)){
     if(k==='vol'||k==='pt'){
-     const saved=(Number(layout[BAR_FIT_TO_LAYOUT[k]])||100)/100;
+     const saved=(Number(barFitLayout(BAR_FIT_TO_LAYOUT[k]))||100)/100;
      if(barFit[k]<saved){barFit[k]=Math.min(saved,barFit[k]+.04);grew=true}
     }else{
-     const saved=Number(layout[BAR_FIT_TO_LAYOUT[k]])||BAR_FIT_DEFAULT[k];
+     const saved=Number(barFitLayout(BAR_FIT_TO_LAYOUT[k]))||BAR_FIT_DEFAULT[k];
      if(barFit[k]<saved){barFit[k]=Math.min(saved,barFit[k]+2);grew=true}
     }
    }
@@ -1540,14 +1555,15 @@ function runPlayerBarFit(){
  // bottomed out at its floors, strip secondary pieces instead of leaving
  // overlapping buttons on screen. Tiers are removed automatically on the
  // next pass once space returns (the classes are recomputed every run).
+ const tierBar=barEl();
  if(playerBarCollisions().length){
-  bar.classList.add('no-room-extreme');
-  if(playerBarCollisions().length)bar.classList.add('no-room-last');
-  else bar.classList.remove('no-room-last');
+  tierBar.classList.add('no-room-extreme');
+  if(playerBarCollisions().length)tierBar.classList.add('no-room-last');
+  else tierBar.classList.remove('no-room-last');
   if(playerBarCollisions().length&&barFitPasses<4){barFitPasses++;requestAnimationFrame(()=>schedulePlayerBarFit())}
   else barFitPasses=0;
  }else{
-  bar.classList.remove('no-room-extreme');bar.classList.remove('no-room-last');
+  tierBar.classList.remove('no-room-extreme');tierBar.classList.remove('no-room-last');
   if(barFitPasses>0){barFitPasses++;if(barFitPasses<4)requestAnimationFrame(()=>schedulePlayerBarFit());else barFitPasses=0}
   else barFitPasses=0;
  }
@@ -1555,6 +1571,11 @@ function runPlayerBarFit(){
 let barFitPasses=0;
 if(typeof ResizeObserver!=='undefined'){const pbar=$('.playerbar');if(pbar)new ResizeObserver(()=>schedulePlayerBarFit()).observe(pbar)}
 window.addEventListener('resize',schedulePlayerBarFit);
+// Run the fit once after first paint so the at-rest layout (including any
+// constant overlap like a wide info block) is corrected even without a resize.
+schedulePlayerBarFit();
+document.addEventListener('DOMContentLoaded',schedulePlayerBarFit);
+window.addEventListener('load',()=>setTimeout(schedulePlayerBarFit,300));
 function updateListenedPill(){const t=currentTrack();const pill=$('#listenedPill');if(!pill)return;if(!t){pill.hidden=true;return}pill.hidden=false;pill.innerHTML=`${svg('play',11)} <b>${t.playCount||0}</b>`;pill.title=`${t.title} has been played ${t.playCount||0} ${((t.playCount||0)===1)?'time':'times'} - counted each time it starts over`}
 $('#playerArtist').addEventListener('click',()=>{const t=currentTrack();if(t)openArtistPage(t.artist)});
 $('#playerAlbum').addEventListener('click',()=>{const t=currentTrack();if(!(t&&t.album&&t.album!=='Single'))return;searchTerm='';const searchInput=$('#searchInput');if(searchInput)searchInput.value='';openAlbumPage(t.album)});
