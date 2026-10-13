@@ -1044,6 +1044,30 @@ ipcMain.handle('tracks:write-tags', async (_event, payload) => {
   }
 });
 
+// ── Replace the audio file behind a library track ────────────────────────
+// The user picks a new audio file via the OS dialog; the old file is swapped
+// out on disk and every kept pointer (playback URL, tag edits, art) now points
+// at the replacement. The renderer keeps the same library entry, so playlists,
+// favorites and play counts survive the swap.
+ipcMain.handle('tracks:choose-replacement', async (_event, payload) => {
+  const target = path.resolve(String(payload?.path || ''));
+  if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);
+  const result = await dialog.showOpenDialog(dialogParent(), {
+    title: `Choose the new audio file for this song`,
+    defaultPath: path.dirname(target),
+    properties: ['openFile'],
+    filters: [{ name: 'Audio files', extensions: [...audioExtensions].map(ext => ext.slice(1)) }],
+  });
+  if (result.canceled || !result.filePaths.length) return null;
+  const replacement = path.resolve(result.filePaths[0]);
+  const stat = await fs.stat(replacement).catch(() => null);
+  if (!stat || !stat.isFile()) throw new Error('The chosen file could not be read.');
+  // Register the replacement so playback URL, byte reads and tag writers all
+  // accept it immediately (same allow-list as files picked on import).
+  allowedAudioFiles.add(replacement);
+  return describeAudioFile(replacement);
+});
+
 ipcMain.handle('tracks:write-art', async (_event, payload) => {
   const target = path.resolve(String(payload?.path || ''));
   if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);

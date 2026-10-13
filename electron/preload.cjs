@@ -81,6 +81,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
 
   // Editing song details (writes tags into the music files)
   writeTrackTags: payload => ipcRenderer.invoke('tracks:write-tags', payload),
+  chooseTrackReplacement: payload => ipcRenderer.invoke('tracks:choose-replacement', payload ?? {}),
   writeTrackArt: payload => ipcRenderer.invoke('tracks:write-art', payload),
 
   // Identify a song from a file (Deezer-backed matching, cover fetch)
