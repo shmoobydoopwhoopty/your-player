@@ -79,11 +79,13 @@ html[data-surface="nebula"]{--bg:#0d0a14;--glow:#2a1740;--sidebar-bg:rgba(11,8,1
 body[data-view]:not([data-view="home"]) .home-grid>.queue-card{display:none}
 body:not([data-view="home"]) .home-grid{display:none}
 body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1}
-.sugg-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 26px}
-.home-slot-narrow .sugg-grid{grid-template-columns:1fr}
-/* Suggested-for-you list shares the Up Next card's boxed look — same surface
-   and frame, so both side lists sit in identical containers. */
-.home-songs{background:var(--spot,var(--card));border:1px solid var(--spot-border,var(--line));border-radius:16px;padding:19px 16px}
+/* Suggested-for-you is a single-column scrolling list in its own card — the
+   same row anatomy as Up Next, but every suggestion is listed (no cap) and
+   the card carries its own gradient so the three home boxes don't share one
+   surface. Derived from --spot, so themes and custom colors still apply. */
+.home-songs{border:1px solid var(--spot-border,var(--line));border-radius:16px;padding:19px 16px}
+.home-songs.sugg-card{display:flex;flex-direction:column;background:linear-gradient(160deg,color-mix(in srgb,var(--spot) 88%,#000) 0%,color-mix(in srgb,var(--spot) 96%,#ffffff10) 100%)}
+.sugg-list{overflow:auto;display:grid;align-content:start;gap:2px;grid-template-columns:1fr;flex:1 1 auto;min-height:0;max-height:calc(var(--spot-h,366px) - 84px);margin:12px -6px 0;padding:0 6px;scrollbar-width:thin;scrollbar-color:#353a39 transparent}
 .sugg-row{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:11px;padding:8px 7px;border-radius:9px;cursor:pointer;background:var(--row-bg)}
 .sugg-row:hover{background:var(--row-bg);box-shadow:inset 0 0 0 999px var(--hover-tint,#ffffff0a)}
 .sugg-cover{width:40px;height:40px;border-radius:7px;object-fit:cover;background:#252a27;flex:none}
@@ -95,9 +97,10 @@ body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1
 .home-grid.home-slots .cover-frame{min-width:0;min-height:0;width:min(44%,220px);max-width:none;height:auto;aspect-ratio:1}
 @media(max-width:880px){.home-grid,.home-grid.home-slots{grid-template-columns:1fr}.home-grid>.queue-card,.home-grid.home-slots>.queue-card{grid-column:auto}}
 .spotlight{height:var(--spot-h,366px);min-width:0;position:relative;isolation:isolate;overflow:hidden;border-radius:16px;background:var(--spot);border:1px solid var(--spot-border);padding:25px 32px;container-type:inline-size}.spot-inner{display:flex;align-items:center;gap:clamp(16px,3cqw,58px);width:100%;height:100%;position:relative;z-index:1}.spotlight-bg{position:absolute;z-index:-2;inset:-30px;background-position:center;background-size:cover;filter:blur(35px) saturate(1.22);opacity:.37;transform:scale(1.15);transition:background-image .4s}.spotlight:before{content:'';position:absolute;z-index:-1;inset:0;background:linear-gradient(90deg,color-mix(in srgb,var(--spot-fade) 85%,transparent) 0%,color-mix(in srgb,var(--spot-fade) 72%,transparent) 48%,color-mix(in srgb,var(--spot-fade) 55%,transparent) 100%),linear-gradient(0deg,color-mix(in srgb,var(--spot-fade) 27%,transparent),color-mix(in srgb,var(--spot-fade) 8%,transparent))}.cover-frame{width:min(32vw,318px);height:min(32vw,318px);max-width:318px;max-height:318px;min-width:220px;min-height:220px;flex:none;border-radius:13px;overflow:hidden;box-shadow:0 20px 60px #0009,0 0 0 1px #ffffff22;position:relative;background:#222}.spot-inner .cover-frame{width:clamp(96px,calc(100cqw - 288px),min(32vw,318px));height:auto;aspect-ratio:1;min-width:96px;min-height:0;flex:0 1 auto}.cover-frame img{width:100%;height:100%;object-fit:cover}.cover-frame:after{content:'';position:absolute;inset:0;background:linear-gradient(145deg,#ffffff13,transparent 35%,#0002);pointer-events:none}.spot-copy{min-width:0;max-width:470px}.spot-kicker{display:flex;align-items:center;gap:8px;color:var(--text-strong)b0;font-size:10px;letter-spacing:1.35px;text-transform:uppercase;font-weight:700;margin-bottom:16px}.live-pulse{width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 10px var(--accent)}.spot-copy h2{font:700 clamp(24px,3vw,38px)/1.13 Manrope,sans-serif;letter-spacing:-1.2px;margin:0 0 10px;max-width:460px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.spot-artist{font-size:14px;color:var(--text-strong);margin-bottom:6px}.spot-album{font-size:12px;color:var(--text-dim)}.spot-actions{display:flex;align-items:center;gap:11px;margin-top:25px}.accent-btn{height:42px;padding:0 19px;border:0;border-radius:24px;background:var(--accent-grad);color:var(--on-accent);font-weight:700;font-size:12px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:.18s}.round-action{height:39px;width:39px;border-radius:50%;border:1px solid #ffffff30;background:#ffffff0b;display:grid;place-items:center;color:var(--text-strong);cursor:pointer}.round-action:hover,.round-action.liked{color:var(--accent);background:#ffffff16}
-/* Up Next card wears the spotlight's frame: same border token, same surface
-   tone, so the two boxes read as a matched pair on the home grid. */
-.queue-card{min-width:0;background:var(--spot,var(--card));border:1px solid var(--spot-border,var(--line));border-radius:16px;padding:19px 16px;display:flex;flex-direction:column;overflow:hidden}.queue-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.queue-title{font:700 14px Manrope,sans-serif}.queue-sub{font-size:10px;color:var(--text-faint);margin-top:4px}.queue-more{height:28px;width:28px;display:grid;place-items:center;border:0;border-radius:50%;color:var(--text-dim);background:transparent;cursor:pointer}.queue-more:hover{background:#fff1;color:white}.queue-list{overflow:auto;display:grid;align-content:start;gap:2px;scrollbar-width:thin;scrollbar-color:#353a39 transparent}.home-grid .queue-list{flex:1 1 auto;min-height:0;max-height:calc(var(--spot-h,366px) - 80px)}/* Song rows everywhere (library table, Up Next / queue, Suggested list) sit
+/* Up Next card: its own vertical gradient (light at the top fading darker),
+   distinct from both the Spotlight's blurred-art surface and the Suggested
+   card's reversed diagonal fade. Still derived from --spot for theming. */
+.queue-card{min-width:0;background:linear-gradient(180deg,color-mix(in srgb,var(--spot) 97%,#ffffff10) 0%,color-mix(in srgb,var(--spot) 86%,#000) 100%);border:1px solid var(--spot-border,var(--line));border-radius:16px;padding:19px 16px;display:flex;flex-direction:column;overflow:hidden}.queue-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.queue-title{font:700 14px Manrope,sans-serif}.queue-sub{font-size:10px;color:var(--text-faint);margin-top:4px}.queue-more{height:28px;width:28px;display:grid;place-items:center;border:0;border-radius:50%;color:var(--text-dim);background:transparent;cursor:pointer}.queue-more:hover{background:#fff1;color:white}.queue-list{overflow:auto;display:grid;align-content:start;gap:2px;scrollbar-width:thin;scrollbar-color:#353a39 transparent}.home-grid .queue-list{flex:1 1 auto;min-height:0;max-height:calc(var(--spot-h,366px) - 80px)}/* Song rows everywhere (library table, Up Next / queue, Suggested list) sit
    on a configurable --row-bg placemat: a subtle transparent backdrop separate
    from the hover tint, which layers on top. Default is lightly black. */
 :root{--row-bg:#00000052}
@@ -1597,7 +1600,7 @@ function detailRows(list,tbody){const el=$(tbody);if(!el)return;el.replaceChildr
 function seededPick(list,seed){if(!list.length)return null;return list[Math.abs(Math.floor(seed))%list.length]}
 function homeSuggestions(){
  const picks=[];const now=Date.now();const seen=new Set();
- const push=(t,why)=>{if(!t||seen.has(t.id)||picks.length>=12)return;seen.add(t.id);picks.push({track:t,why})};
+ const push=(t,why)=>{if(!t||seen.has(t.id))return;seen.add(t.id);picks.push({track:t,why})};
  const never=tracks.filter(t=>!t.playCount);
  const recentDaysAgo=d=>tracks.filter(t=>(now-(t.added||0))/86400000<=d);
  const fresh=recentDaysAgo(21).filter(t=>!t.playCount);
@@ -1614,12 +1617,13 @@ function homeSuggestions(){
  for(const t of fresh.sort((a,b)=>(b.added||0)-(a.added||0)).slice(0,3))push(t,'New in your library — give it a first listen');
  // 8–9: favorites you haven't spun in a while
  const oldFavs=tracks.filter(t=>t.favorite&&t.playCount&&t.id!==tracks[current]?.id);for(const t of oldFavs.slice(0,2))push(t,'A favorite worth coming back to');
- // 10–12: fill with unheard songs, loved artists first
+ // Fill with unheard songs, loved artists first — no cap: every unplayed
+ // track qualifies, ranked so loved-artist songs surface near the top.
  const rest=never.filter(t=>lovedArtists.has(t.artist));for(const t of rest)push(t,`You love ${t.artist} — this one's still unplayed`);
- for(const t of seededShuffle(never).slice(0,12))push(t,'Unplayed — try something new from your folders');
+ for(const t of seededShuffle(never))push(t,'Unplayed — try something new from your folders');
  // top up with recently added if the library is mostly played
  if(picks.length<6)for(const t of [...tracks].sort((a,b)=>(b.added||0)-(a.added||0)))push(t,'Recently added to your library');
- return picks.slice(0,12);
+ return picks;
 }
 function seededShuffle(list){const arr=[...list];for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const tmp=arr[i];arr[i]=arr[j];arr[j]=tmp}return arr}
 function renderHomeSuggestions(){
@@ -1628,12 +1632,14 @@ function renderHomeSuggestions(){
  const heading=document.createElement('div');heading.className='section-heading';heading.style.marginTop='0';
  heading.innerHTML=`<h3>Suggested for you</h3>`;
  wrap.append(heading);
- const grid=document.createElement('div');grid.className='sugg-grid';
- for(const pick of homeSuggestions()){const t=pick.track;const row=document.createElement('div');row.className='sugg-row';row.dataset.trackSugg=String(tracks.indexOf(t));
-  row.innerHTML=`<img class="sugg-cover" src="${t.art}" alt=""><div class="sugg-info" style="min-width:0"><div class="track-title" style="font-size:11.5px"></div><div class="track-subtitle"></div></div>`;
-  row.querySelector('.track-title').textContent=t.title;row.querySelector('.track-subtitle').textContent=t.artist;
+ const grid=document.createElement('div');grid.className='sugg-list';
+ for(const pick of homeSuggestions()){const t=pick.track;const row=document.createElement('div');row.className='queue-row';row.dataset.trackSugg=String(tracks.indexOf(t));
+  row.innerHTML=`<img class="queue-thumb" src="${t.art}" alt=""><div class="queue-info"><div class="queue-track"></div><div class="queue-artist"></div></div><span class="queue-time"></span>`;
+  row.querySelector('.queue-track').textContent=t.title;row.querySelector('.queue-artist').textContent=t.artist;
+  const dur=Number(t.duration);row.querySelector('.queue-time').textContent=Number.isFinite(dur)&&dur>0?fmtDur(dur):'';
   row.addEventListener('click',()=>{playScope=null;playAt(tracks.indexOf(t),true)});
   grid.append(row)}
+ wrap.classList.add('sugg-card');
  wrap.append(grid);
 }
 function letterForName(name){const ch=String(name||'').trim().charAt(0).toLocaleUpperCase();return /^[A-Z]/.test(ch)?ch:'#'}
