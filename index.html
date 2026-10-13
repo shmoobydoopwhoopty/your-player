@@ -536,6 +536,10 @@ input[type=color].slot-off{opacity:.28}
 .ob-skip{margin-right:auto}
 /* ── Custom color pickers ── */
 .cc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+/* #ccGrid hosts the group headings and one .cc-grid section per group — each
+   section must span the outer grid's full width, or the nesting squeezes the
+   cards into ~78px and clips gradient picks' second swatch. */
+#ccGrid>.cc-grid{grid-column:1/-1}
 .cc-item{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px 4px 9px;cursor:pointer;min-width:0}
 .cc-item:hover{border-color:#ffffff2a}
 .cc-item span{flex:1;min-width:0;font-size:9.5px;color:var(--text-strong);line-height:1.35;cursor:pointer}
