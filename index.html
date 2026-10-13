@@ -2512,14 +2512,23 @@ function openAppPreview(item){
         console.error('Preview stream failed:',error);
         if(frame.dataset.videoId!==item.id)return;
         const msg=String(error?.message||error||'');
-        const explain=/Requested format is not available|No stream URL|not available/i.test(msg)
-          ? 'No live stream found — this video may be region-locked or age-restricted. Signing in (button below) usually unlocks it, or download it instead — downloaded videos always play.'
-          : /timed out/i.test(msg) ? 'The preview engine timed out — check your connection and try again.'
-          : /sign in|Sign in|cookies|age/i.test(msg) ? 'YouTube wants you signed in for this one — hit “Sign in to YouTube” below, then retry the preview.'
-          : 'Could not load the preview ('+msg.slice(0,80)+') — you can still download it.';
-        frame.innerHTML=`<div style="position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;background:#000"><div style="max-width:420px"><div style="font-size:12px;color:#b9c0bb;line-height:1.65">${escapeAttr(explain)}</div><button type="button" id="dlPreviewRetry" style="margin-top:12px;height:32px;padding:0 16px;border:1px solid #ffffff30;border-radius:16px;background:#ffffff10;color:#fff;font-weight:700;font-size:11px;cursor:pointer">Retry preview</button></div></div>`;
+        // Only genuine YouTube auth messages get the sign-in wording — a loose
+        // /age/i match used to fire on 'page'/'manage' inside ordinary yt-dlp
+        // errors, telling already-signed-in users to sign in.
+        const explain=/confirm your age|age-restricted|confirm you.*not a bot|Sign in to confirm/i.test(msg)
+          ? 'YouTube restricts this video — signing in usually unlocks it, but your session may have expired. Hit Sign in to YouTube below, sign in again, then retry.'
+          : /This video is not available|not available in your country|geo.block|unavailable/i.test(msg)
+          ? 'This video is region-locked or was removed, so it can’t stream inside the app. Downloading it instead usually still works.'
+          : /timed out/i.test(msg)
+          ? 'The preview engine timed out — check your connection and hit retry.'
+          : /Requested format is not available|No video formats|No stream URL/i.test(msg)
+          ? 'No stream could be resolved for this one right now — try again in a bit, or download it instead (downloads use a wider engine path and usually work).'
+          : 'Could not load the preview ('+msg.slice(0,80)+') — you can still download it instead.';
+        frame.innerHTML=`<div style="position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;background:#000"><div style="max-width:440px"><div style="font-size:12px;color:#b9c0bb;line-height:1.65">${escapeAttr(explain)}</div><div style="display:flex;gap:9px;justify-content:center;margin-top:12px"><button type="button" id="dlPreviewRetry" style="height:32px;padding:0 16px;border:1px solid #ffffff30;border-radius:16px;background:#ffffff10;color:#fff;font-weight:700;font-size:11px;cursor:pointer">Retry preview</button><button type="button" id="dlPreviewDl" style="height:32px;padding:0 16px;border:0;border-radius:16px;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:11px;cursor:pointer">Download instead</button></div></div></div>`;
         const retry=$('#dlPreviewRetry');
         if(retry)retry.addEventListener('click',()=>{frame.dataset.videoId='';openAppPreview(item)});
+        const dlBtn=$('#dlPreviewDl');
+        if(dlBtn)dlBtn.addEventListener('click',()=>{stopAppPreview();startAppDownload(item,'video')});
       }
     })();
   }
