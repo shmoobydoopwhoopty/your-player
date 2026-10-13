@@ -2630,8 +2630,10 @@ async function openAppVideo(video){
   }catch(error){console.error('Could not open video:',error);showToast('Could not open that video')}
 }
 function closeAppVideo(){const player=$('#videoModalPlayer');if(player){player.pause();player.removeAttribute('src');player.load()}$('#videoModal').classList.remove('open');const frame=$('#mediaPlayFrame');if(frame)frame.innerHTML='';const card=$('#mediaPlayCard');if(card)card.hidden=true}
-buttonIcon($('#dlPreviewClose'),'close',16);buttonIcon($('#videoModalClose'),'close',16);
-$('#dlPreviewClose').addEventListener('click',stopAppPreview);
+/* Guarded: this preview modal was replaced by the embedded YouTube view —
+   keep the wiring harmless if the markup ever goes away again. */
+if($('#dlPreviewClose')){buttonIcon($('#dlPreviewClose'),'close',16);$('#dlPreviewClose').addEventListener('click',stopAppPreview)}
+buttonIcon($('#videoModalClose'),'close',16);
 $('#videoModalClose').addEventListener('click',closeAppVideo);
 $('#videoModal').addEventListener('click',event=>{if(event.target.id==='videoModal')closeAppVideo()});
 $('#videoModalPlayer').addEventListener('play',()=>{if(!audio.paused){audio.pause();playing=false;updatePlayButtons();showToast('Music paused — video is playing')}});
