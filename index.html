@@ -2345,7 +2345,7 @@ function escapeAttr(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':
 function thumbFor(item){return item.thumbnail||`https://i.ytimg.com/vi/${encodeURIComponent(item.id||'')}/hqdefault.jpg`}
 function renderDownloaderView(){
   if(!desktop)return '<div class="empty-library"><div><div class="empty-icon">'+svg('download',20)+'</div><strong>'+escBrand()+' Downloader needs the desktop app</strong>Open '+escBrand()+' Player from its desktop build to search YouTube and download music.</div></div>';
-  return `<div class="dl-yt-wrap" id="dlYTWrap"><div class="dl-yt-actions" id="dlYtActions"><button class="dl-dl-btn accent" id="dlYtGetVideo" type="button">${svg('video',14)} Download video</button><button class="dl-dl-btn accent" id="dlYtGetAudio" type="button">${svg('download',14)} Download MP3</button></div><div id="dlYtHost" style="position:absolute;inset:0"></div></div>
+  return `<div class="dl-yt-wrap" id="dlYTWrap"><div class="dl-yt-actions" id="dlYtActions"><button class="dl-dl-btn accent" id="dlYtGetVideo" type="button">${svg('video',14)} Download video</button><button class="dl-dl-btn accent" id="dlYtGetAudio" type="button">${svg('download',14)} Download MP3</button></div><div id="dlYtHost" style="position:absolute;inset:0"><webview id="dlYtView" src="https://www.youtube.com" partition="persist:youtube-signin" allowtransparency allow="autoplay; encrypted-media; picture-in-picture; fullscreen" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000"></webview></div></div>
   <div class="section-heading dl-queue-head"><h3>Download queue</h3><button class="text-btn" id="dlCancelAll" type="button" hidden>Cancel all</button></div>
   <div class="dl-queue" id="dlQueue"></div>`;
 }
@@ -2371,15 +2371,15 @@ function syncDownloadButtons(){
  actions.classList.toggle('stay',Boolean(videoId));
 }
 function ensureDownloaderWebview(){
- const host=$('#dlYtHost');if(!host||dlWebview)return;
- dlWebview=document.createElement('webview');
- dlWebview.id='dlYtView';
- dlWebview.setAttribute('src','https://www.youtube.com');
- dlWebview.setAttribute('partition','persist:youtube-signin');
- dlWebview.setAttribute('allowtransparency','');
- dlWebview.setAttribute('allow','autoplay; encrypted-media; picture-in-picture; fullscreen');
- dlWebview.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;border:0;background:#000');
- host.append(dlWebview);
+ const host=$('#dlYtHost');if(!host)return;
+ // The webview is written inline in renderDownloaderView's markup (the same
+ // pattern the sign-in + cover-lookup webviews use). Creating it dynamically
+ // with createElement rendered as a dead black box on Windows — the custom
+ // element must be present when the page parses, not upgraded later.
+ dlWebview=host.querySelector('webview#dlYtView');
+ if(!dlWebview)return;
+ if(dlWebview.dataset.wired)return;
+ dlWebview.dataset.wired='1';
  dlWebview.addEventListener('dom-ready',()=>{
   try{dlWebview.executeJavaScript(
     'document.addEventListener(\'yt-navigate-finish\',()=>{try{const u=location.href;const m=/[?&]v=([\\w-]{11})/.exec(u);const t=document.title||\'\';window.__dlYT={url:u,videoId:m&&m[1]?m[1]:\'\',title:t}}catch{}});'
