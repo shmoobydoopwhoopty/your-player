@@ -895,7 +895,7 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
 <div class="layout-edit-bar" id="layoutEditBar" hidden><span>Drag a section onto a glowing zone — drag edge bars to resize</span><button class="secondary-btn" id="homeSlotsReset" type="button">Reset home layout</button><button class="accent-btn" id="layoutDoneBtn" type="button">Done</button></div>
 <div class="modal-backdrop" id="editModal"><form class="modal" id="editForm" style="width:min(430px,100%)"><h3 id="editModalTitle">Edit details</h3><p id="editModalScope" class="edit-scope"></p><div class="edit-art-row"><img id="editArt" alt=""><div class="edit-art-btns"><button class="dl-dl-btn accent" type="button" id="editArtChoose">Choose new picture…</button><button class="dl-dl-btn" type="button" id="editArtLookup" hidden>Album cover lookup</button><button class="dl-dl-btn" type="button" id="editArtClear">Remove picture</button></div></div><div class="row2"><label>Song title<input id="editTitle" type="text" maxlength="120" autocomplete="off"></label><label>Artist<span>*</span><input id="editArtist" type="text" maxlength="120" required autocomplete="off"></label></div><div class="row2"><label>Album<span>*</span><input id="editAlbum" type="text" maxlength="120" required autocomplete="off"></label><label>Track number<input id="editTrack" type="number" min="1" max="999" style="width:90px"></label></div><label style="margin-top:2px">Notes for this album in your library<textarea id="editNotes" maxlength="300" placeholder="Optional — shows on the album page"></textarea></label><button type="button" class="dl-dl-btn" id="editTrim" style="height:34px;width:100%;margin-top:10px;justify-content:center">Trim this song and save a copy</button><button type="button" class="dl-dl-btn" id="editFileSwap" hidden style="height:34px;width:100%;margin-top:8px;justify-content:center">Change song file…</button><div class="modal-actions"><button type="button" class="cancel-btn" id="editCancel">Cancel</button><button class="create-btn" type="submit" id="editSave">Save changes</button></div></form></div>
 <div class="modal-backdrop" id="mp3Modal"><form class="modal" id="mp3Form" style="width:min(440px,100%)"><h3>Save as MP3</h3><p id="mp3VideoName" class="edit-scope"></p><div class="edit-art-row"><img id="mp3Art" alt=""><div class="edit-art-btns"><button class="dl-dl-btn" type="button" id="mp3ArtThumb">Use video thumbnail</button><button class="dl-dl-btn" type="button" id="mp3ArtChoose">Choose picture…</button><button class="dl-dl-btn" type="button" id="mp3ArtClear">No cover</button></div></div><div class="row2"><label>Song name<span>*</span><input id="mp3Title" maxlength="120" required autocomplete="off"></label></div><div class="row2"><label>Artist<input id="mp3Artist" maxlength="120" autocomplete="off"></label><label>Album<input id="mp3Album" maxlength="120" autocomplete="off"></label></div><div class="row2"><label>Start (m:ss or seconds)<input id="mp3Start" type="text" inputmode="numeric" placeholder="0:00" autocomplete="off"></label><label>End (optional)<input id="mp3End" type="text" inputmode="numeric" placeholder="end of file" autocomplete="off"></label></div><p style="font-size:10.5px;color:var(--text-dim);margin:10px 0 0;line-height:1.55" id="mp3Hint"></p><div class="modal-actions"><button type="button" class="cancel-btn" id="mp3Cancel">Cancel</button><button class="create-btn" type="submit" id="mp3Save">Save MP3</button></div></form></div>
-<div class="modal-backdrop" id="trimModal"><div class="modal" style="width:min(430px,100%)"><h3>Trim</h3><p id="trimTitle" style="font-size:11.5px;color:var(--text-strong);margin:-2px 0 14px"></p><div class="row2"><label>Start (m:ss or seconds)<input id="trimStart" type="text" inputmode="numeric" placeholder="0:00" autocomplete="off"></label><label>End (optional)<input id="trimEnd" type="text" inputmode="numeric" placeholder="end of file" autocomplete="off"></label></div><p style="font-size:10.5px;color:var(--text-dim);margin:10px 0 0;line-height:1.55" id="trimHint"></p><div class="modal-actions"><button type="button" class="cancel-btn" id="trimCancel">Cancel</button><button type="button" class="create-btn" id="trimGo">Trim</button></div></div></div>
+<div class="modal-backdrop" id="trimModal"><div class="modal" style="width:min(560px,100%)"><h3>Trim</h3><p id="trimTitle" style="font-size:11.5px;color:var(--text-strong);margin:-2px 0 10px"></p><div id="trimWaveWrap" style="position:relative;height:96px;border:1px solid var(--line);border-radius:10px;background:#0d1110;overflow:hidden;margin-bottom:8px"><canvas id="trimWave" style="width:100%;height:100%;display:block" width="1064" height="192"></canvas><div id="trimWaveLoading" style="position:absolute;inset:0;display:grid;place-items:center;color:var(--text-dim);font-size:11px">Reading the waveform…</div></div><div style="display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--text-faint);margin:-2px 0 10px"><span id="trimTimeLeft">0:00</span><span style="font-size:10px;color:var(--text-dim)">Drag the edge handles to set the keep range · drag across the middle to mark a section to remove</span><span id="trimTimeRight"></span></div><div class="row2"><label>Start (m:ss or seconds)<input id="trimStart" type="text" inputmode="numeric" placeholder="0:00" autocomplete="off"></label><label>End (optional)<input id="trimEnd" type="text" inputmode="numeric" placeholder="end of file" autocomplete="off"></label></div><p style="font-size:10.5px;color:var(--text-dim);margin:10px 0 0;line-height:1.55" id="trimHint"></p><div class="modal-actions"><button type="button" class="cancel-btn" id="trimCancel">Cancel</button><button type="button" class="text-btn" id="trimClearCuts" hidden>Clear cut sections</button><button type="button" class="create-btn" id="trimGo">Trim</button></div></div></div>
 <div class="modal-backdrop" id="videoModal"><div class="video-modal"><div class="video-modal-head"><div class="video-modal-title" id="videoModalTitle"></div><button class="icon-btn" id="videoModalClose" aria-label="Close video" type="button"></button></div><video id="videoModalPlayer" controls playsinline></video></div></div>
 <div class="modal-backdrop" id="coverLookupModal" role="dialog" aria-label="Album cover lookup"><div class="modal coverlookup-modal" style="width:min(860px,96vw);height:min(720px,94vh);padding:0;display:flex;flex-direction:column;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)"><b style="font-size:12.5px" id="clTitle">Album cover lookup</b><button class="icon-btn" id="clClose" aria-label="Close" type="button"></button></div><div id="clBody" style="flex:1;min-height:0;display:flex;flex-direction:column"></div></div></div>
 <div class="modal-backdrop" id="identifyModal" role="dialog" aria-label="Identify a song"><div class="modal" style="width:min(440px,100%);padding:0;overflow:hidden"><div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)"><b style="font-size:12.5px">Identify a song</b><button class="icon-btn" id="identifyClose" aria-label="Close" type="button"></button></div><div id="idBody" style="padding:16px"></div></div></div> .dl-suggest-hide{display:none}
@@ -2132,29 +2132,201 @@ function openTrimModal(target){
  if(!desktop){showToast('Trimming needs the desktop app');return}
  if(!target||!target.path){showToast('That file cannot be trimmed');return}
  trimTarget=target;
+ trimWave={peaks:null,keepStart:0,keepEnd:null,cuts:[],drag:null,duration:target.duration?Number(target.duration):null};
  $('#trimTitle').textContent=`Trim “${target.title}”`;
  $('#trimHint').textContent=(target.duration?`Full length ${fmtTrimTime(target.duration)}. `:'')+'A trimmed copy is saved next to the original — the original is never touched. Leave End empty to keep everything after Start.';
  $('#trimStart').value='0:00';$('#trimEnd').value='';
  const go=$('#trimGo');go.disabled=false;go.textContent='Trim';
+ const clearBtn=$('#trimClearCuts');if(clearBtn)clearBtn.hidden=true;
+ $('#trimTimeLeft').textContent='0:00';$('#trimTimeRight').textContent=target.duration?fmtTrimTime(target.duration):'';
+ const loading=$('#trimWaveLoading');if(loading)loading.style.display='grid';
+ const canvas=$('#trimWave');if(canvas)canvas.width=canvas.offsetWidth>0?canvas.offsetWidth*2:1064;
  $('#trimModal').classList.add('open');
+ loadTrimWaveform();
  setTimeout(()=>{const inp=$('#trimStart');if(inp){inp.focus();inp.select()}},60);
 }
-function closeTrimModal(){$('#trimModal').classList.remove('open');trimTarget=null}
+// ── Waveform trim editor ─────────────────────────────────────────────
+// The canvas paints min/max peaks over the keep range (shaded), the cut
+// sections (red), and two draggable edge handles. Dragging in the middle
+// marks a region to REMOVE; clicking a red region clears it. Text start/end
+// inputs stay in sync for exact times.
+let trimWave=null,trimWaveSeq=0;
+function trimWaveCanvas(){const c=$('#trimWave');return c&&c.getContext('2d')?c:null}
+async function loadTrimWaveform(){
+ const t=trimTarget;if(!t)return;
+ const seq=++trimWaveSeq;
+ try{
+  if(typeof desktop.trimWaveformPeaks!=='function')throw new Error('Waveform needs the desktop app');
+  const res=await desktop.trimWaveformPeaks({path:t.path,buckets:540});
+  if(seq!==trimWaveSeq||!trimWave)return;
+  if(trimWave){trimWave.peaks=res.peaks;trimWave.buckets=res.buckets;if(!trimWave.duration||trimWave.duration<1)trimWave.duration=res.duration}
+  const loading=$('#trimWaveLoading');if(loading)loading.style.display='none';
+  const right=$('#trimTimeRight');if(right)right.textContent=fmtTrimTime(trimWave.duration||0);
+  drawTrimWave();
+ }catch(error){
+  if(seq===trimWaveSeq&&trimWave){const loading=$('#trimWaveLoading');if(loading)loading.style.display='grid';loading&&(loading.textContent='No waveform — use the time fields above')}
+ }
+}
+function trimWaveXToTime(x){
+ const c=trimWaveCanvas();if(!c||!trimWave||!trimWave.duration)return 0;
+ const r=c.getBoundingClientRect();
+ return Math.max(0,Math.min(1,(x-r.left)/r.width))*trimWave.duration;
+}
+function trimTimeToWaveX(sec){
+ const c=trimWaveCanvas();if(!c||!trimWave||!trimWave.duration)return 0;
+ const r=c.getBoundingClientRect();
+ return r.left+Math.max(0,Math.min(1,sec/trimWave.duration))*r.width;
+}
+function drawTrimWave(){
+ const c=trimWaveCanvas();if(!c)return;
+ const ctx=c.getContext('2d');
+ const w=c.width,h=c.height;
+ ctx.clearRect(0,0,w,h);
+ if(!trimWave||!trimWave.peaks){return}
+ const {peaks,buckets,keepStart,keepEnd,cuts,duration}=trimWave;
+ const end=keepEnd==null?(duration||keepStart+1):keepEnd;
+ const mid=h/2;
+ const px=b=>Math.round(b/buckets*w);
+ // Keep range background
+ ctx.fillStyle='rgba(140,200,150,0.10)';
+ ctx.fillRect(trimTimeToWaveX(keepStart)-c.getBoundingClientRect().left,0,Math.max(1,Math.round(trimTimeToWaveX(end)-trimTimeToWaveX(keepStart))),h);
+ // Cut sections (red)
+ ctx.fillStyle='rgba(220,80,80,0.30)';
+ for(const cut of cuts){
+  ctx.fillRect(trimTimeToWaveX(cut.start)-c.getBoundingClientRect().left,0,Math.max(2,Math.round(trimTimeToWaveX(cut.end)-trimTimeToWaveX(cut.start))),h);
+ }
+ // Waveform inside the keep range; dimmed inside cuts
+ for(let b=0;b<buckets;b++){
+  const x=px(b);const next=px(b+1);
+  const t=(b+0.5)/buckets*duration;
+  const inKeep=t>=keepStart&&t<=end;
+  if(!inKeep)continue;
+  const inCut=cuts.some(cut=>t>=cut.start&&t<=cut.end);
+  const mn=peaks[b*2],mx=peaks[b*2+1];
+  const y0=mid-Math.max(mx*mid*0.92,1);
+  const y1=mid-Math.min(mn*mid*0.92,-1);
+  ctx.fillStyle=inCut?'rgba(255,120,120,0.65)':'#8CD8A0';
+  ctx.fillRect(x,y0,Math.max(1,next-x),Math.max(2,y1-y0));
+ }
+ // Edge handles
+ const drawHandle=x=>{ctx.fillStyle='rgba(255,255,255,0.85)';ctx.fillRect(x-2,0,4,h)};
+ drawHandle(trimTimeToWaveX(keepStart)-c.getBoundingClientRect().left);
+ ctx.fillStyle='rgba(255,255,255,0.85)';
+ if(keepEnd!=null)ctx.fillRect(trimTimeToWaveX(keepEnd)-c.getBoundingClientRect().left-3,0,4,h);
+ else{const r=c.getBoundingClientRect();ctx.fillRect(r.width-4,0,4,h)}
+ // Cut edge lines
+ ctx.fillStyle='rgba(255,150,150,0.9)';
+ for(const cut of cuts){
+  const x0=trimTimeToWaveX(cut.start)-c.getBoundingClientRect().left;
+  const x1=trimTimeToWaveX(cut.end)-c.getBoundingClientRect().left;
+  ctx.fillRect(x0-1,0,2,h);ctx.fillRect(x1-1,0,2,h);
+ }
+}
+function syncTrimLabels(){
+ if(!trimWave)return;
+ const {keepStart,keepEnd,cuts,duration}=trimWave;
+ const end=keepEnd==null?duration:keepEnd;
+ const kept=Math.max(0,(end||0)-keepStart)-cuts.reduce((sum,c)=>sum+Math.max(0,Math.min(end,c.end)-Math.max(keepStart,c.start)),0);
+ const left=Math.round((keepStart||0)*10)/10,leftTxt=fmtTrimTime(left);
+ const rightEnd=keepEnd==null?'':fmtTrimTime(Math.round(keepEnd*10)/10);
+ $('#trimStart').value=leftTxt;$('#trimEnd').value=rightEnd;
+ $('#trimTimeLeft').textContent=leftTxt;$('#trimTimeRight').textContent=rightEnd||fmtTrimTime(Math.round((duration||0)*10)/10);
+ const cutLbl=$('#trimHint');
+ if(cutLbl)cutLbl.textContent=`Keeps about ${fmtTrimTime(kept)}${cuts.length?` after removing ${cuts.length} section${cuts.length===1?'':'s'}`:''}. A trimmed copy is saved next to the original — the original is never touched.`;
+ const clearBtn=$('#trimClearCuts');if(clearBtn)clearBtn.hidden=!cuts.length;
+}
+function wireTrimWave(){
+ const c=trimWaveCanvas();if(!c||c.dataset.wired)return;
+ c.dataset.wired='1';
+ const pos=ev=>{const r=c.getBoundingClientRect();const x=(ev.touches&&ev.touches[0]?ev.touches[0].clientX:ev.clientX)-r.left;return{x,range:r.width}};
+ const handleHit=x=>{
+  if(!trimWave)return null;
+  const c=trimWaveCanvas();const r=c.getBoundingClientRect();
+  const hs=trimTimeToWaveX(trimWave.keepStart)-r.left;
+  const he=trimWave.keepEnd==null?r.width-2:trimTimeToWaveX(trimWave.keepEnd)-r.left;
+  if(Math.abs(x-hs)<=10)return 'start';
+  if(Math.abs(x-he)<=10)return 'end';
+  return null;
+ };
+ const down=ev=>{
+  if(!trimWave||!trimWave.peaks)return;
+  const{x}=pos(ev);
+  const hit=handleHit(x);
+  const time=trimWaveXToTime(x);
+  if(hit){trimWave.drag={mode:hit==='start'?'start':'end'};}
+  else{
+   // Middle drag marks a cut section (unless it spans across the keep edges)
+   trimWave.drag={mode:'cut',anchor:time};
+  }
+  ev.preventDefault();
+ };
+ const move=ev=>{
+  if(!trimWave||!trimWave.drag)return;
+  const{x}=pos(ev);
+  const time=trimWaveXToTime(x);
+  if(trimWave.drag.mode==='start')trimWave.keepStart=Math.max(0,Math.min(time,(trimWave.keepEnd??trimWave.duration)-0.2));
+  else if(trimWave.drag.mode==='end')trimWave.keepEnd=Math.max(trimWave.keepStart+0.2,Math.min(time,trimWave.duration));
+  else if(trimWave.drag.mode==='cut'){
+   const a=Math.min(trimWave.drag.anchor,time),b=Math.max(trimWave.drag.anchor,time);
+   trimWave.previewCut={start:a,end:b};
+  }
+  drawTrimWave();
+  if(ev.cancelable)ev.preventDefault();
+ };
+ const up=()=>{
+  if(!trimWave||!trimWave.drag)return;
+  const mode=trimWave.drag.mode;
+  if(mode==='cut'&&trimWave.previewCut){
+   const{start,end}=trimWave.previewCut;
+   if(end-start>0.4){
+    // Snap to any existing cut it touches (merge instead of stacking)
+    trimWave.cuts.push({start:Math.round(start*100)/100,end:Math.round(end*100)/100});
+    trimWave.cuts.sort((x,y)=>x.start-y.start);
+    const merged=[];
+    for(const p of trimWave.cuts){const last=merged[merged.length-1];if(last&&p.start<=last.end)last.end=Math.max(last.end,p.end);else merged.push(p)}
+    trimWave.cuts=merged;
+   }
+   trimWave.previewCut=null;
+  }
+  trimWave.drag=null;
+  drawTrimWave();syncTrimLabels();
+ };
+ c.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+ c.addEventListener('touchstart',down,{passive:false});window.addEventListener('touchmove',move,{passive:false});window.addEventListener('touchend',up);
+ c.addEventListener('dblclick',ev=>{
+  // Double-click a red region to remove that single cut
+  if(!trimWave)return;
+  const{x}=pos(ev);const time=trimWaveXToTime(x);
+  const idx=trimWave.cuts.findIndex(p=>time>=p.start&&time<=p.end);
+  if(idx>=0){trimWave.cuts.splice(idx,1);drawTrimWave();syncTrimLabels()}
+ });
+ window.addEventListener('resize',()=>{if($('#trimModal').classList.contains('open')&&trimWave)drawTrimWave()});
+}
+wireTrimWave();
+$('#trimStart').addEventListener('input',()=>{if(!trimWave)return;const t=parseTrimTime($('#trimStart').value);if(t!=null){trimWave.keepStart=Math.max(0,Math.min(t,(trimWave.keepEnd??trimWave.duration)-0.2));drawTrimWave();syncTrimLabels()}});
+$('#trimEnd').addEventListener('input',()=>{if(!trimWave)return;const v=parseTrimTime($('#trimEnd').value);trimWave.keepEnd=v==null?null:Math.max(trimWave.keepStart+0.2,Math.min(v,trimWave.duration));drawTrimWave();syncTrimLabels()});
+$('#trimClearCuts').addEventListener('click',()=>{if(!trimWave)return;trimWave.cuts=[];drawTrimWave();syncTrimLabels()});
+function closeTrimModal(){$('#trimModal').classList.remove('open');trimTarget=null;trimWave=null;trimWaveSeq++}
 $('#trimCancel').addEventListener('click',closeTrimModal);
 $('#trimModal').addEventListener('click',event=>{if(event.target.id==='trimModal')closeTrimModal()});
 $('#trimGo').addEventListener('click',async()=>{
- if(!trimTarget)return;
- const start=parseTrimTime($('#trimStart').value);
- const end=parseTrimTime($('#trimEnd').value);
- if(start===null){showToast('Start time is not valid — use m:ss or seconds');return}
- if(end!==null&&end<=start){showToast('End must come after Start');return}
+ if(!trimTarget||!trimWave)return;
+ const cuts=trimWave.cuts.slice();
+ const start=trimWave.keepStart||0;
+ const end=trimWave.keepEnd;
  const go=$('#trimGo');go.disabled=true;go.textContent='Trimming…';
  try{
-  const res=await desktop.trimMediaFile({path:trimTarget.path,start,end});
+  let res;
+  if(cuts.length){
+   res=await desktop.trimMediaFile({path:trimTarget.path,cuts,keepStart:start,keepEnd:end,duration:trimWave.duration});
+  }else{
+   if(end!=null&&end<=start){showToast('End must come after Start');return}
+   res=await desktop.trimMediaFile({path:trimTarget.path,start,end});
+  }
   if(trimTarget.kind==='audio'){
    let added=false;
    try{const files=await desktop.restoreAudioFiles([res.path]);added=Array.isArray(files)&&files.length>0}catch{}
-   showToast(added?'Trimmed copy added to your library':'Trimmed — saved next to the original');
+   showToast(added?(cuts.length?`Cut copy added to your library (${cuts.length} section${cuts.length===1?'':'s'} removed)`:'Trimmed copy added to your library'):'Trimmed — saved next to the original');
   }else{
    showToast('Trimmed video saved to '+displayBrand()+' Media');
    if(view==='media')loadMediaView();

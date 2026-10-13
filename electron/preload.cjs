@@ -96,6 +96,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
     return () => ipcRenderer.removeListener('coverlookup:pick', listener);
   },
   trimMediaFile: payload => ipcRenderer.invoke('player:trim', payload),
+  trimWaveformPeaks: payload => ipcRenderer.invoke('player:waveform-peaks', payload ?? {}),
   chooseImageFile: title => ipcRenderer.invoke('afterglow:choose-image', title),
 
   // Custom app logo

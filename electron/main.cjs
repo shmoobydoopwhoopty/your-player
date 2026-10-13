@@ -966,14 +966,78 @@ async function findFfmpegPath() {
 
 const sanitizeTag = value => String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 300);
 
-// ── Trim songs & videos (ffmpeg) ──────────────────────────────────────────
+// ── Trim songs & videos (ffmpeg) ─────────────────────────────────────────
+// Waveform peaks for the trim editor: decode the file to mono PCM and
+// downsample client-side-of-main into min/max peak pairs per bucket.
+ipcMain.handle('player:waveform-peaks', async (_event, payload) => {
+  const target = path.resolve(String(payload?.path || ''));
+  const buckets = Math.max(1, Math.min(3000, Number(payload?.buckets) || 600));
+  if (!fsSync.existsSync(target)) throw new Error('That file no longer exists.');
+  const ext = path.extname(target).toLowerCase();
+  const videoExtensions = new Set(['.mp4', '.webm', '.mkv']);
+  const isAudio = audioExtensions.has(ext);
+  const isVideo = videoExtensions.has(ext);
+  if (isAudio) {
+    if (!allowedAudioFiles.has(target)) throw new Error(`That file is not part of ${safeBrandPrefix()} Player.`);
+  } else if (isVideo) {
+    const mediaRoot = path.resolve(await downloader.getMediaRoot());
+    if (!target.startsWith(mediaRoot)) throw new Error('That video is not part of Your Player Media.');
+  } else {
+    throw new Error('That file type cannot show a waveform.');
+  }
+  const ffmpegPath = await findFfmpegPath();
+  if (!ffmpegPath) throw new Error('ffmpeg was not found, so the waveform is unavailable. Install ffmpeg ("winget install Gyan.FFmpeg").');
+  // Decode a downmixed mono stream @ 8 kHz raw PCM s16le straight to stdout.
+  const args = ['-hide_banner', '-i', target, '-map', 'a:0', '-ac', '1', '-ar', '8000', '-f', 's16le', '-vquiet', 'pipe:1'];
+  const pcm = await new Promise((resolve, reject) => {
+    const child = spawn(ffmpegPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const chunks = [];
+    let size = 0;
+    const LIMIT = 40 * 1024 * 1024; // 40 MB of PCM ≈ 40 minutes stereo at 8 kHz mono
+    let err = '';
+    const timer = setTimeout(() => { try { child.kill(); } catch {} reject(new Error('Reading the waveform timed out')); }, 120000);
+    child.stdout.on('data', chunk => { if (size < LIMIT) { chunks.push(chunk); size += chunk.length; } });
+    child.stderr.on('data', chunk => { if (err.length < 4000) err += chunk; });
+    child.on('error', error => { clearTimeout(timer); reject(error); });
+    child.on('close', code => {
+      clearTimeout(timer);
+      if (code !== 0) return reject(new Error(`ffmpeg could not read that file — ${String(err).split('\n').filter(Boolean).pop() || `exit ${code}`}`));
+      resolve(Buffer.concat(chunks));
+    });
+  });
+  const samples = Math.floor(pcm.length / 2);
+  if (!samples) throw new Error('No audio found in that file.');
+  const per = Math.max(1, Math.floor(samples / buckets));
+  const peaks = new Float32Array(buckets * 2);
+  for (let b = 0; b < buckets; b++) {
+    const from = b * per;
+    const to = b === buckets - 1 ? samples : Math.min(samples, from + per);
+    let min = 0, max = 0;
+    for (let i = from; i < to; i++) {
+      const v = pcm.readInt16LE(i * 2) / 32768;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    peaks[b * 2] = min;
+    peaks[b * 2 + 1] = max;
+  }
+  // Best-effort duration from the PCM length (mono 8 kHz → 8000 samples/sec).
+  return { peaks: Array.from(peaks, v => Math.round(v * 1000) / 1000), buckets, sampleRate: 8000, duration: samples / 8000 };
+});
+
+// Multi-segment trim: `cuts` is [{start,end}] of regions to REMOVE; whatever
+// falls between them (plus the keep-start → first cut and last cut → end
+// ranges marked by keepStart/keepEnd) is concatenated in original order.
 ipcMain.handle('player:trim', async (_event, payload) => {
   const target = path.resolve(String(payload?.path || ''));
   const start = Number(payload?.start);
   const rawEnd = payload?.end;
   const end = rawEnd == null || rawEnd === '' ? null : Number(rawEnd);
-  if (!Number.isFinite(start) || start < 0) throw new Error('Invalid start time.');
-  if (end != null && (!Number.isFinite(end) || end <= start)) throw new Error('Invalid end time.');
+  const rawCuts = Array.isArray(payload?.cuts) ? payload.cuts : null;
+  if (!rawCuts) {
+    if (!Number.isFinite(start) || start < 0) throw new Error('Invalid start time.');
+    if (end != null && (!Number.isFinite(end) || end <= start)) throw new Error('Invalid end time.');
+  }
   if (!fs.existsSync(target)) throw new Error('That file no longer exists.');
   const ext = path.extname(target).toLowerCase();
   const videoExtensions = new Set(['.mp4', '.webm', '.mkv']);
@@ -993,6 +1057,67 @@ ipcMain.handle('player:trim', async (_event, payload) => {
   const base = path.basename(target, ext);
   let out = path.join(dir, `${base} (trimmed)${ext}`);
   for (let n = 2; fs.existsSync(out); n++) out = path.join(dir, `${base} (trimmed ${n})${ext}`);
+  // ── Multi-segment mode: `cuts` = [{start,end}] regions to REMOVE ──────
+  // Everything outside the cuts (bounded by optional keepStart/keepEnd) is
+  // concatenated in original order into one file. Requires a re-encode pass;
+  // codec/quality matches the per-format fallback encoders below.
+  if (rawCuts && rawCuts.length) {
+    const cuts = rawCuts
+      .map(c => ({ start: Math.max(0, Number(c?.start) || 0), end: Math.max(0, Number(c?.end) || 0) }))
+      .filter(c => c.end > c.start)
+      .sort((a, b) => a.start - b.start);
+    if (!cuts.length) throw new Error('No usable cut regions were given.');
+    // Merge overlapping cuts so segments never double up.
+    const merged = [];
+    for (const c of cuts) {
+      const last = merged[merged.length - 1];
+      if (last && c.start <= last.end) last.end = Math.max(last.end, c.end);
+      else merged.push({ ...c });
+    }
+    const keepStart = Math.max(0, Number(payload?.keepStart) || 0);
+    const keepEndRaw = payload?.keepEnd;
+    const keepEnd = keepEndRaw == null || keepEndRaw === '' || !Number.isFinite(Number(keepEndRaw)) ? null : Math.max(0, Number(keepEndRaw));
+    const fileDuration = Number(payload?.duration);
+    const segments = [];
+    let cursor = keepStart;
+    for (const c of merged) {
+      if (c.start > cursor) segments.push({ start: cursor, end: c.start });
+      cursor = Math.max(cursor, c.end);
+    }
+    const trailingEnd = keepEnd != null ? keepEnd : (Number.isFinite(fileDuration) && fileDuration > 0 ? fileDuration : null);
+    if (trailingEnd == null || trailingEnd > cursor) segments.push({ start: cursor, end: trailingEnd });
+    if (!segments.length) throw new Error('Those cuts remove the whole file.');
+    // Single-pass filter_complex: atrim(+trim)/asetpts(+setpts) per kept
+    // segment, then concat in order.
+    const n = segments.length;
+    const parts = [];
+    let concatIn = '';
+    segments.forEach((seg, i) => {
+      const e = seg.end != null ? String(seg.end) : '';
+      parts.push(`[0:a]atrim=${seg.start}${e ? `,end=${e}` : ''},asetpts=PTS-STARTPTS[a${i}]`);
+      if (isVideo) parts.push(`[0:v]trim=${seg.start}${e ? `:end=${e}` : ''},setpts=PTS-STARTPTS[v${i}]`);
+      concatIn += isVideo ? `[v${i}][a${i}]` : `[a${i}]`;
+    });
+    const concatDecl = isVideo ? `concat=n=${n}:v=1:a=1[ov][oa]` : `concat=n=${n}:v=0:a=1[oa]`;
+    const fc = `${parts.join(';')};${concatIn}${concatDecl}`;
+    const encoders = isVideo
+      ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '160k']
+      : ext === '.mp3' ? ['-c:a', 'libmp3lame', '-b:a', '192k']
+      : ext === '.flac' ? ['-c:a', 'flac']
+      : ext === '.wav' ? ['-c:a', 'pcm_s16le']
+      : ['-c:a', 'aac', '-b:a', '192k'];
+    const args = ['-hide_banner', '-y', '-i', target, '-filter_complex', fc, '-map', isVideo ? '[ov]' : '[oa]'];
+    if (isVideo) args.push('-map', '[oa]');
+    args.push('-map_metadata', '0', ...encoders, out);
+    try {
+      await runFfmpegTool(args, 15 * 60 * 1000);
+      return { ok: true, path: out, cuts: merged.length };
+    } catch (error) {
+      try { fs.unlinkSync(out); } catch {}
+      throw new Error(`ffmpeg could not cut that file — ${String(error?.message || error).slice(0, 140)}`);
+    }
+  }
+
   const attempt = async extraArgs => {
     const args = ['-hide_banner', '-y', '-ss', String(start), '-i', target];
     if (end != null) args.push('-t', String(end - start));
