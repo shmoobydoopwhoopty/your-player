@@ -206,6 +206,7 @@ body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12
    album text eases down as the window narrows and back up as it widens, so the
    text block fits its flex slot and never pushes into the transport buttons. */
 .playerbar{--now-text-scale:calc(.68 + .32*min(1,max(0,(100vw - 650px)/470px)))}
+.playerbar{--now-zoom:calc(.6 + .4*min(1,max(0,(100vw - 650px)/470px)))}
 .playerbar .player-track-name{font-size:calc(11px*var(--player-text-zoom,1)*var(--now-text-scale,1));max-width:100%}
 .playerbar .player-artist{font-size:calc(10px*var(--player-text-zoom,1)*var(--now-text-scale,1));max-width:100%}
 .playerbar .player-album{font-size:calc(9px*var(--player-text-zoom,1)*var(--now-text-scale,1));max-width:100%}
@@ -234,7 +235,7 @@ body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12
 .player-track .listened-pill{flex:none}
 .player-track .player-like{flex:none}.player-cover{height:49px;width:49px;flex:none;object-fit:cover;border-radius:6px;background:#232825}.playerbar .player-track{min-width:0}.player-title-block{min-width:0;overflow:hidden}.player-track-name{font-size:calc(11px*var(--player-text-zoom,1)*var(--now-zoom,1));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-track-name.title-scroll{text-overflow:clip}.title-scroll-inner{display:inline-block;white-space:nowrap;padding-right:34px;animation:title-scroll var(--title-scroll-dur,12s) ease-in-out 1.4s infinite}@keyframes title-scroll{0%,14%{transform:translateX(0)}50%,62%{transform:translateX(var(--title-shift,0px))}98%,100%{transform:translateX(0)}}/* Album name in the player is a real button like the artist: click opens that
    album's page. Text-align inherits for reset-button rendering. */
-.player-album{display:block;width:100%;text-align:left;padding:1px 3px;margin-left:-3px;border:0;background:transparent;font:inherit;color:var(--text-faint);font-size:calc(9px*var(--player-text-zoom,1)*var(--now-zoom,1));margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:4px}.player-artist{color:var(--text-dim);font-size:calc(10px*var(--player-text-zoom,1)*var(--now-zoom,1));margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:4px;padding:1px 3px;margin-left:-3px}.player-artist:hover{color:var(--accent);text-decoration:underline}.player-album:hover{color:var(--accent);text-decoration:underline}.listened-pill{display:flex;align-items:center;gap:calc(5px*var(--now-zoom,1));flex:none;color:var(--text-dim);font-size:calc(10px*var(--now-zoom,1));padding:calc(4px*var(--now-zoom,1)) calc(8px*var(--now-zoom,1));border:1px solid var(--line);border-radius:12px;background:#ffffff06}.listened-pill svg{width:calc(12px*var(--now-zoom,1));height:calc(12px*var(--now-zoom,1));flex:none}.player-like{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;padding:calc(6px*var(--now-zoom,1))}.player-like svg{width:calc(16px*var(--now-zoom,1));height:calc(16px*var(--now-zoom,1))}.player-like.liked{color:var(--accent)}.play-controls{display:flex;align-items:center;justify-content:center;gap:20px}/* Free-move: an offset button is taken out of the row and pinned inside the player bar (left/top are relative to the BAR, so anywhere in the bar is reachable). */
+.player-album{display:block;width:100%;text-align:left;padding:1px 3px;margin-left:-3px;border:0;background:transparent;font:inherit;color:var(--text-faint);font-size:calc(9px*var(--player-text-zoom,1)*var(--now-zoom,1));margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:4px}.player-artist{color:var(--text-dim);font-size:calc(10px*var(--player-text-zoom,1)*var(--now-zoom,1));margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;border-radius:4px;padding:1px 3px;margin-left:-3px}.player-artist:hover{color:var(--accent);text-decoration:underline}.player-album:hover{color:var(--accent);text-decoration:underline}.listened-pill{display:flex;align-items:center;gap:calc(5px*var(--now-zoom,1)*var(--fit-zoom,1));flex:none;color:var(--text-dim);font-size:calc(10px*var(--now-zoom,1)*var(--fit-zoom,1));padding:calc(4px*var(--now-zoom,1)*var(--fit-zoom,1)) calc(8px*var(--now-zoom,1)*var(--fit-zoom,1));border:1px solid var(--line);border-radius:12px;background:#ffffff06}.listened-pill svg{width:calc(12px*var(--now-zoom,1)*var(--fit-zoom,1));height:calc(12px*var(--now-zoom,1)*var(--fit-zoom,1));flex:none}.player-like{flex:none;border:0;background:transparent;color:var(--text-dim);cursor:pointer;padding:calc(6px*var(--now-zoom,1)*var(--fit-zoom,1))}.player-like svg{width:calc(16px*var(--now-zoom,1)*var(--fit-zoom,1));height:calc(16px*var(--now-zoom,1)*var(--fit-zoom,1))}.player-like.liked{color:var(--accent)}.play-controls{display:flex;align-items:center;justify-content:center;gap:20px}/* Free-move: an offset button is taken out of the row and pinned inside the player bar (left/top are relative to the BAR, so anywhere in the bar is reachable). */
 .play-controls .control-btn{position:relative}
 body.free-move-live .play-controls .control-btn[style*="left"]{position:absolute;z-index:6;margin:0}.control-btn{height:var(--ctrl-btn-size,30px);width:var(--ctrl-btn-size,30px);border:0;background:transparent;color:var(--player-controls,var(--player-fg,#b5bcba));display:grid;place-items:center;cursor:pointer;position:relative}.control-btn svg{width:calc(var(--ctrl-btn-size,30px)*.57);height:calc(var(--ctrl-btn-size,30px)*.57)}.control-btn:hover{color:var(--player-controls-hover,#fff)}.control-btn.small{color:var(--player-controls-dim,var(--player-fg-dim,#848d89))}.control-btn.small.selected{color:var(--accent)}.play-main{width:var(--play-btn-size,44px);height:var(--play-btn-size,44px);border-radius:50%;background:var(--play-btn-bg,var(--accent-grad));color:var(--play-btn-fg,var(--on-accent));border:0;display:grid;place-items:center;cursor:pointer;transition:.15s;box-shadow:0 0 20px color-mix(in srgb,var(--play-btn-glow,var(--accent)) 14%,transparent);flex:none}.play-main:hover{background:var(--play-btn-hover,color-mix(in srgb,var(--accent) 85%,#fff));transform:scale(1.05)}.play-main svg{width:calc(var(--play-btn-size,44px)*.43);height:calc(var(--play-btn-size,44px)*.43)}.control-badge{position:absolute;right:-4px;bottom:-2px;font-size:8px;color:var(--accent)}.time-labels{display:flex;align-items:center;justify-content:space-between;order:1;margin-top:3px;color:var(--text-faint);font-size:9px;pointer-events:none}.player-right{display:flex;align-items:center;justify-content:flex-end;gap:14px}.volume-control{display:flex;align-items:center;gap:8px;color:var(--text-strong)}.volume-slider{width:82px;accent-color:var(--accent);height:3px;cursor:pointer}.right-btn{border:0;background:transparent;color:var(--player-fg2,#929a97);display:grid;place-items:center;cursor:pointer;padding:5px}.right-btn:hover,.right-btn.selected{color:var(--accent)}.audio{display:none}.modal-backdrop{position:fixed;inset:0;background:#0009;z-index:40;display:none;place-items:center;padding:20px}.modal-backdrop.open{display:grid}.modal{width:min(390px,100%);background:var(--panel2);border:1px solid #ffffff18;border-radius:16px;padding:23px;box-shadow:0 24px 90px #0009}.modal h3{font:700 17px Manrope,sans-serif;margin:0 0 7px}.modal p{font-size:11px;color:var(--text-dim);margin:0 0 18px}.modal input{height:40px;width:100%;border:1px solid #ffffff20;background:#0d1110;color:white;border-radius:8px;padding:0 12px}.edit-scope{margin:-8px 0 13px!important}.modal label{display:grid;gap:5px;font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:9px}.modal label span{color:var(--danger)}.modal label input[type=text]{height:36px}.modal label input[type=text]:focus{outline:1px solid var(--accent)}.modal textarea{width:100%;min-height:54px;resize:vertical;border:1px solid #ffffff20;background:#0d1110;color:white;border-radius:8px;padding:8px 12px;font:inherit;font-size:11.5px;outline:0}.modal .row2{display:flex;gap:8px}.modal .row2 label{flex:1;min-width:0}.edit-art-row{display:flex;align-items:center;gap:11px;margin-bottom:13px}.edit-art-row img{width:64px;height:64px;border-radius:9px;object-fit:cover;background:#232825}.edit-art-btns{display:grid;gap:6px}.edit-art-btns .dl-dl-btn{width:100%}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.modal-actions button{border-radius:20px;padding:9px 15px;font-size:11px;cursor:pointer}.cancel-btn{background:transparent;border:1px solid #ffffff24}.create-btn{background:var(--accent-grad);color:var(--on-accent);border:0;font-weight:700}
 .coverlookup-modal .modal{width:min(860px,96vw)!important;height:min(720px,94vh)!important}
@@ -1430,20 +1431,48 @@ function playerBarCollisions(){
   return hits;
  }catch{return[]}
 }
+// Truth detector: the same collision scan, but with the emergency strip
+// temporarily peeled off so hidden elements count. The strip-on bar reads   
+// "clean" only because the strip is hiding the colliding parts - which is// exactly how the last release froze the fit mid-shrink and kept shuffle,
+// repeat, volume and the extras cluster hidden at window sizes where they   
+// actually fit. Both the shrink loop and the strip decision use this.
+function stripFreeCollisions(){
+ const bar=barEl();
+ if(!bar)return[];
+ // Peel every fit-loop class so nothing is hidden during measurement - only
+ // then is "clean" real. The no-room/no-room-hard tail hiding counts too:
+ // a bar that only reads clean because pill+heart are display:none is not
+ // clean, and relaxing sizes under that false reading would collide once
+ // the classes come back off. Restore everything exactly as it was.
+ const tier=bar.classList.contains('no-room-extreme')||bar.classList.contains('no-room-last');
+ const tail=bar.classList.contains('no-room')||bar.classList.contains('no-room-hard');
+ if(tier)bar.classList.remove('no-room-extreme','no-room-last');
+ if(tail)bar.classList.remove('no-room','no-room-hard');
+ const hits=playerBarCollisions();
+ if(tier)bar.classList.add('no-room-extreme','no-room-last');
+ if(tail)bar.classList.add('no-room','no-room-hard');
+ return hits;
+}
 function playerBarFitStep(){
- // One deduped shrink step: art 1, ctrl btns 1, play btn 1, vol 2, textzoom 0.5.
+ // One deduped shrink step: art 1, ctrl btns 1, play btn 1, vol 2, textzoom 0.5, tail zoom .05.
  // Reads/writes the LIVE fitted values (barFit.var) - never layout[key], which
  // is the user's own slider value and must survive the shrink untouched so
  // the relax pass knows what to grow back to.
  const cramped=playerBarCollisions().length>0&&barFitPasses>=1;
  const step=[];
- const art=barFit.art;if(art>34)step.push({name:'art',val:art-1,key:'playerArtSize'});
- const ctrl=barFit.ctrl;if(ctrl>20)step.push({name:'ctrl',val:ctrl-1,key:'ctrlBtnSize'});
- const play=barFit.play;if(play>30)step.push({name:'play',val:play-1,key:'playBtnSize'});
- if(barFit.vol>.5)step.push({name:'vol',val:Math.max(.5,barFit.vol-.04),key:'volScale'});
- // Text shrinks before anything gets hidden, and can go twice as small as
- // before - at half-screen the song info lines must still render fully.
+ // Walk-down order matters: the read-above candidates are tried smallest
+ // structural footprint first - text, tail zoom, volume, then the buttons -
+ // so the album art and the main buttons survive the longest while space
+ // is reclaimed. A single deduped step per call keeps the loop bounded.
  if(barFit.pt>.62)step.push({name:'pt',val:Math.max(.62,barFit.pt-(cramped?.06:.03)),key:'playerTextScale'});
+ if(barFit.fz>.5)step.push({name:'fz',val:Math.max(.5,barFit.fz-.05),key:null});
+ if(barFit.vol>.5)step.push({name:'vol',val:Math.max(.5,barFit.vol-.04),key:'volScale'});
+ const art=barFit.art;if(art>32)step.push({name:'art',val:art-1,key:'playerArtSize'});
+ const ctrl=barFit.ctrl;if(ctrl>18)step.push({name:'ctrl',val:ctrl-1,key:'ctrlBtnSize'});
+ const play=barFit.play;if(play>28)step.push({name:'play',val:play-1,key:'playBtnSize'});
+ // Play counter + heart trail the text/pill region; they cap at .5 so the
+ // pill doesn't disappear, but shrink enough to clear the tail space.
+ if(barFit.fz>.5)step.push({name:'fz',val:Math.max(.5,barFit.fz-.05),key:null});
  return step[0]||null;
 }
 /* barFit: the live transport sizes currently applied to the bar (inline vars
@@ -1452,9 +1481,9 @@ function playerBarFitStep(){
    first use; shrunk by the fit loop; grown back toward layout[key] by the
    relax pass when the window widens. Users moving the real sliders update
    layout[key] AND clear the inline overrides, so their intent always wins.*/
-const BAR_FIT_VARS={art:'--p-art-size',ctrl:'--ctrl-btn-size',play:'--play-btn-size',vol:'--vol-scale',pt:'--player-text-zoom'};
-const BAR_FIT_TO_LAYOUT={art:'playerArtSize',ctrl:'ctrlBtnSize',play:'playBtnSize',vol:'volScale',pt:'playerTextScale'};
-const BAR_FIT_DEFAULT={art:49,ctrl:30,play:44,vol:1,pt:1};
+const BAR_FIT_VARS={art:'--p-art-size',ctrl:'--ctrl-btn-size',play:'--play-btn-size',vol:'--vol-scale',pt:'--player-text-zoom',fz:'--fit-zoom'};
+const BAR_FIT_TO_LAYOUT={art:'playerArtSize',ctrl:'ctrlBtnSize',play:'playBtnSize',vol:'volScale',pt:'playerTextScale',fz:null};
+const BAR_FIT_DEFAULT={art:49,ctrl:30,play:44,vol:1,pt:1,fz:1};
 let barFit=null;
 // Safe read of the user's layout values: `layout` is declared later in the
 // file, so referencing it directly from the fit code during early startup hits
@@ -1472,6 +1501,7 @@ function barFitSeed(){
  barFit={};
  for(const k of Object.keys(BAR_FIT_VARS)){
   const layoutKey=BAR_FIT_TO_LAYOUT[k];
+  if(k==='fz'){barFit.fz=1;continue} // tail zoom is pure fit state, starts at 1
   const stored=barFitLayout(layoutKey);
   const user=k==='vol'||k==='pt'?(Number(stored)||100)/100:Number(stored)||BAR_FIT_DEFAULT[k];
   barFit[k]=Number.isFinite(user)?user:read(BAR_FIT_VARS[k]);
@@ -1485,6 +1515,7 @@ function barFitApply(){
  bar.style.setProperty(BAR_FIT_VARS.play,barFit.play+'px');
  bar.style.setProperty(BAR_FIT_VARS.vol,String(barFit.vol));
  bar.style.setProperty(BAR_FIT_VARS.pt,String(barFit.pt));
+ bar.style.setProperty(BAR_FIT_VARS.fz,String(barFit.fz));
 }
 function barFitClear(){
  const bar=barEl();if(!bar)return;
@@ -1565,22 +1596,35 @@ function runPlayerBarFit(){
    }
    if(dirtyEarly)break relax;
    if(barFitStableClean<2){changed=true;break relax} // wait one settle pass before trusting "clean"
+   // Grow back toward the user's stored sizes, then immediately cage the
+   // growth with ONE bounded shrink pass. The shrink picks the piece that
+   // truly doesn't fit rather than dumping everything at the floors, so the
+   // slider values that DO fit are respected and the emergency floors only
+   // pinch what genuinely has to.
    let grew=false;
    for(const k of Object.keys(barFit)){
-    if(k==='vol'||k==='pt'){
-     const saved=(Number(barFitLayout(BAR_FIT_TO_LAYOUT[k]))||100)/100;
-     if(barFit[k]<saved){barFit[k]=Math.min(saved,barFit[k]+.04);grew=true}
-    }else{
-     const saved=Number(barFitLayout(BAR_FIT_TO_LAYOUT[k]))||BAR_FIT_DEFAULT[k];
-     if(barFit[k]<saved){barFit[k]=Math.min(saved,barFit[k]+2);grew=true}
+    const layoutKey=BAR_FIT_TO_LAYOUT[k];
+    let saved;
+    if(k==='vol'||k==='pt')saved=(Number(barFitLayout(layoutKey))||100)/100;
+    else if(k==='fz')saved=1;
+    else saved=Number(barFitLayout(layoutKey))||BAR_FIT_DEFAULT[k];
+    const stepK=k==='vol'?.08:(k==='pt'?.09:(k==='fz'?.1:4));
+    if(barFit[k]<saved){barFit[k]=Math.min(saved,barFit[k]+stepK);grew=true}
+   }
+   if(grew){
+    barFitApply();
+    let gu=0;
+    while(stripFreeCollisions().length&&gu<24){
+     const st=playerBarFitStep();if(!st)break;
+     barFit[{art:'art',ctrl:'ctrl',play:'play',vol:'vol',pt:'pt',fz:'fz'}[st.name]]=st.val;
+     barFitApply();gu++;
     }
    }
-   if(grew){barFitApply();changed=true}
   }
   let guard=0;
-  while(playerBarCollisions().length&&guard<16){
+  while(stripFreeCollisions()&&guard<16){
    const step=playerBarFitStep();if(!step)break;
-   barFit[{art:'art',ctrl:'ctrl',play:'play',vol:'vol',pt:'pt'}[step.name]]=step.val;
+   barFit[{art:'art',ctrl:'ctrl',play:'play',vol:'vol',pt:'pt',fz:'fz'}[step.name]]=step.val;
    barFitApply();changed=true;
    guard++;
   }
@@ -1588,59 +1632,43 @@ function runPlayerBarFit(){
   barFitBusy=false;
   if(tierBar)tierBar.classList.remove('bar-fitting');
  }
- if(barFitPending){barFitPending=false;schedulePlayerBarFit()}
- playerBarRoomClasses();
- const dirty=playerBarCollisions().length>0;
- if(dirty)barFitRelaxLock=true;
- // Last-resort tiers: if the bar STILL collides with everything at full
- // size, strip secondary pieces instead of leaving overlapping buttons.
- // Removing the strip is a ONE-TIME TRIAL per geometry: take it off, measure
- // immediately - clean means it can stay off (relax resumes); dirty means
- // the window genuinely needs it, so it goes back on and stays until a real
- // resize resets the trial. Re-trying on every pass would ping-pong the
- // strip against the exact collision it exists to absorb.
+ if(barFitPending){barFitPending=false;schedulePlayerBarFit()} playerBarRoomClasses();
+ // Collision truth: measured with the strip OFF (classes peeled for the
+ // check, then restored). A strip-on bar reads "clean" only because the   
+ // strip is hiding the colliding parts - trusting that would freeze the   
+ // fit mid-shrink and latch the strip on for keeps (that is how shuffle/   
+ // repeat/volume vanished at full size even though the bar is merely tight).   
  const tierBar2=barEl();
+ const hadExt=tierBar2?tierBar2.classList.contains('no-room-extreme'):false;
+ const hadLast=tierBar2?tierBar2.classList.contains('no-room-last'):false;
+ if(tierBar2&&(hadExt||hadLast))tierBar2.classList.remove('no-room-extreme','no-room-last');
+ const dirty=playerBarCollisions().length>0;
+ if(tierBar2&&(hadExt||hadLast)){tierBar2.classList.add('no-room-extreme');if(hadLast)tierBar2.classList.add('no-room-last')}
+ if(dirty)barFitRelaxLock=true;
+ // Emergency strip: recomputed EVERY pass from the strip-off truth. A bar
+ // that fits with nothing hidden stays unstripped and free to relax; a bar
+ // that still collides gets the progressively stronger strip. Re-testing on
+ // every pass is safe now because the shrink loop ALSO sees strip-off   
+ // truth and keeps driving sizes down until the strip genuinely unnecessary.   
  if(tierBar2){
-  const hadExt=tierBar2.classList.contains('no-room-extreme'),hadLast=tierBar2.classList.contains('no-room-last');
   if(dirty){
+   if(!hadExt)changed=true;
    tierBar2.classList.add('no-room-extreme');
+   if(!hadLast&&playerBarCollisions().length)changed=true;
    if(playerBarCollisions().length)tierBar2.classList.add('no-room-last');
-   if(!hadExt||!hadLast)changed=true;
   }else if(hadExt||hadLast){
-   // Retry the trial when the window is roomier than the strip assumes:
-   // after enough consecutive clean passes - and only if the latch says no
-   // collision has been seen at this size - re-check whether the strip is
-   // really needed. If the trial fails it re-engages and re-arms instantly;
-   // if it succeeds the bar can finally relax back to its normal sizes.
-   if((!barFitStripTrials||barFitStableClean>=8)&&!barFitRelaxLock){
-    tierBar2.classList.remove('no-room-extreme');tierBar2.classList.remove('no-room-last');
-    if(playerBarCollisions().length){
-     tierBar2.classList.add('no-room-extreme');
-     if(playerBarCollisions().length)tierBar2.classList.add('no-room-last');
-     barFitStableClean=0;
-     barFitStripTrials=true;
-    }else{
-     barFitStripTrials=true;
-     barFitRelaxLock=true;barFitStableClean=0; // force one measured grow cycle from the safe fitted floors
-    }
-    changed=true;
-   }
+   tierBar2.classList.remove('no-room-extreme','no-room-last');
+   changed=true;
   }
  }
  // Change-driven settle chain: any pass that changed something or ended
  // dirty MUST be followed by another pass so the landed geometry is
- // re-verified. A pass that stayed clean and changed nothing only runs a
- // couple of confirmation passes, then the chain stops until the next real
- // event (resize/layout change) - no busy loop, no give-up-while-dirty.
+ // re-verified. A stripped bar (or lock) keeps the chain running so the
+ // shrink loop can keep driving the fitted sizes down toward a fit.
  if(changed||dirty){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
  else{
-  // A bar still wearing a strip is only provisionally clean - the strip is
-  // hiding the very parts that would collide. Keep the chain alive with
-  // clean-pass confirmations until the trial has run AND the relax pass has
-  // recovered the sizes (the trial pairs with the resized reset latch).
-  const pendingTrial=barFit&&!barFitStripTrials&&tierBar2&&(tierBar2.classList.contains('no-room-extreme')||tierBar2.classList.contains('no-room-last'));
-  // Retry passes (`stable>=8`) keep the chain alive until the trial runs.
-  if(pendingTrial||barFitStableClean<3){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
+  const stillStripped=tierBar2&&(tierBar2.classList.contains('no-room-extreme')||tierBar2.classList.contains('no-room-last'));
+  if(stillStripped||barFitStableClean<3){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
   else{barFitSettles++;if(barFitSettles<3)setTimeout(schedulePlayerBarFit,120);else barFitSettles=0}
  }
 }
