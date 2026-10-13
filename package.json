@@ -59,7 +59,12 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Your Player"
+      "shortcutName": "Your Player",
+      "installerLanguages": [
+        "en_US"
+      ],
+      "language": 1033,
+      "displayLanguageSelector": false
     }
   },
   "dependencies": {}
