@@ -2498,39 +2498,21 @@ function openAppPreview(item){
   $('#dlPreviewTitle').textContent=item.title;
   if(frame.dataset.videoId!==item.id){
     frame.dataset.videoId=item.id;
-    // YouTube's embedder check rejects the app origin with "Error 153", so
-    // previews stream the video directly through the yt-dlp engine (same
-    // engine and cookies as downloads); a <video> element plays the result.
-    frame.innerHTML='<div class="dl-preview-loading">Loading preview…</div>';
+    // The preview is YouTube itself: a webview pointed at the real watch
+    // page. The full page runs inside the same session the sign-in window
+    // uses, so signed-in state carries over and the embed-access errors that
+    // plagued the direct-embed and yt-dlp-stream approaches don't apply.
+    frame.innerHTML=`<div class="dl-preview-loading" style="position:absolute;top:0;left:0;right:0;z-index:2;pointer-events:none">Loading YouTube…</div><webview src="https://www.youtube.com/watch?v=${encodeURIComponent(item.id)}" partition="persist:youtube-signin" allowtransparency allow="autoplay; encrypted-media; picture-in-picture; fullscreen" style="position:absolute;inset:0;width:100%;height:100%;border:0;background:#000"></webview>`;
+    const wv=frame.querySelector('webview');
+    if(wv){
+      // Hide the loading note once the page starts rendering.
+      const clearLoad=()=>{const l=frame.querySelector('.dl-preview-loading');if(l)l.remove();try{wv.removeEventListener('dom-ready',clearLoad)}catch{}};
+      wv.addEventListener('dom-ready',clearLoad);
+      // Preserve the user's scroll position inside the page and keep focus
+      // interactions natural (the webview manages its own session).
+      wv.addEventListener('dom-ready',()=>{try{wv.executeJavaScript('window.scrollTo(0,0);document.querySelector("video")?.pause();document.querySelector("video")?.play().catch(()=>{})',true).catch(()=>{})}catch{}});
+    }
     preview.hidden=false;
-    (async()=>{
-      try{
-        const streamUrl=await desktop.getPreviewStream(item.id);
-        if(frame.dataset.videoId!==item.id)return;
-        frame.innerHTML=`<video src="${streamUrl}" controls autoplay playsinline style="position:absolute;inset:0;width:100%;height:100%;background:#000"></video>`;
-      }catch(error){
-        console.error('Preview stream failed:',error);
-        if(frame.dataset.videoId!==item.id)return;
-        const msg=String(error?.message||error||'');
-        // Only genuine YouTube auth messages get the sign-in wording — a loose
-        // /age/i match used to fire on 'page'/'manage' inside ordinary yt-dlp
-        // errors, telling already-signed-in users to sign in.
-        const explain=/confirm your age|age-restricted|confirm you.*not a bot|Sign in to confirm/i.test(msg)
-          ? 'YouTube restricts this video — signing in usually unlocks it, but your session may have expired. Hit Sign in to YouTube below, sign in again, then retry.'
-          : /This video is not available|not available in your country|geo.block|unavailable/i.test(msg)
-          ? 'This video is region-locked or was removed, so it can’t stream inside the app. Downloading it instead usually still works.'
-          : /timed out/i.test(msg)
-          ? 'The preview engine timed out — check your connection and hit retry.'
-          : /Requested format is not available|No video formats|No stream URL/i.test(msg)
-          ? 'No stream could be resolved for this one right now — try again in a bit, or download it instead (downloads use a wider engine path and usually work).'
-          : 'Could not load the preview ('+msg.slice(0,80)+') — you can still download it instead.';
-        frame.innerHTML=`<div style="position:absolute;inset:0;display:grid;place-items:center;padding:16px;text-align:center;background:#000"><div style="max-width:440px"><div style="font-size:12px;color:#b9c0bb;line-height:1.65">${escapeAttr(explain)}</div><div style="display:flex;gap:9px;justify-content:center;margin-top:12px"><button type="button" id="dlPreviewRetry" style="height:32px;padding:0 16px;border:1px solid #ffffff30;border-radius:16px;background:#ffffff10;color:#fff;font-weight:700;font-size:11px;cursor:pointer">Retry preview</button><button type="button" id="dlPreviewDl" style="height:32px;padding:0 16px;border:0;border-radius:16px;background:var(--accent);color:var(--on-accent);font-weight:700;font-size:11px;cursor:pointer">Download instead</button></div></div></div>`;
-        const retry=$('#dlPreviewRetry');
-        if(retry)retry.addEventListener('click',()=>{frame.dataset.videoId='';openAppPreview(item)});
-        const dlBtn=$('#dlPreviewDl');
-        if(dlBtn)dlBtn.addEventListener('click',()=>{stopAppPreview();startAppDownload(item,'video')});
-      }
-    })();
   }
   preview.hidden=false;
 }
