@@ -25,12 +25,12 @@ let mainWindow;
 // the same webview (same partition session); we count them purely for logging
 // so we can debug “no window appeared / sign-in didn't register” reports.
 let sameSessionOpenCount = 0;
-// Every window-opening attempt — from the player window or from the sign-in
-// webview's embedded page (Google's account chooser, OAuth pop-ups) — goes
+// Every window-opening attempt - from the player window or from the sign-in
+// webview's embedded page (Google's account chooser, OAuth pop-ups) - goes
 // through “setWindowOpenHandler”. That's the modern, deterministic hook: it
 // fires on ALL guest <webview> contents, letting us keep the sign-in flow
 // inside the app (load in the same webview) instead of letting Electron pop
-// a separate browser-style window — the historical bug where “Sign in to
+// a separate browser-style window - the historical bug where “Sign in to
 // YouTube” launched its own Google window outside the player.
 app.on('web-contents-created', (_event, contents) => {
   // Surface guest-page console output in the terminal for support/debugging,
@@ -63,7 +63,7 @@ app.on('web-contents-created', (_event, contents) => {
 // the downloader's view at most twice a second instead of on every byte.
 let cookieRefreshTimer = null;
 // YouTube's 2025 embedder check rejects players whose Referer isn't a real
-// https origin — the downloader preview loads youtube.com/embed in a <webview>
+// https origin - the downloader preview loads youtube.com/embed in a <webview>
 // from the app's file:// page, so no valid referer goes out and YouTube shows
 // “Error 153: Video player configuration error”. Give the preview session's
 // embed requests a Referer YouTube accepts and a UA without the Electron
@@ -266,13 +266,62 @@ function dialogParent() {
   return (mainWindow && !mainWindow.isDestroyed()) ? mainWindow : undefined;
 }
 
+function windowStateFile() {
+  try { return path.join(app.getPath('userData'), 'window-state.json'); } catch { return null; }
+}
+// Remember the window's exact geometry (including which monitor it was on) so
+// restarts and updates reopen it in the same place - snapped half-screen,
+// second monitor, maximized, or full-screen, whatever the user left behind.
+// Only applied when the saved position still intersects a currently attached
+// display, so unplugging a monitor never strands the window off-screen.
+function loadWindowPlacement() {
+  try {
+    const file = windowStateFile();
+    if (!file) return null;
+    const state = JSON.parse(fsSync.readFileSync(file, 'utf8'));
+    if (!state || typeof state.x !== 'number' || typeof state.y !== 'number'
+      || !Number.isFinite(state.width) || state.width < 100
+      || !Number.isFinite(state.height) || state.height < 100) return null;
+    const stillVisible = require('electron').screen.getAllDisplays().some(d => {
+      const vx = d.workArea.x, vy = d.workArea.y, vw = d.workArea.width, vh = d.workArea.height;
+      return state.x + state.width > vx + 40 && state.x < vx + vw - 40 && state.y + state.height > vy + 40 && state.y < vy + vh - 40;
+    });
+    if (!stillVisible) return null;
+    return state;
+  } catch { return null; }
+}
+function saveWindowPlacement() {
+  try {
+    if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return;
+    const bounds = mainWindow.getNormalBounds(); // restores from maximized/fullscreen cleanly
+    const state = {
+      x: Math.round(bounds.x), y: Math.round(bounds.y),
+      width: Math.round(bounds.width), height: Math.round(bounds.height),
+      maximized: mainWindow.isMaximized(),
+    };
+    const file = windowStateFile();
+    if (file) fsSync.writeFileSync(file, JSON.stringify(state));
+  } catch {}
+}
+function applyWindowPlacement() {
+  const saved = loadWindowPlacement();
+  if (saved) {
+    if (typeof saved.x === 'number' && typeof saved.y === 'number') mainWindow.setPosition(saved.x, saved.y);
+    mainWindow.setSize(saved.width, saved.height);
+    if (saved.maximized) mainWindow.maximize();
+  }
+}
+
 function createWindow() {
   const windowIcon = app.isPackaged
     ? path.join(process.resourcesPath, 'icon.ico')
     : path.join(__dirname, '..', 'build', 'icon.ico');
+  const savedPlacement = loadWindowPlacement();
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 940,
+    width: savedPlacement ? savedPlacement.width : 1440,
+    height: savedPlacement ? savedPlacement.height : 940,
+    x: savedPlacement ? savedPlacement.x : undefined,
+    y: savedPlacement ? savedPlacement.y : undefined,
     minWidth: 800,
     minHeight: 600,
     backgroundColor: '#0b0d0e',
@@ -287,15 +336,16 @@ function createWindow() {
       sandbox: true,
       webviewTag: true,
       // Local music files (file:// URLs) otherwise count as cross-origin for
-      // MediaElementSource, which silently zeroes the WebAudio graph — killing
+      // MediaElementSource, which silently zeroes the WebAudio graph - killing
       // the equalizer and party mode. Local player, local files: allow it.
       webSecurity: false,
     },
   });
+  if (savedPlacement && savedPlacement.maximized) mainWindow.maximize();
 
   mainWindow.loadFile(path.join(__dirname, '..', 'index.html'));
   // The renderer owns the document title (brand + now playing); keep the native
-  // title in sync with it instead of the default “<file> — Electron” behavior.
+  // title in sync with it instead of the default “<file> - Electron” behavior.
   mainWindow.on('page-title-updated', event => event.preventDefault());
   readBrandFromStorage();
   const sendMaximizedState = () => {
@@ -312,7 +362,7 @@ function createWindow() {
   mainWindow.webContents.on('render-process-gone', (_event, details) => logRendererProblem({ type: 'render-process-gone', ...details }));
   mainWindow.on('unresponsive', () => logRendererProblem({ type: 'window-unresponsive' }));
   mainWindow.on('responsive', () => logRendererProblem({ type: 'window-responsive' }));
-  // Popups/navigations live in a global “web-contents-created” trap below —
+  // Popups/navigations live in a global “web-contents-created” trap below -
   // this window itself never opens child windows.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://') || url.startsWith('http://')) { sameSessionOpenCount += 1; }
@@ -539,7 +589,7 @@ async function fileExists(target) {
 
 function looksLikeImageBuffer(bytes) {
   if (!bytes || bytes.length < 12) return false;
-  // JPEG or PNG magic numbers — enough to reject stray HTML/JSON responses.
+  // JPEG or PNG magic numbers - enough to reject stray HTML/JSON responses.
   return (bytes[0] === 0xff && bytes[1] === 0xd8) || (bytes[0] === 0x89 && bytes[1] === 0x50);
 }
 
@@ -635,11 +685,11 @@ ipcMain.handle('artist-photo:remove', async (_event, name) => {
 });
 
 // ── Hi-res album art ────────────────────────────────────────────────────────
-// Cover art embedded in audio files is often only 300–600px, which turns into
+// Cover art embedded in audio files is often only 300-600px, which turns into
 // a pixelated mess in the full-screen player. When the renderer asks, look up
 // a high-resolution cover (Deezer cover_xl, ~1000px) for that album once,
 // cache it in the user data folder, and return the bytes. This never touches
-// the music files themselves — it is display-only.
+// the music files themselves - it is display-only.
 const albumArtHiresDir = path.join(app.getPath('userData'), 'album-art-hires');
 
 ipcMain.handle('album-art:hires', async (_event, payload) => {
@@ -734,7 +784,7 @@ ipcMain.handle('player:set-downloads-dir', (_event, dir) => {
   return downloader.ensureDirectories();
 });
 
-// Plain directory picker (no scanning, no tracking) — used for the downloads folder.
+// Plain directory picker (no scanning, no tracking) - used for the downloads folder.
 ipcMain.handle('afterglow:choose-dir', async (_event, title) => {
   const result = await dialog.showOpenDialog(dialogParent(), {
     title: typeof title === 'string' && title.trim() ? title.trim() : 'Choose a folder',
@@ -942,7 +992,7 @@ async function runFfmpegTool(args, timeoutMs = 60000) {
 async function findFfmpegPath() {
   const envDir = String(process.env.YOUR_PLAYER_TOOLS_DIR || '').trim();
   const isWin = process.platform === 'win32';
-  // The installer bundles ffmpeg in resources/vendor — try it first so a fresh
+  // The installer bundles ffmpeg in resources/vendor - try it first so a fresh
   // install can convert media without any manual installs.
   const bundledDir = path.join(process.resourcesPath || path.join(__dirname, '..'), 'vendor');
   const bundledDevDir = path.join(__dirname, '..', 'vendor');
@@ -1001,7 +1051,7 @@ ipcMain.handle('player:waveform-peaks', async (_event, payload) => {
     child.on('error', error => { clearTimeout(timer); reject(error); });
     child.on('close', code => {
       clearTimeout(timer);
-      if (code !== 0) return reject(new Error(`ffmpeg could not read that file — ${String(err).split('\n').filter(Boolean).pop() || `exit ${code}`}`));
+      if (code !== 0) return reject(new Error(`ffmpeg could not read that file - ${String(err).split('\n').filter(Boolean).pop() || `exit ${code}`}`));
       resolve(Buffer.concat(chunks));
     });
   });
@@ -1114,7 +1164,7 @@ ipcMain.handle('player:trim', async (_event, payload) => {
       return { ok: true, path: out, cuts: merged.length };
     } catch (error) {
       try { fs.unlinkSync(out); } catch {}
-      throw new Error(`ffmpeg could not cut that file — ${String(error?.message || error).slice(0, 140)}`);
+      throw new Error(`ffmpeg could not cut that file - ${String(error?.message || error).slice(0, 140)}`);
     }
   }
 
@@ -1137,7 +1187,7 @@ ipcMain.handle('player:trim', async (_event, payload) => {
       await attempt(fallbackArgs);
     } catch (encodeError) {
       try { fs.unlinkSync(out); } catch {}
-      throw new Error(`ffmpeg could not trim that file — ${String(encodeError?.message || encodeError).slice(0, 140)}`);
+      throw new Error(`ffmpeg could not trim that file - ${String(encodeError?.message || encodeError).slice(0, 140)}`);
     }
   }
   return { ok: true, path: out };
@@ -1228,7 +1278,7 @@ ipcMain.handle('tracks:write-art', async (_event, payload) => {
 
 // ── Identify a song from a real audio file ──────────────────────────────────
 // The renderer reads the picked file's own tags (title/artist/album) and any
-// embedded cover; this side does the online half — turning that into catalog
+// embedded cover; this side does the online half - turning that into catalog
 // candidates via the Deezer search API (the same keyless provider the artist
 // and album lookups use) and fetching matched cover bytes so they can be
 // written straight into the file.
@@ -1315,7 +1365,7 @@ ipcMain.handle('library:save', async (_event, data) => {
 // on the persist:youtube-signin partition and cookies are read from that
 // partition for downloads. This handler stays for backward compatibility
 // (an older cached renderer can still call it) but it must never pop a
-// separate BrowserWindow — it just asks the live UI to open its in-app modal.
+// separate BrowserWindow - it just asks the live UI to open its in-app modal.
 ipcMain.handle('youtube:signin', async () => {
   const win = windowRef();
   if (win) win.webContents.send('youtube:signin-open');
@@ -1386,7 +1436,7 @@ ipcMain.on('update:relaunch', () => {
 
 // ── yt-dlp engine updates ───────────────────────────────────────────────────
 // The bundled yt-dlp.exe is what actually talks to YouTube, and YouTube breaks
-// old builds regularly — so keep it fresh with the same red-dot pattern as the
+// old builds regularly - so keep it fresh with the same red-dot pattern as the
 // app's own updater: a periodic check against the official latest release,
 // a badge on the settings button, and a one-click swap in the settings pop.
 const YTDLP_RELEASES_API = 'https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest';
@@ -1510,7 +1560,7 @@ async function runYtdlpUpdate() {
     if (stat.size < YTDLP_MIN_BYTES) throw new Error(`downloaded file looks too small (${Math.round(stat.size / 1024)} KB)`);
     // Prove the new binary actually runs before touching the installed one.
     const stagedVersion = await runYtDlpVersionBinary(stage);
-    if (!stagedVersion) throw new Error('the downloaded yt-dlp did not run — it may be corrupted');
+    if (!stagedVersion) throw new Error('the downloaded yt-dlp did not run - it may be corrupted');
     try { await fs.rename(current.path, backup); } catch {}
     try {
       await fs.rename(stage, current.path);
@@ -1520,7 +1570,7 @@ async function runYtdlpUpdate() {
     }
     try { await fs.unlink(backup); } catch {}
     try { await fs.unlink(stage); } catch {}
-    // The path didn't change, but tool resolution is memoized — clear it so the
+    // The path didn't change, but tool resolution is memoized - clear it so the
     // fresh binary is what downloads actually use.
     try { downloader.resetToolsCache(); } catch {}
     try { ytDlpPathCache = null; } catch {}
@@ -1664,6 +1714,14 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+// Persist the window placement on every viewer-relevant transition plus on
+// quit, so an update-relaunch reopens exactly where the user left it.
+app.on('before-quit', saveWindowPlacement);
+setInterval(saveWindowPlacement, 30000);
+const wrapPlacementSave = event => { saveWindowPlacement(); };
+app.on('browser-window-blur', wrapPlacementSave);
+setTimeout(saveWindowPlacement, 15000); // after first layout settles
 
 // ── Keyboard media keys ─────────────────────────────────────────────────────
 // The laptop/keyboard media keys (play/pause ⏯, next ⏭, previous ⏮, stop ⏹)

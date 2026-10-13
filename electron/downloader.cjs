@@ -1,5 +1,5 @@
 'use strict';
-// Downloader — yt-dlp powered YouTube search + downloads for Your Player.
+// Downloader - yt-dlp powered YouTube search + downloads for Your Player.
 // Audio downloads land in the downloads folder and behave like any other song.
 // Video downloads land in <downloads folder>\Your Media and play in the Media tab.
 
@@ -13,7 +13,7 @@ const AUDIO_EXTENSIONS = new Set(['.mp3', '.m4a', '.aac', '.wav', '.flac', '.ogg
 const VIDEO_EXTENSIONS = new Set(['.mp4', '.webm', '.mkv']);
 const YOUTUBE_URL_RE = /(?:youtube\.com\/(?:watch\?.*v=|shorts\/|live\/|embed\/)|youtu\.be\/)([\w-]{11})/i;
 const VIDEO_TOKEN_RE = /(?:^|[?&])v=([\w-]{11})/i;
-// yt-dlp's output template names files "Title [dQw4w9WgXcQ].mp4" — pull the id out of that.
+// yt-dlp's output template names files "Title [dQw4w9WgXcQ].mp4" - pull the id out of that.
 const YOUTUBE_FILENAME_ID_RE = /\[([\w-]{11})\](?:\.[a-z0-9]+)?$/i;
 
 const DOWNLOAD_CONCURRENCY = 3;
@@ -94,7 +94,7 @@ async function resolveTools() {
   };
   const envDir = String(process.env.YOUR_PLAYER_TOOLS_DIR || '').trim();
   // Tools bundled with the installer ship in resources/vendor (packaged) or
-  // <repo>/vendor (dev) — checked first so a fresh install just works.
+  // <repo>/vendor (dev) - checked first so a fresh install just works.
   const bundledDir = path.join(process.resourcesPath || path.join(__dirname, '..'), 'vendor');
   const bundledDevDir = path.join(__dirname, '..', 'vendor');
   const ytCandidates = [
@@ -193,7 +193,7 @@ function normalizeEntry(entry) {
   };
 }
 
-// yt-dlp's output template names files "Title [dQw4w9WgXcQ].mp4" — pull the id out of that.
+// yt-dlp's output template names files "Title [dQw4w9WgXcQ].mp4" - pull the id out of that.
 // YouTube's web search accepts an "sp" filter parameter; EgIQAw== is Filters →
 // YouTube Music #albums results (MPRE… browse ids) are proper artist albums.
 const PLAYLIST_SEARCH_FILTER = 'EgIQAw%3D%3D';
@@ -201,7 +201,7 @@ const MAX_COLLECTION_RESULTS = 12;
 const MAX_COLLECTION_TRACKS = 200;
 
 // YouTube Music album search results expose only an MPRE… browse id in flat
-// mode (no title/thumbnail) — the real name appears when the album page is
+// mode (no title/thumbnail) - the real name appears when the album page is
 // expanded, hand those cards the browse URL so titles arrive on open.
 // Classify what a collection most likely is. YouTube Music album pages carry
 // MPREb… ids; uploaded "full album" mixes are just one long video, so they are
@@ -263,7 +263,7 @@ async function searchYouTubeCollections(query) {
   const cookieArgs = youtubeCookieArgs();
   const playlistUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(trimmed)}&sp=${PLAYLIST_SEARCH_FILTER}`;
   const albumsUrl = `https://music.youtube.com/search?q=${encodeURIComponent(trimmed)}#albums`;
-  // runYtDlpJson resolves to an array of parsed records — --dump-single-json
+  // runYtDlpJson resolves to an array of parsed records - --dump-single-json
   // emits one playlist object, so unwrap [0] and read .entries from there.
   const run = (url, limit) => runYtDlpJson(ytDlpPath, [...cookieArgs, '--no-warnings', '--flat-playlist', '--skip-download', '--dump-single-json', '--playlist-end', String(limit), url], SEARCH_TIMEOUT_MS)
     .then(list => {
@@ -348,7 +348,7 @@ async function searchYouTube(query) {
 
 const SUGGEST_TIMEOUT_MS = 4000;
 
-// Google's public YouTube autocomplete endpoint — no API key needed.
+// Google's public YouTube autocomplete endpoint - no API key needed.
 async function fetchYouTubeSuggestions(query) {
   const q = String(query || '').trim();
   if (q.length < 2 || q.length > 80) return [];
@@ -378,7 +378,7 @@ async function resolveEntry(url) {
 
 // Direct stream URL for in-app previews: the embedded player can no longer be
 // used (YouTube's embedder check rejects the app's file:// origin with
-// "Error 153"), so previews stream the progressive mp4 via yt-dlp instead —
+// "Error 153"), so previews stream the progressive mp4 via yt-dlp instead -
 // same engine and cookies the downloads already use.
 async function resolveStreamUrl(url) {
   const { ytDlpPath } = await resolveTools();
@@ -388,7 +388,7 @@ async function resolveStreamUrl(url) {
   // https stream the default client offers.
   const attempts = [
     // Muxed single-file streams only (the in-app preview is a plain <video>
-    // element — no DASH/HLS support). YouTube rotates which player clients
+    // element - no DASH/HLS support). YouTube rotates which player clients
     // still expose muxed formats, so walk the ladder: android still ships
     // format 18 (360p mp4), tv/ios/mweb keep working when Google blocks one
     // client, and the default web client is the last resort.
@@ -401,7 +401,7 @@ async function resolveStreamUrl(url) {
     ['-f', 'b[acodec!=none][vcodec!=none][protocol^=https]'],
   ];
   let lastError = null;
-  // Each attempt is an extra yt-dlp metadata run (~3–8s); a hard timeout keeps
+  // Each attempt is an extra yt-dlp metadata run (~3-8s); a hard timeout keeps
   // the preview spinner from lasting half a minute if the network stalls.
   const ATTEMPT_TIMEOUT_MS = 15000;
   for (const attempt of attempts) {
@@ -417,7 +417,7 @@ async function resolveStreamUrl(url) {
       lastError = error;
       const msg = String(error && error.message || error);
       // 'Requested format is not available' just means this client has no muxed
-      // stream — keep walking the ladder without remembering a slow timeout.
+      // stream - keep walking the ladder without remembering a slow timeout.
       if (/Requested format is not available/i.test(msg)) lastError = error;
     }
   }
@@ -532,7 +532,7 @@ function startDownload(options) {
   return new Promise((resolve, reject) => {
     resolveTools().then(tools => {
       if (!tools.ffmpegPath) {
-        throw new Error('ffmpeg was not found. Install it ("winget install Gyan.FFmpeg") — yt-dlp needs it to convert audio and merge videos.');
+        throw new Error('ffmpeg was not found. Install it ("winget install Gyan.FFmpeg") - yt-dlp needs it to convert audio and merge videos.');
       }
       const isVideo = options.kind === 'video';
       const outputDir = isVideo ? options.mediaDir : options.audioDir;

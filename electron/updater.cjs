@@ -43,7 +43,7 @@ function normalizeRelPath(value) {
   return String(value || '').replace(/\\/g, '/').replace(/^\.?\//, '').trim();
 }
 
-// Only app files may be replaced — never arbitrary paths.
+// Only app files may be replaced - never arbitrary paths.
 function isAllowedPath(rel) {
   if (rel === 'index.html' || rel === 'package.json') return true;
   return /^electron\/[A-Za-z0-9._-]+\.cjs$/.test(rel);
@@ -137,7 +137,7 @@ async function checkForUpdate() {
     const raw = await fetchBuffer(`${manifestUrl}${manifestUrl.includes('?') ? '&' : '?'}t=${Date.now()}`, MAX_MANIFEST_BYTES);
     let manifest;
     try { manifest = JSON.parse(raw.toString('utf8')); }
-    catch { throw new Error('That update source did not return a valid manifest — check the URL (it should end with manifest.json)'); }
+    catch { throw new Error('That update source did not return a valid manifest - check the URL (it should end with manifest.json)'); }
     if (manifest && typeof manifest === 'object' && !Array.isArray(manifest) && !manifest.version && manifest.message) {
       throw new Error(`Update source replied: ${String(manifest.message).slice(0, 120)}`);
     }
@@ -186,7 +186,7 @@ async function downloadUpdate(manifest, onProgress) {
 }
 
 function applyFailureMessage(reason, detail) {
-  if (reason === 'portable') return 'Portable builds cannot self-update — download the new installer instead.';
+  if (reason === 'portable') return 'Portable builds cannot self-update - download the new installer instead.';
   if (reason === 'dev') return 'Updates only apply to installed builds. Set YOUR_PLAYER_ALLOW_DEV_UPDATE=1 to test in development.';
   if (reason === 'error') return detail || 'The update could not be applied.';
   return 'The update could not be applied.';
