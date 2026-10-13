@@ -25,7 +25,8 @@ ok(/function playerBarRoomClasses/.test(h),'room-class decider defined');
 ok(/function barRoomNatural/.test(h),'cached natural widths (no flip-flop)');
 ok(/2,\s*Math\.max\(1,Math\.floor/.test(h.replace(/\s+/g,' '))===false||true,'(info) step loop present');
 ok(/guard<16/.test(h),'fit loop bounded at 16 steps per pass');
-ok(/barFitPasses<4/.test(h),'fit passes chained (max 4 re-passes)');
+ok(/barFitSettles=0;setTimeout\(schedulePlayerBarFit/.test(h),'settle chain re-verifies geometry after every pass');
+ok(/window\.addEventListener\('resize',\(\)=>\{barFitSettles=0;barFitRelaxLock=false;barFitStableClean=0;barFitStripTrials=false;schedulePlayerBarFit\(\)\}\)/.test(h),'window resize hook (resets settle chain + strip trial)');
 
 // 3. Fit writes BAR-scoped vars, never the user's layout values
 ok(/bar\.style\.setProperty\(BAR_FIT_VARS\.art/.test(h),'fit applies vars on the bar (scoped override)');
@@ -35,7 +36,7 @@ ok(h.indexOf('barFitClear();')<h.indexOf('function applyLayout')+800,'(scope) ba
 
 // 4. Wiring
 ok(/new ResizeObserver\(\(\)=>schedulePlayerBarFit\(\)\)\.observe\(pbar\)/.test(h),'ResizeObserver on player bar');
-ok(/window\.addEventListener\('resize',schedulePlayerBarFit\)/.test(h),'window resize hook');
+ok(/window\.addEventListener\('resize',schedulePlayerBarFit\)/.test(h)||/window\.addEventListener\('resize',\(\)=>\{barFitSettles=0/.test(h),'window resize hook');
 
 // 5. Script blocks still parse
 const re=/<script(?![^>]*src)[^>]*>([\s\S]*?)<\/script>/g;
