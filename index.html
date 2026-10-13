@@ -1633,11 +1633,11 @@ function renderHomeSuggestions(){
  heading.innerHTML=`<h3>Suggested for you</h3>`;
  wrap.append(heading);
  const grid=document.createElement('div');grid.className='sugg-list';
- for(const pick of homeSuggestions()){const t=pick.track;const row=document.createElement('div');row.className='queue-row';row.dataset.trackSugg=String(tracks.indexOf(t));
-  row.innerHTML=`<img class="queue-thumb" src="${t.art}" alt=""><div class="queue-info"><div class="queue-track"></div><div class="queue-artist"></div></div><span class="queue-time"></span>`;
-  row.querySelector('.queue-track').textContent=t.title;row.querySelector('.queue-artist').textContent=t.artist;
-  const dur=Number(t.duration);row.querySelector('.queue-time').textContent=Number.isFinite(dur)&&dur>0?fmtDur(dur):'';
-  row.addEventListener('click',()=>{playScope=null;playAt(tracks.indexOf(t),true)});
+ // Reuse the exact Up Next row builder so both lists share identical
+ // markup/geometry (cover, grip column, title, artist, duration). No drag
+ // wiring here — without upNextIndex the row stays a simple playable row.
+ for(const pick of homeSuggestions()){const t=pick.track;const row=buildQueueRow(t,{index:tracks.indexOf(t)});
+  row.dataset.trackSugg=String(tracks.indexOf(t));
   grid.append(row)}
  wrap.classList.add('sugg-card');
  wrap.append(grid);
