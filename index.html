@@ -169,7 +169,16 @@ body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12
 /* When the squeezed now-part has no room left for its fixed tail, the fit
    loop toggles classes on the bar: first the play-count pill goes, then the
    like heart — never an overlap. */
+.playerbar .player-track .player-like,.playerbar .player-track .listened-pill{flex:none}
 .playerbar.no-room .listened-pill{display:none}
+/* Last-resort tiers: when even the fully shrunk bar cannot fit (tiny window),
+   strip the bar rather than let buttons overlap. Tier 1 hides the nice-to-
+   haves (shuffle/repeat, volume, extras); tier 2 keeps only the transport
+   core (previous/play/next) — never leave colliding controls on screen. */
+.playerbar.no-room-extreme .play-controls .control-btn.small{display:none}
+.playerbar.no-room-extreme>[data-part="volume"],.playerbar.no-room-extreme>[data-part="extras"]{display:none}
+.playerbar.no-room-last .play-controls .control-btn{display:none}
+.playerbar.no-room-extreme .player-track{gap:4px}
 .playerbar.no-room-hard .player-like{display:none}
 @media(max-width:1120px){
  .playerbar{--ctrl-btn-size:26px;--play-btn-size:38px;--p-art-size:42px;--vol-scale:.85;--now-zoom:.85}
@@ -1514,11 +1523,21 @@ function runPlayerBarFit(){
   }
  }finally{barFitBusy=false}
  playerBarRoomClasses();
- // If the bar STILL collides after this pass, run again next frame — each pass
- // moves at least one size, so this converges instead of stalling on a
- // partially-settled layout right after a resize.
- if(!barFitBusy&&barFit&&playerBarCollisions().length&&barFitPasses<4){barFitPasses++;requestAnimationFrame(()=>schedulePlayerBarFit())}
- else barFitPasses=0;
+ // Last-resort tiers: if the bar STILL collides after the full shrink has
+ // bottomed out at its floors, strip secondary pieces instead of leaving
+ // overlapping buttons on screen. Tiers are removed automatically on the
+ // next pass once space returns (the classes are recomputed every run).
+ if(playerBarCollisions().length){
+  bar.classList.add('no-room-extreme');
+  if(playerBarCollisions().length)bar.classList.add('no-room-last');
+  else bar.classList.remove('no-room-last');
+  if(playerBarCollisions().length&&barFitPasses<4){barFitPasses++;requestAnimationFrame(()=>schedulePlayerBarFit())}
+  else barFitPasses=0;
+ }else{
+  bar.classList.remove('no-room-extreme');bar.classList.remove('no-room-last');
+  if(barFitPasses>0){barFitPasses++;if(barFitPasses<4)requestAnimationFrame(()=>schedulePlayerBarFit());else barFitPasses=0}
+  else barFitPasses=0;
+ }
 }
 let barFitPasses=0;
 if(typeof ResizeObserver!=='undefined'){const pbar=$('.playerbar');if(pbar)new ResizeObserver(()=>schedulePlayerBarFit()).observe(pbar)}
