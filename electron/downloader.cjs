@@ -387,20 +387,39 @@ async function resolveStreamUrl(url) {
   // <video> element can play, so try it first, then fall back to any muxed
   // https stream the default client offers.
   const attempts = [
+    // Muxed single-file streams only (the in-app preview is a plain <video>
+    // element — no DASH/HLS support). YouTube rotates which player clients
+    // still expose muxed formats, so walk the ladder: android still ships
+    // format 18 (360p mp4), tv/ios/mweb keep working when Google blocks one
+    // client, and the default web client is the last resort.
     ['--extractor-args', 'youtube:player_client=android', '-f', '18/b[acodec!=none][vcodec!=none][protocol^=https]'],
+    ['--extractor-args', 'youtube:player_client=android', '-f', 'b[acodec!=none][vcodec!=none][protocol^=https]'],
+    ['--extractor-args', 'youtube:player_client=tv', '-f', '18/b[acodec!=none][vcodec!=none][protocol^=https]'],
+    ['--extractor-args', 'youtube:player_client=tv', '-f', 'b[acodec!=none][vcodec!=none][protocol^=https]'],
+    ['--extractor-args', 'youtube:player_client=ios', '-f', 'b[acodec!=none][vcodec!=none][protocol^=https]'],
+    ['--extractor-args', 'youtube:player_client=mweb', '-f', 'b[acodec!=none][vcodec!=none][protocol^=https]'],
     ['-f', 'b[acodec!=none][vcodec!=none][protocol^=https]'],
   ];
   let lastError = null;
+  // Each attempt is an extra yt-dlp metadata run (~3–8s); a hard timeout keeps
+  // the preview spinner from lasting half a minute if the network stalls.
+  const ATTEMPT_TIMEOUT_MS = 15000;
   for (const attempt of attempts) {
     try {
       const results = await runYtDlpJson(
         ytDlpPath,
         [...youtubeCookieArgs(), '--no-warnings', '--no-playlist', '--skip-download', ...attempt, '--dump-json', url],
-        SEARCH_TIMEOUT_MS,
+        ATTEMPT_TIMEOUT_MS,
       );
       const urls = results.flatMap(r => [r && r.url, ...(((r && r.requested_formats) || []).map(f => f && f.url))]).filter(Boolean);
       if (urls.length) return urls[0];
-    } catch (error) { lastError = error; }
+    } catch (error) {
+      lastError = error;
+      const msg = String(error && error.message || error);
+      // 'Requested format is not available' just means this client has no muxed
+      // stream — keep walking the ladder without remembering a slow timeout.
+      if (/Requested format is not available/i.test(msg)) lastError = error;
+    }
   }
   throw lastError || new Error('No stream URL found for this video');
 }
