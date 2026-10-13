@@ -670,9 +670,10 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
 .sidebar{background-image:var(--sidebar-grad,none)}
 .playerbar{background-image:var(--player-grad,none)}
 .topbar{background-image:var(--tabbar-grad,none)}
-.settings-pop,.modal,.eq-pop,.queue-card{background-image:var(--panel-grad,none)}
+.settings-pop,.modal,.eq-pop{background-image:var(--panel-grad,none)}
 .album-card,.artist-card{background-image:var(--card-grad,none)}
 .cc-item-grad .cc-duo{display:flex;gap:4px;align-items:center}
+.cc-grad-preview{width:26px;height:22px;flex:none;border-radius:5px;border:1px solid #ffffff2e;background:transparent}
 .cc-item-grad .cc-duo input[type=color]{width:30px;height:22px;padding:0}
 </style>
 <script>if(!window.afterglowDesktop&&window.Capacitor)document.write('<script src="your-mobile.js"><\/script>');</script>
@@ -3410,17 +3411,35 @@ function makeColorItem(key,label){
  const item=document.createElement('label');item.className='cc-item';item.title=label;
  if(GRADIENT_COLOR_KEYS.has(key)){
   item.classList.add('cc-item-grad');
-  item.innerHTML=`<span>${label}</span><span class="cc-duo"><input type="color" data-cc="${key}" aria-label="${label} color"><input type="color" data-cc2="${key}" aria-label="${label} gradient end" title="${label} - pick a second color to make a gradient"></span>`;
+  // The preview chip shows the real result: a gradient when two different
+  // colors are picked, the solid when one is. The two small color inputs
+  // remain for editing the stops.
+  item.innerHTML=`<span>${label}</span><span class="cc-duo"><span class="cc-grad-preview" title="Current look"></span><input type="color" data-cc="${key}" aria-label="${label} color"><input type="color" data-cc2="${key}" aria-label="${label} gradient end" title="${label} - pick a second color to make a gradient"></span>`;
   const gradInput=item.querySelector('input[data-cc2]');
   gradInput.value=customColors[key+'2']||customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
-  gradInput.addEventListener('input',()=>{customColors[key+'2']=gradInput.value;applyCustomColors();persistCustomColors();if(ccPopState.key===key)$('#ccPopSolid').value=gradInput.value});
+  gradInput.addEventListener('input',()=>{customColors[key+'2']=gradInput.value;applyCustomColors();persistCustomColors();ccRefreshPreview(key);if(ccPopState.key===key)$('#ccPopSolid').value=gradInput.value});
  }else{
   item.innerHTML=`<span>${label}</span><input type="color" data-cc="${key}" aria-label="${label} color">`;
  }
  const input=item.querySelector('input');
  input.value=customColors[key]||CUSTOM_SWATCH_DEFAULTS[key]||'#000000';
- input.addEventListener('input',()=>{customColors[key]=input.value;delete customColors[key+'2'];applyCustomColors();persistCustomColors()});
+ input.addEventListener('input',()=>{customColors[key]=input.value;delete customColors[key+'2'];applyCustomColors();persistCustomColors();ccRefreshPreview(key)});
+ ccRefreshPreview(key);
  return item}
+// Render the little result preview inside a gradient-capable color item:
+// gradient (diagonal, like the applied box fills) or solid.
+function ccRefreshPreview(key){
+ const grid=$('#ccGrid');if(!grid)return;
+ const item=[...grid.querySelectorAll('.cc-item-grad')].find(el=>el.querySelector(`input[data-cc="${key}"]`));
+ if(!item)return;
+ const chip=item.querySelector('.cc-grad-preview');if(!chip)return;
+ const a=customColors[key],b=customColors[key+'2'];
+ const ok=x=>typeof x==='string'&&/^#[0-9a-fA-F]{6}$/.test(x);
+ if(ok(a)&&ok(b)&&a.toLowerCase()!==b.toLowerCase())chip.style.background=`linear-gradient(135deg, ${a}, ${b})`;
+ else if(ok(a))chip.style.background=a;
+ else if(ok(b))chip.style.background=b;
+ else chip.style.background='transparent';
+}
 function buildCustomColors(){
  const grid=$('#ccGrid');if(!grid||grid.dataset.built)return;grid.dataset.built='1';
  // Grouped sections: colors for songs, albums/artists, the player, the app
@@ -3440,7 +3459,7 @@ function buildCustomColors(){
  const reset=$('#ccReset');
  if(reset)reset.addEventListener('click',()=>{for(const [key] of CUSTOM_COLOR_DEFS)delete customColors[key];customColors.shadowOn=true;for(const key of CUSTOM_SLIDER_KEYS)delete customColors[key];for(const key of GRADIENT_COLOR_KEYS)delete customColors[key+'2'];customColors.shadowOp=.55;persistCustomColors();applyCustomColors();refreshCustomColorInputs();syncColorSliders();applyAppearance();showToast('Custom colors cleared - theme defaults restored')});
 }
-function refreshCustomColorInputs(){const grid=$('#ccGrid');if(!grid)return;grid.querySelectorAll('input[data-cc]').forEach(input=>{const val=customColors[input.dataset.cc];input.value=typeof val==='string'&&val.startsWith('linear-gradient')?(CUSTOM_SWATCH_DEFAULTS[input.dataset.cc]||'#000000'):(val||CUSTOM_SWATCH_DEFAULTS[input.dataset.cc]||'#000000')});grid.querySelectorAll('input[data-cc2]').forEach(input=>{input.value=customColors[input.dataset.cc2+'2']||customColors[input.dataset.cc2]||CUSTOM_SWATCH_DEFAULTS[input.dataset.cc2]||'#000000'});syncColorSliders()}
+function refreshCustomColorInputs(){const grid=$('#ccGrid');if(!grid)return;grid.querySelectorAll('input[data-cc]').forEach(input=>{const val=customColors[input.dataset.cc];input.value=typeof val==='string'&&val.startsWith('linear-gradient')?(CUSTOM_SWATCH_DEFAULTS[input.dataset.cc]||'#000000'):(val||CUSTOM_SWATCH_DEFAULTS[input.dataset.cc]||'#000000')});grid.querySelectorAll('input[data-cc2]').forEach(input=>{input.value=customColors[input.dataset.cc2+'2']||customColors[input.dataset.cc2]||CUSTOM_SWATCH_DEFAULTS[input.dataset.cc2]||'#000000'});grid.querySelectorAll('.cc-item-grad').forEach(item=>{const inp=item.querySelector('input[data-cc]');if(inp)ccRefreshPreview(inp.dataset.cc)});syncColorSliders()}
 // ── Gradient-preset popover for the custom color pickers ──
 const ccPopState={key:null};
 function firstHexOf(css){const m=/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})/.exec(String(css||''));return m?m[0]:''}
