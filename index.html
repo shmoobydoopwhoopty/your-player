@@ -379,11 +379,14 @@ html[data-bass-shake="1"] .np-overlay{overflow:hidden}
 /* ── Pop-out mini player ── */
 html[data-mini] body>*:not(#miniRoot){display:none!important}
 html[data-mini] #miniRoot{display:block!important}
-.miniwin{height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--text);user-select:none;-webkit-user-select:none}
-.miniwin-art{flex:1;min-height:0;position:relative;background:#111}
-/* Full album art: contain inside the art area with letterboxing instead of
-   cover-cropping, and never stretch if a track has non-square art. */
-.miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.miniwin{height:100dvh;display:flex;flex-direction:column;position:relative;color:#fff;user-select:none;-webkit-user-select:none}
+/* THE ALBUM ART IS THE WHOLE WINDOW: it paints behind the song info and
+   transport (absolutely positioned, full bleed, scales with the window).
+   The old stacked layout's solid background panel under the controls is gone;
+   the controls sit on a translucent dark scrim instead, so any cover color
+   keeps white text and accent controls readable. */
+.miniwin-art{position:absolute;inset:0;z-index:0;background:#15181b}
+.miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .miniwin-empty{position:absolute;inset:0;display:grid;place-items:center;color:#5b625f;font-size:11px;text-align:center;padding:14px}
 /* No container-type here: size containment makes this panel's auto height
    ignore its children, so the transport got clipped at the window's bottom
@@ -394,12 +397,12 @@ html[data-mini] #miniRoot{display:block!important}
    mini player is a calc() over both, so resizing the window keeps scaling
    everything AND the user's own text-size preference applies on top. */
 html[data-mini]{--mini-z:.9;--mini-t:1}
-.miniwin-ctl{flex:none;padding:calc(10px*var(--mini-z)) calc(12px*var(--mini-z)) calc(12px*var(--mini-z));background:var(--mini-bg,var(--player-bg));backdrop-filter:blur(18px);border-top:1px solid #ffffff14}
-.miniwin-title{font-size:calc(13px*var(--mini-z)*var(--mini-t));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.miniwin-artist{font-size:calc(11px*var(--mini-z)*var(--mini-t));color:var(--muted);margin-top:calc(3px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.miniwin-album{font-size:calc(10px*var(--mini-z)*var(--mini-t));color:var(--text-faint);margin-top:calc(2px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.miniwin-ctl{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;overflow:auto;padding:calc(16px*var(--mini-z)) calc(12px*var(--mini-z)) calc(12px*var(--mini-z));background:linear-gradient(to bottom, rgba(10,12,13,.05) 0%, rgba(10,12,13,.5) 30%, rgba(10,12,13,.84) 100%)}
+.miniwin-title{font-size:calc(13px*var(--mini-z)*var(--mini-t));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.75)}
+.miniwin-artist{font-size:calc(11px*var(--mini-z)*var(--mini-t));color:rgba(255,255,255,.82);margin-top:calc(3px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;text-shadow:0 1px 5px rgba(0,0,0,.7)}
+.miniwin-album{font-size:calc(10px*var(--mini-z)*var(--mini-t));color:rgba(255,255,255,.6);margin-top:calc(2px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 5px rgba(0,0,0,.7)}
 .miniwin-controls{display:flex;align-items:center;justify-content:center;gap:calc(14px*var(--mini-z));margin-top:calc(10px*var(--mini-z))}
-html[data-mini] .miniwin-controls .control-btn{color:var(--player-controls,var(--text));width:calc(30px*var(--mini-z)*var(--mini-t));height:calc(30px*var(--mini-z)*var(--mini-t))}
+html[data-mini] .miniwin-controls .control-btn{color:#fff;width:calc(30px*var(--mini-z)*var(--mini-t));height:calc(30px*var(--mini-z)*var(--mini-t))}
 html[data-mini] .miniwin-controls .control-btn.selected{color:var(--accent)}
 html[data-mini] .miniwin-controls .control-btn svg{width:calc(30px*var(--mini-z)*var(--mini-t)*.57);height:calc(30px*var(--mini-z)*var(--mini-t)*.57)}
 html[data-mini] .miniwin-controls .play-main{width:calc(44px*var(--mini-z)*var(--mini-t));height:calc(44px*var(--mini-z)*var(--mini-t));background:var(--play-btn-bg,var(--accent-grad))}
@@ -418,18 +421,18 @@ html[data-mini] .miniwin-toggles{position:relative}
 .miniwin-bar .progress-dot{position:absolute;top:50%;width:calc(14px*var(--mini-z)*var(--mini-t));height:calc(14px*var(--mini-z)*var(--mini-t));border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);box-shadow:0 1px 4px #0008;pointer-events:none;left:0}
 .miniwin-bar:hover .progress-dot,.miniwin-bar.seeking .progress-dot{width:calc(17px*var(--mini-z)*var(--mini-t));height:calc(17px*var(--mini-z)*var(--mini-t))}
 .miniwin-volume{display:flex;align-items:center;gap:calc(8px*var(--mini-z));margin-top:calc(9px*var(--mini-z))}
-html[data-mini] .miniwin-volume .control-btn{width:calc(22px*var(--mini-z)*var(--mini-t));height:calc(22px*var(--mini-z)*var(--mini-t));color:var(--player-fg2,#929a97)}
+html[data-mini] .miniwin-volume .control-btn{width:calc(22px*var(--mini-z)*var(--mini-t));height:calc(22px*var(--mini-z)*var(--mini-t));color:rgba(255,255,255,.85)}
 html[data-mini] .miniwin-volume .control-btn svg{width:calc(22px*var(--mini-z)*var(--mini-t)*.57);height:calc(22px*var(--mini-z)*var(--mini-t)*.57)}
 .miniwin-vol-slider{flex:1;min-width:0;accent-color:var(--accent);height:calc(4px*var(--mini-t));cursor:pointer}
 .miniwin-extra{display:flex;align-items:center;justify-content:space-between;gap:calc(8px*var(--mini-z));margin-top:calc(9px*var(--mini-z))}
-.miniwin-extra-btn{height:calc(26px*var(--mini-z)*var(--mini-t));padding:0 calc(11px*var(--mini-z));display:inline-flex;align-items:center;border:1px solid #ffffff22;background:#ffffff08;border-radius:calc(14px*var(--mini-z)*var(--mini-t));color:var(--text-dim);font-size:calc(10px*var(--mini-z)*var(--mini-t));font-weight:600;cursor:pointer}
+.miniwin-extra-btn{height:calc(26px*var(--mini-z)*var(--mini-t));padding:0 calc(11px*var(--mini-z));display:inline-flex;align-items:center;border:1px solid #ffffff26;background:rgba(0,0,0,.35);border-radius:calc(14px*var(--mini-z)*var(--mini-t));color:rgba(255,255,255,.85);font-size:calc(10px*var(--mini-z)*var(--mini-t));font-weight:600;cursor:pointer}
 .miniwin-extra-btn:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .miniwin-extra-btn.miniwin-open{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .miniwin-gear{width:calc(26px*var(--mini-z)*var(--mini-t));padding:0;justify-content:center}
 .miniwin-gear svg{width:calc(14px*var(--mini-z)*var(--mini-t));height:calc(14px*var(--mini-z)*var(--mini-t))}
 /* Panels (Up Next & settings) live INSIDE the flex column, so opening one
    grows the panel naturally and content always fits the window. */
-.miniwin-queue,.miniwin-settings{flex:none;border-top:1px solid #ffffff10;background:color-mix(in srgb,#000 28%,var(--mini-bg,var(--player-bg)));max-height:45vh;overflow:auto;scrollbar-width:thin}
+.miniwin-queue,.miniwin-settings{position:relative;z-index:3;flex:none;border-top:1px solid #ffffff10;background:rgba(13,16,17,.94);backdrop-filter:blur(14px);max-height:45vh;overflow:auto;scrollbar-width:thin}
 .miniwin-queue-head{padding:calc(8px*var(--mini-z)) calc(12px*var(--mini-z)) calc(4px*var(--mini-z));font-size:calc(10px*var(--mini-z)*var(--mini-t));font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-faint)}
 .miniwin-queue-list{padding:0 calc(8px*var(--mini-z)) calc(8px*var(--mini-z))}
 .miniwin-queue-row{display:grid;grid-template-columns:calc(26px*var(--mini-z)) minmax(0,1fr);align-items:center;gap:calc(8px*var(--mini-z));padding:calc(4px*var(--mini-z)) calc(5px*var(--mini-z));border-radius:calc(7px*var(--mini-z));cursor:pointer}
