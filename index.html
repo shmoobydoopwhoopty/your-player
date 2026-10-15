@@ -5229,7 +5229,7 @@ function handleMiniCommand(cmd,arg){
     return;
   }
 }
-if(desktop&&desktop.miniOnCommand)desktop.miniOnCommand(cmd=>{handleMiniCommand(cmd);setTimeout(()=>miniPlayer.sync(),60)});
+if(desktop&&desktop.miniOnCommand)desktop.miniOnCommand((cmd,arg)=>{handleMiniCommand(cmd,arg);setTimeout(()=>miniPlayer.sync(),60)});
 // Keyboard media keys (⏯ ⏭ ⏮ ⏹ from the keyboard) ride the same command map.
 if(desktop&&desktop.mediaOnCommand)desktop.mediaOnCommand(cmd=>{handleMiniCommand(cmd==='stop'?'play':cmd);setTimeout(()=>miniPlayer.sync(),60)});
 if(desktop&&desktop.miniOnClosed)desktop.miniOnClosed(()=>{try{localStorage.removeItem('yourplayer.miniOpen.v1')}catch{}});

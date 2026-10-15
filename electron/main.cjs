@@ -1647,8 +1647,24 @@ function createMiniWindow() {
   // yet (first run ever), let Chromium's default apply once; after that the
   // saved position always wins.
   const savedMiniBounds = loadMiniBounds();
+  // First ever open (nothing saved yet): place the mini near the main window,
+  // on the same monitor, instead of dead-center on the primary display. Never
+  // activates or steals focus; once the user drags it, the saved spot always wins.
+  const firstRunCenter = savedMiniBounds ? {} : (function () {
+    try {
+      const { screen } = require('electron');
+      const anchor = mainWindow && !mainWindow.isDestroyed()
+        ? screen.getDisplayNearestPoint({ x: mainWindow.getBounds().x + 10, y: mainWindow.getBounds().y + 10 })
+        : screen.getPrimaryDisplay();
+      const wa = anchor.workArea;
+      return {
+        x: Math.round(wa.x + wa.width / 2 - 160),
+        y: Math.round(wa.y + wa.height / 2 - 280),
+      };
+    } catch { return {}; }
+  })();
   miniWindow = new BrowserWindow({
-    ...(savedMiniBounds ? { x: savedMiniBounds.x, y: savedMiniBounds.y } : {}),
+    ...(firstRunCenter.x !== undefined ? { x: firstRunCenter.x, y: firstRunCenter.y } : {}),
     width: savedMiniBounds ? savedMiniBounds.width : 320,
     height: savedMiniBounds ? savedMiniBounds.height : 560,
     minWidth: 240,
