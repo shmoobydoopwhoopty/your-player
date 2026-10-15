@@ -25,12 +25,12 @@ let mainWindow;
 // the same webview (same partition session); we count them purely for logging
 // so we can debug “no window appeared / sign-in didn't register” reports.
 let sameSessionOpenCount = 0;
-// Every window-opening attempt - from the player window or from the sign-in
+// Every window-opening attempt : from the player window or from the sign-in
 // webview's embedded page (Google's account chooser, OAuth pop-ups) - goes
 // through “setWindowOpenHandler”. That's the modern, deterministic hook: it
 // fires on ALL guest <webview> contents, letting us keep the sign-in flow
 // inside the app (load in the same webview) instead of letting Electron pop
-// a separate browser-style window - the historical bug where “Sign in to
+// a separate browser-style window : the historical bug where “Sign in to
 // YouTube” launched its own Google window outside the player.
 app.on('web-contents-created', (_event, contents) => {
   // Surface guest-page console output in the terminal for support/debugging,
@@ -63,7 +63,7 @@ app.on('web-contents-created', (_event, contents) => {
 // the downloader's view at most twice a second instead of on every byte.
 let cookieRefreshTimer = null;
 // YouTube's 2025 embedder check rejects players whose Referer isn't a real
-// https origin - the downloader preview loads youtube.com/embed in a <webview>
+// https origin : the downloader preview loads youtube.com/embed in a <webview>
 // from the app's file:// page, so no valid referer goes out and YouTube shows
 // “Error 153: Video player configuration error”. Give the preview session's
 // embed requests a Referer YouTube accepts and a UA without the Electron
@@ -270,7 +270,7 @@ function windowStateFile() {
   try { return path.join(app.getPath('userData'), 'window-state.json'); } catch { return null; }
 }
 // Remember the window's exact geometry (including which monitor it was on) so
-// restarts and updates reopen it in the same place - snapped half-screen,
+// restarts and updates reopen it in the same place : snapped half-screen,
 // second monitor, maximized, or full-screen, whatever the user left behind.
 // Only applied when the saved position still intersects a currently attached
 // display, so unplugging a monitor never strands the window off-screen.
@@ -336,7 +336,7 @@ function createWindow() {
       sandbox: true,
       webviewTag: true,
       // Local music files (file:// URLs) otherwise count as cross-origin for
-      // MediaElementSource, which silently zeroes the WebAudio graph - killing
+      // MediaElementSource, which silently zeroes the WebAudio graph : killing
       // the equalizer and party mode. Local player, local files: allow it.
       webSecurity: false,
     },
@@ -538,7 +538,7 @@ ipcMain.handle('app-logo:clear', async () => {
 // The renderer picks the picture and upscales it to 2K before sending the
 // finished bytes; this just stores the file and hands back a file URL.
 const appBackgroundBase = () => path.join(app.getPath('userData'), 'app-background');
-const appBackgroundExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+const appBackgroundExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
 async function removeAppBackgroundFiles() {
   for (const ext of appBackgroundExtensions) {
     try { await fs.rm(`${appBackgroundBase()}.${ext}`, { force: true }); } catch {}
@@ -550,7 +550,7 @@ ipcMain.handle('app-bg:save', async (_event, payload) => {
   if (!bytes || !bytes.length || bytes.length > 25 * 1024 * 1024) return null;
   try {
     await removeAppBackgroundFiles();
-    const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : mime.includes('jpeg') ? 'jpg' : 'img';
+    const ext = mime.includes('gif') ? 'gif' : mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : mime.includes('jpeg') ? 'jpg' : 'img';
     const target = `${appBackgroundBase()}.${ext}`;
     await fs.writeFile(target, Buffer.from(bytes));
     return { path: target, url: pathToFileURL(target).href };
@@ -589,7 +589,7 @@ async function fileExists(target) {
 
 function looksLikeImageBuffer(bytes) {
   if (!bytes || bytes.length < 12) return false;
-  // JPEG or PNG magic numbers - enough to reject stray HTML/JSON responses.
+  // JPEG or PNG magic numbers : enough to reject stray HTML/JSON responses.
   return (bytes[0] === 0xff && bytes[1] === 0xd8) || (bytes[0] === 0x89 && bytes[1] === 0x50);
 }
 
@@ -689,7 +689,7 @@ ipcMain.handle('artist-photo:remove', async (_event, name) => {
 // a pixelated mess in the full-screen player. When the renderer asks, look up
 // a high-resolution cover (Deezer cover_xl, ~1000px) for that album once,
 // cache it in the user data folder, and return the bytes. This never touches
-// the music files themselves - it is display-only.
+// the music files themselves : it is display-only.
 const albumArtHiresDir = path.join(app.getPath('userData'), 'album-art-hires');
 
 ipcMain.handle('album-art:hires', async (_event, payload) => {
@@ -992,7 +992,7 @@ async function runFfmpegTool(args, timeoutMs = 60000) {
 async function findFfmpegPath() {
   const envDir = String(process.env.YOUR_PLAYER_TOOLS_DIR || '').trim();
   const isWin = process.platform === 'win32';
-  // The installer bundles ffmpeg in resources/vendor - try it first so a fresh
+  // The installer bundles ffmpeg in resources/vendor : try it first so a fresh
   // install can convert media without any manual installs.
   const bundledDir = path.join(process.resourcesPath || path.join(__dirname, '..'), 'vendor');
   const bundledDevDir = path.join(__dirname, '..', 'vendor');
@@ -1278,7 +1278,7 @@ ipcMain.handle('tracks:write-art', async (_event, payload) => {
 
 // ── Identify a song from a real audio file ──────────────────────────────────
 // The renderer reads the picked file's own tags (title/artist/album) and any
-// embedded cover; this side does the online half - turning that into catalog
+// embedded cover; this side does the online half : turning that into catalog
 // candidates via the Deezer search API (the same keyless provider the artist
 // and album lookups use) and fetching matched cover bytes so they can be
 // written straight into the file.
@@ -1365,7 +1365,7 @@ ipcMain.handle('library:save', async (_event, data) => {
 // on the persist:youtube-signin partition and cookies are read from that
 // partition for downloads. This handler stays for backward compatibility
 // (an older cached renderer can still call it) but it must never pop a
-// separate BrowserWindow - it just asks the live UI to open its in-app modal.
+// separate BrowserWindow : it just asks the live UI to open its in-app modal.
 ipcMain.handle('youtube:signin', async () => {
   const win = windowRef();
   if (win) win.webContents.send('youtube:signin-open');
@@ -1436,7 +1436,7 @@ ipcMain.on('update:relaunch', () => {
 
 // ── yt-dlp engine updates ───────────────────────────────────────────────────
 // The bundled yt-dlp.exe is what actually talks to YouTube, and YouTube breaks
-// old builds regularly - so keep it fresh with the same red-dot pattern as the
+// old builds regularly : so keep it fresh with the same red-dot pattern as the
 // app's own updater: a periodic check against the official latest release,
 // a badge on the settings button, and a one-click swap in the settings pop.
 const YTDLP_RELEASES_API = 'https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest';
@@ -1560,7 +1560,7 @@ async function runYtdlpUpdate() {
     if (stat.size < YTDLP_MIN_BYTES) throw new Error(`downloaded file looks too small (${Math.round(stat.size / 1024)} KB)`);
     // Prove the new binary actually runs before touching the installed one.
     const stagedVersion = await runYtDlpVersionBinary(stage);
-    if (!stagedVersion) throw new Error('the downloaded yt-dlp did not run - it may be corrupted');
+    if (!stagedVersion) throw new Error('the downloaded yt-dlp did not run : it may be corrupted');
     try { await fs.rename(current.path, backup); } catch {}
     try {
       await fs.rename(stage, current.path);
@@ -1570,7 +1570,7 @@ async function runYtdlpUpdate() {
     }
     try { await fs.unlink(backup); } catch {}
     try { await fs.unlink(stage); } catch {}
-    // The path didn't change, but tool resolution is memoized - clear it so the
+    // The path didn't change, but tool resolution is memoized : clear it so the
     // fresh binary is what downloads actually use.
     try { downloader.resetToolsCache(); } catch {}
     try { ytDlpPathCache = null; } catch {}
@@ -1600,16 +1600,57 @@ function miniWindowIcon() {
     ? path.join(process.resourcesPath, 'icon.ico')
     : path.join(__dirname, '..', 'build', 'icon.ico');
 }
+// show() alone does NOT un-minimize a window on Windows : a minimized mini
+// would sit in the taskbar forever, invisible no matter how the taskbar icon
+// is clicked. Only restore() when actually minimized: this flips it back to
+// its previous bounds WITHOUT repositioning it, WITHOUT raising it onto
+// another monitor, and WITHOUT stealing focus from whatever the user is doing.
+function raiseMiniWindow(win) {
+  try { if (win.isMinimized()) win.restore(); } catch {}
+}
+function miniBoundsFile() {
+  try { return path.join(app.getPath('userData'), 'mini-window-state.json'); } catch { return null; }
+}
+function loadMiniBounds() {
+  try {
+    const f = miniBoundsFile();
+    if (!f) return null;
+    const s = JSON.parse(fsSync.readFileSync(f, 'utf8'));
+    if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.y)
+      || !Number.isFinite(s.width) || s.width < 240 || !Number.isFinite(s.height) || s.height < 360) return null;
+    return { x: Math.round(s.x), y: Math.round(s.y), width: Math.round(Math.min(520, Math.max(240, s.width))), height: Math.round(Math.min(900, Math.max(360, s.height))) };
+  } catch { return null; }
+}
+// Throttle so a drag doesn't hammer disk every pixel of the way.
+let saveMiniTimer = null;
+let lastPendingMiniBounds = null;
+function saveMiniBounds(bounds) {
+  try {
+    if (!bounds || !miniBoundsFile()) return;
+    lastPendingMiniBounds = bounds;
+    if (saveMiniTimer) return;
+    saveMiniTimer = setTimeout(() => {
+      saveMiniTimer = null;
+      try { fsSync.writeFileSync(miniBoundsFile(), JSON.stringify(lastPendingMiniBounds)); } catch {}
+    }, 600);
+  } catch {}
+}
 function createMiniWindow() {
   if (miniWindow && !miniWindow.isDestroyed()) {
-    miniWindow.show();
-    miniWindow.focus();
+    raiseMiniWindow(miniWindow);
     return miniWindow;
   }
   const icon = miniWindowIcon();
+  // A brand-new mini would otherwise appear dead-center on the PRIMARY display
+  // : often the monitor the user is gaming on. Never force that: open it at
+  // the position the user themselves last dragged it to. If nothing is saved
+  // yet (first run ever), let Chromium's default apply once; after that the
+  // saved position always wins.
+  const savedMiniBounds = loadMiniBounds();
   miniWindow = new BrowserWindow({
-    width: 320,
-    height: 560,
+    ...(savedMiniBounds ? { x: savedMiniBounds.x, y: savedMiniBounds.y } : {}),
+    width: savedMiniBounds ? savedMiniBounds.width : 320,
+    height: savedMiniBounds ? savedMiniBounds.height : 560,
     minWidth: 240,
     minHeight: 360,
     maxWidth: 520,
@@ -1630,6 +1671,14 @@ function createMiniWindow() {
     },
   });
   miniWindow.setAlwaysOnTop(true, 'floating');
+  // Persist whatever position the user drags it to, so later sessions open it
+  // where they last left it : never re-centered onto the primary gaming display.
+  ['move', 'resize'].forEach(evName => miniWindow.on(evName, () => {
+    try {
+      if (!miniWindow || miniWindow.isDestroyed() || miniWindow.isMinimized()) return;
+      saveMiniBounds(miniWindow.getNormalBounds());
+    } catch {}
+  }));
   // The mini window is a separate renderer; it gets its first paint via the
   // state handoff: lastMiniState (set by the player's miniPushState) is served
   // through mini:get-state when the mini bootstrap asks for it.
@@ -1640,10 +1689,13 @@ function createMiniWindow() {
 let lastMiniState = null;
 ipcMain.handle('mini:get-state', () => lastMiniState || null);
 ipcMain.handle('mini:show', () => {
-  createMiniWindow();
-  // The mini player replaces the main window: minimize the app so only the
-  // mini player stays visible (restoring the app is the mini player's ↩ button).
+  // Minimize the main window BEFORE the mini window is created: creating the
+  // mini first and then minimizing a (possibly fullscreen) main window can
+  // drag the freshly shown mini into the minimized state with it, which is
+  // exactly the "pop-out opens but never appears on screen" bug.
   try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize(); } catch {}
+  const win = createMiniWindow();
+  raiseMiniWindow(win);
   return true;
 });
 ipcMain.handle('mini:close', () => {
@@ -1667,7 +1719,11 @@ ipcMain.on('mini:move-by', (event, dx, dy) => {
 });
 ipcMain.on('mini:command', (event, cmd, arg) => {
   if (event.sender === miniWindow?.webContents && cmd === 'restore' && mainWindow && !mainWindow.isDestroyed()) {
-    try { mainWindow.show(); mainWindow.focus(); } catch {}
+    // restore() first: show() does not un-minimize on Windows, and the main
+    // window is minimized whenever the mini player is open. restore() brings
+    // it back to its previous geometry without stealing focus or repositioning.
+    try { if (mainWindow.isMinimized()) mainWindow.restore(); } catch {}
+    try { mainWindow.show(); } catch {}
   }
   if (event.sender === miniWindow?.webContents && mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('mini:command', cmd, arg);

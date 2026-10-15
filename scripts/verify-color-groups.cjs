@@ -18,7 +18,7 @@ check('grouped renderer loop', flat.includes('for(const [groupName,rows] of CUST
 check('item factory built', fs.readFileSync('index.html','utf8').includes('function makeColorItem(key,label)'));
 check('old flat render loop removed', !fs.readFileSync('index.html','utf8').includes('for(const [key,label] of CUSTOM_COLOR_DEFS){'));
 check('reset iterates full def list', fs.readFileSync('index.html','utf8').includes('for(const [key] of CUSTOM_COLOR_DEFS)delete customColors[key]'));
-check('persistence load covers all keys', /for\(const \[key\] of CUSTOM_COLOR_DEFS\)if\(typeof savedCustom\[key\]/.test(flat));
+check('persistence load covers all keys incl gradient stop 2', /for\(const \[key\] of CUSTOM_COLOR_DEFS\)\{if\(typeof savedCustom\[key\]/.test(flat)&&/customColors\[key\+'2'\]=savedCustom\[key\+'2'\]/.test(flat));
 check('surfaces palette reset path intact', /for\(const \[key\] of CUSTOM_COLOR_DEFS\)delete customColors\[key\];/.test(flat));
 
 process.exit(process.exitCode || 0);
