@@ -1695,6 +1695,44 @@ function createMiniWindow() {
       saveMiniBounds(miniWindow.getNormalBounds());
     } catch {}
   }));
+  // The user may minimize the MAIN window through its own button, the taskbar,
+  // or full-screen mode while the mini is open. On Windows that shell action can
+  // drag the always-on-top mini into the minimized state with it (the same
+  // cascade that used to strand it in the taskbar). The mini's job is to stay
+  // visible: when the main window hides this way, restore the mini instead of
+  // letting it sink. Only step in when the mini actually got dragged down;
+  // a minimized MAIN never legally minimizes the MINI by user intent.
+  try {
+    mainWindow.on('minimize', () => {
+      try {
+        if (!miniWindow || miniWindow.isDestroyed()) return;
+        if (miniWindow.isMinimized()) {
+          setTimeout(() => {
+            try {
+              if (!miniWindow || miniWindow.isDestroyed()) return;
+              if (miniWindow.isMinimized()) miniWindow.restore();
+            } catch {}
+          }, 120);
+        }
+      } catch {}
+    });
+    // Show desktop / Win+D minimizes every window including the mini. When the
+    // user brings the main window back, the mini comes back with it, since it
+    // is the screen the pop-out was opened to show.
+    mainWindow.on('restore', () => {
+      try {
+        if (!miniWindow || miniWindow.isDestroyed()) return;
+        if (miniWindow.isMinimized()) {
+          setTimeout(() => {
+            try {
+              if (!miniWindow || miniWindow.isDestroyed()) return;
+              if (miniWindow.isMinimized()) { miniWindow.restore(); miniWindow.moveTop(); }
+            } catch {}
+          }, 120);
+        }
+      } catch {}
+    });
+  } catch {}
   // The mini window is a separate renderer; it gets its first paint via the
   // state handoff: lastMiniState (set by the player's miniPushState) is served
   // through mini:get-state when the mini bootstrap asks for it.
