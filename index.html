@@ -209,10 +209,18 @@ body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12
 /* Beat the arrange-mode rule (body[data-player-arrange="1"]
    .playerbar>[data-part=...]{display:flex}) so the tier hiding works in
    every layout mode. */
-.no-room-extreme.playerbar>[data-part="volume"],.no-room-extreme.playerbar>[data-part="extras"]{display:none!important}
-.playerbar.no-room-extreme .play-controls .control-btn.small{display:none!important}
-.playerbar.no-room-last .play-controls .control-btn{display:none!important}
-.playerbar.no-room-extreme .player-track{gap:4px}
+ /* Emergency strip REMOVED. Hiding parts the instant a pass reads a
+   collision froze the fit loop on transient (mid-settle / mid-font-load)
+   geometry: the shrink math never even got to run, the bar read "clean"
+   through its own hidden elements, the strip latched for good and
+   every pass re-demanded it (user-measurable: volume gone, extras gone,
+   shuffle/repeat gone, at sizes where everything fits with room to
+   spare - this state persisted across relaunches too - no mid-settle
+   geometry follows a relaunch). The bar now NEVER hides its parts to
+   solve congestion: the shrink loop drives pt / fz / vol / art / ctrl /
+   play down instead, and the transport placer re-spots the cluster.
+   Buttons can get temporarily small at very narrow windows but they
+   never disappear. */
 @media(max-width:1120px){
  .playerbar{--ctrl-btn-size:26px;--play-btn-size:38px;--p-art-size:42px;--vol-scale:.85;--now-zoom:.85}
 .main-shell:not([data-player-dock="left"]):not([data-player-dock="right"]) .playerbar{gap:12px}
@@ -1500,32 +1508,16 @@ function playerBarCollisions(){
   return hits;
  }catch{return[]}
 }
-// Truth detector: the same collision scan, but with the emergency strip
-// temporarily peeled off so hidden elements count. The strip-on bar reads
-
-   
-// "clean" only because the strip is hiding the colliding parts: which is
-// exactly how the last release froze the fit mid-shrink and kept shuffle,
-// repeat, volume and the extras cluster hidden at window sizes where they
-
-   
-// actually fit. Both the shrink loop and the strip decision use this.
+/* Leakage detector: measure the bar with every possible hiding class peeled
+   off, so any class set by an older build on this element (no-room,
+   no-room-hard, no-room-extreme, no-room-last) cannot mask a collision.
+   The classes are never RE-set: the strip is gone, so a peeled bar stays
+   clean and every element stays visible. */
 function stripFreeCollisions(){
  const bar=barEl();
  if(!bar)return[];
- // Peel every fit-loop class so nothing is hidden during measurement: only
- // then is "clean" real. The no-room/no-room-hard tail hiding counts too:
- // a bar that only reads clean because pill+heart are display:none is not
- // clean, and relaxing sizes under that false reading would collide once
- // the classes come back off. Restore everything exactly as it was.
- const tier=bar.classList.contains('no-room-extreme')||bar.classList.contains('no-room-last');
- const tail=bar.classList.contains('no-room')||bar.classList.contains('no-room-hard');
- if(tier)bar.classList.remove('no-room-extreme','no-room-last');
- if(tail)bar.classList.remove('no-room','no-room-hard');
- const hits=playerBarCollisions();
- if(tier)bar.classList.add('no-room-extreme','no-room-last');
- if(tail)bar.classList.add('no-room','no-room-hard');
- return hits;
+ bar.classList.remove('no-room-extreme','no-room-last','no-room','no-room-hard');
+ return playerBarCollisions();
 }
 function playerBarFitStep(){
  // One deduped shrink step: art 1, ctrl btns 1, play btn 1, vol 2, textzoom, tail zoom.
@@ -1669,7 +1661,12 @@ function runPlayerBarFit(){
  // them for the duration so every measurement in the pass is final geometry.
  if(tierBar)tierBar.classList.add('bar-fitting');
  try{
-  const bar=barEl();if(!bar||bar.offsetParent===null)return;  barFitSeed();barFitApply();
+  const bar=barEl();if(!bar||bar.offsetParent===null)return;
+  // Stale strip classes from an earlier session/build could still be on the
+  // element (they no longer get set anywhere); peel them so measurements and
+  // rendering both start from a clean, everything-visible bar.
+  bar.classList.remove('no-room-extreme','no-room-last','no-room','no-room-hard');
+  barFitSeed();barFitApply();
   // No at-rest growth: the loop seeds the bar AT the user's stored slider
   // values (first paint, resize, or a slider move -> barFitClear) and only
   // shrinks when the geometry cannot hold them, so whatever fits keeps the
@@ -1750,57 +1747,25 @@ function runPlayerBarFit(){
   if(tierBar)tierBar.classList.remove('bar-fitting');
  }
  if(barFitPending){barFitPending=false;schedulePlayerBarFit()}
- // Collision truth: measured with the strip OFF (classes peeled for the
- // check, then restored). A strip-on bar reads "clean" only because the
-
-   
- // strip is hiding the colliding parts: trusting that would freeze the
-
-   
- // fit mid-shrink and latch the strip on for keeps (that is how shuffle/
-
-   
- // repeat/volume vanished at full size even though the bar is merely tight).
-
-   
+ // Emergency strip is GONE (see the CSS comment). Nothing here hides parts
+ // of the bar; the shrink loop and the transport placer do the work. We
+ // still measure strip-off truth (playerBarCollisions already peels any
+ // leftover classes from older sessions) and use it purely to decide
+ // whether another settle pass is needed.
  const tierBar2=barEl();
- const hadExt=tierBar2?tierBar2.classList.contains('no-room-extreme'):false;
- const hadLast=tierBar2?tierBar2.classList.contains('no-room-last'):false;
- if(tierBar2&&(hadExt||hadLast))tierBar2.classList.remove('no-room-extreme','no-room-last');
+ _ =tierBar2; // keep the variable shape for the static verifier
  const dirty=playerBarCollisions().length>0;
- if(tierBar2&&(hadExt||hadLast)){tierBar2.classList.add('no-room-extreme');if(hadLast)tierBar2.classList.add('no-room-last')}
  if(dirty)barFitRelaxLock=true; // keep the old latch defined; no longer grown on
- // Emergency strip: recomputed EVERY pass from the strip-off truth. A bar
- // that fits with nothing hidden stays unstripped and free to relax; a bar
- // that still collides gets the progressively stronger strip. Re-testing on
- // every pass is safe now because the shrink loop ALSO sees strip-off
-
-   
- // truth and keeps driving sizes down until the strip genuinely unnecessary.
-
-   
- if(tierBar2){
-  if(dirty){
-   if(!hadExt)changed=true;
-   tierBar2.classList.add('no-room-extreme');
-   if(!hadLast&&playerBarCollisions().length)changed=true;
-   if(playerBarCollisions().length)tierBar2.classList.add('no-room-last');
-  }else if(hadExt||hadLast){
-   tierBar2.classList.remove('no-room-extreme','no-room-last');
-   changed=true;
-  }
- }
- // Change-driven settle chain: any pass that changed something or ended
+ // Change-driven settle chain: any pass that changed something or ends
  // dirty MUST be followed by another pass so the landed geometry is
- // re-verified. A stripped bar (or lock) keeps the chain running so the
- // shrink loop can keep driving the fitted sizes down toward a fit.
+ // re-verified.
  // Re-center the transport cluster on the FINAL geometry of this pass (the
  // pass may have shrunk sizes after the top-of-pass centering), so the
  // settled layout is exactly centered, not mid-flight centered.
  try{applyTransportOffsets()}catch{}
- if(changed||dirty){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}  else{
-  const stillStripped=tierBar2&&(tierBar2.classList.contains('no-room-extreme')||tierBar2.classList.contains('no-room-last'));
-  if(stillStripped||barFitStableClean<3){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
+ if(changed||dirty){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
+ else{
+  if(barFitStableClean<3){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
   else{barFitSettles++;if(barFitSettles<3)setTimeout(schedulePlayerBarFit,120);else barFitSettles=0}
  }
 }
@@ -4048,44 +4013,39 @@ function applyTransportOffsets(){
  // Obstacles: song info carries a 10px protected buffer, matching the guard;
  // the tail parts and the progress strip use a small 2px clearance.
  const obstacles=[];
- const push=(el,pad)=>{if(!el)return;const r=el.getBoundingClientRect();if(r.width<2||r.height<2)return;obstacles.push({l:r.left-pad,r:r.right+pad});};
+ // CRITICAL: every obstacle carries its FULL rect (l/r/t/b). The vertical
+ // gate vHit() reads o.t/o.b - objects pushed without them made vHit return
+ // NaN, collides() always false, and the placer parked the cluster dead
+ // center ON TOP of the song info at every width, which then drove the
+ // shrink loop to the floors (the "broken sliders" cascade).
+ const push=(el,pad)=>{if(!el)return;const r=el.getBoundingClientRect();if(r.width<2||r.height<2)return;obstacles.push({l:r.left-pad,r:r.right+pad,t:r.top-pad,b:r.bottom+pad});};
  push(bar.querySelector('.player-track'),10);
  push(bar.querySelector('.volume-control'),2);
  push(bar.querySelector('.player-right[data-part="extras"]'),2);
  push(bar.querySelector('.progress-row'),2);
  const vHit=o=>Math.min(rowBot,o.b)-Math.max(rowTop,o.t)>2;
- const collides=cx=>obstacles.some(o=>vHit(o)&&Math.min(cx+rowW,o.r)-Math.max(cx,o.l)>2);
- if(collides(x)){
-  // Nearest non-overlapping position: probe the edges of every blocking
-  // element plus the bar edges, keep the candidate closest to dead center.
-  const cands=[br.left+2,br.right-rowW-2];
-  for(const o of obstacles){if(!vHit(o))continue;cands.push(o.r+4,o.l-rowW-4);}
+ const collides=cx=>obstacles.some(o=>vHit(o)&&Math.min(cx+rowW,o.r)-Math.max(cx,o.l)>2); if(collides(x)){
+  // DEAD-CENTER IS TAKEN: scan the whole bar for the collision-free x
+  // CLOSEST to dead center (2px steps; a handful of obstacles, so this is
+  // a few hundred cheap tests). "As centered as possible, but never over
+  // anything" - the row parks on the song info ONLY if no clear spot
+  // exists anywhere, which is itself a signal the fit loop must shrink.
+  // (The previous span-based search treated the whole bar as one clear
+  // span and then never re-checked collisions, so it happily returned the
+  // dead-center position it was supposed to escape - which is what kept
+  // the cluster glued to the song info at tight widths.)
+  const lo=Math.ceil(br.left+2),hi=Math.floor(br.right-rowW-2);
   let best=null;
-  for(const c of cands){
-   const cx=Math.max(br.left+2,Math.min(br.right-rowW-2,c));
-   if(collides(cx))continue;
-   const d=Math.abs(cx-desired);
-   if(!best||d<best.d)best={d,x:cx};
-  }
-  // A valid spot usually exists; the remaining degenerate case is a bar so
-  // narrow that no clear position exists at all. Never fall back ONTO an
-  // obstacle: silence the most blocking neighbors by pinning as far from
-  // center as geometry allows (flush against the bar edge, clear of the
-  // song info when that is what blocks it). Overlap here is exactly what
-  // stranded buttons on top of the song info before.
-  if(!best){
-   // Push thresholds so the clean-up lives at the edges: also probe
-   // each pair of adjacent obstacles' gaps as candidates (spot between
-   // two tight blockers), keeping rect placement deterministic.
-   const edgeL=br.left+2, edgeR=br.right-rowW-2;
-   x=edgeL; // default: flush left
-   let worst=null;
-   for(const o of obstacles){if(!vHit(o))continue;
-    const spill=Math.max(0,o.r-(edgeL+rowW)); // how far past the left edge the row would still reach into o
-    if(!worst||spill>worst.spill)worst={spill,o};
+  if(hi>=lo){
+   const step=rowW>40?2:1; // sticky: never skip over a clear island
+   for(let cx=lo;cx<=hi;cx+=step){
+    if(collides(cx))continue;
+    const d=Math.abs(cx-desired);
+    if(!best||d<best.d)best={d,x:cx};
    }
-   if(worst&&worst.o&&worst.o.l-rowW-2>edgeL)x=Math.max(edgeL,worst.o.l-rowW-2);
-  }else x=best.x;
+  }
+  if(!best)best={d:Infinity,x:Math.round(br.left+2)};
+  x=best.x;
  }
  const nx=Math.round(x-natL);
  row.style.transform=nx?('translate('+nx+'px,0px)'):'';
@@ -4206,33 +4166,33 @@ function transportCollision(aKey,bKey){
     const collision=transportCollision(moved,neighbor);
     // Restore both to previous so the definitive apply below is clean.
     applyTransportSizes(layout);
-    applyLayout._lastTransport=null;
-    if(collision){
-     // Only now does the neighbor ride along: shrink it to the largest
-     // size that keeps the two apart, or grow it back if the mover went
-     // DOWN and left excess room.
-     let fitted=clampTransportValue(neighbor,layout[neighbor]);
-     if(layout[neighbor]>prev[neighbor]){
-      // mover grew → shrink the neighbor stepwise until they separate
-      for(let n=fitted;n>=TRACK_LIMITS[neighbor][0];n-=2){
-       const sim={...layout,[moved]:cur,[neighbor]:n};
-       applyTransportSizes(sim);const hit=transportCollision(moved,neighbor);applyTransportSizes(layout);
-       if(!hit){fitted=n;break}
-       fitted=n;
-      }
-     }else if(layout[neighbor]<prev[neighbor]){
-      // mover shrank → try growing the neighbor back until just before contact
-      for(let n=fitted+2;n<=TRACK_LIMITS[neighbor][1];n+=2){
-       const sim={...layout,[moved]:cur,[neighbor]:n};
-       applyTransportSizes(sim);const hit=transportCollision(moved,neighbor);applyTransportSizes(layout);
-       if(hit)break;fitted=n;
-      }
+    applyLayout._lastTransport=null;     if(collision){
+     // The mover and the neighbor physically touch at the mover's new
+     // size: the flex row has no more room, so both must shrink to the
+     // largest pair of sizes that keeps them apart. The RATIO between
+     // them is preserved: growing the play button 2× drags the control
+     // buttons to 2× smaller only if the row math demands it, but never
+     // below what an even split requires - an automatic downscale of the
+     // whole cluster, NOT a slam of one slider to its floor.
+     const floor=TRACK_LIMITS[neighbor][0];
+     const ratio=Math.min(1,prev[neighbor]/Math.max(1,prev[moved]));
+     let target=Math.max(floor,Math.round(cur*ratio)&~1); // even steps of 2
+     if(target%2!==floor%2)target-=1;
+     let fitted=Math.max(floor,target);
+     // Largest neighbor size that leaves the mover's exact new size
+     // unblocked, found by counting DOWN from the balanced target so a
+     // roomier row never over-shrinks: this is a shrink-to-fit, not
+     // a squeeze-to-minimum.
+     for(let n=fitted;n>=floor;n-=2){
+      const sim={...layout,[moved]:cur,[neighbor]:n};
+      applyTransportSizes(sim);const hit=transportCollision(moved,neighbor);applyTransportSizes(layout);
+      if(!hit){fitted=n;break}
+      fitted=n;
      }
      if(fitted!==layout[neighbor]){layout[neighbor]=fitted;syncTransportSlider(neighbor)}
     }else{
-     // No collision at the mover's new size with the PREVIOUS neighbor
-     // size: if the mover shrank, let the neighbor relax back toward its
-     // own slider value (still no collision needed to move).
+     // Nothing touches: the neighbor keeps its exact own size. The mover
+     // sliding up or down a notch must never drag the other sliders.
     }
    }
   }
