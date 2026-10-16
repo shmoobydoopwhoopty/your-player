@@ -1645,6 +1645,13 @@ function barPlayerVerticalFits(capH,vPadTop,vPadBottom){
 }
 function runPlayerBarFit(){
  if(barFitBusy)return;barFitBusy=true;
+ // Recent-resize fast lane: while a window resize is actively landing (or for
+ // a short grace window after), the geometry downtown is REAL, not transient:
+ // skip the 2-pass collision confirmation and chase passes at rAF cadence
+ // instead of the 120ms settle timer, so the bar lands at its fitted sizes
+ // while the window is still being dragged. After the grace window expires
+ // the conservative constants return (they still protect startup/font-load
+ // reads, which is what they were there for).
  // Place the transport cluster FIRST, before any measurement in this pass:
  // its transform must exist when the collision scan runs so the placement is
  // exempt and never drives the strip.
@@ -1705,7 +1712,8 @@ function runPlayerBarFit(){
   if(vChanged)changed=true;
   const hitsNow=stripFreeCollisions().length;
   if(hitsNow>0)barFitHitsRun++;else barFitHitsRun=0;
-  if(hitsNow>0&&barFitHitsRun>=2)while(stripFreeCollisions()&&guard<16){
+  const recentResize=Boolean(window.__barFitResizeAt)&&performance.now()-window.__barFitResizeAt<450;
+  if(hitsNow>0&&(barFitHitsRun>=2||recentResize))while(stripFreeCollisions()&&guard<16){
    const step=playerBarFitStep();if(!step)break;
    barFit[{art:'art',ctrl:'ctrl',play:'play',vol:'vol',pt:'pt',fz:'fz'}[step.name]]=step.val;
    barFitApply();changed=true;
@@ -1763,9 +1771,11 @@ function runPlayerBarFit(){
  // pass may have shrunk sizes after the top-of-pass centering), so the
  // settled layout is exactly centered, not mid-flight centered.
  try{applyTransportOffsets()}catch{}
- if(changed||dirty){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
+ const recentResize2=Boolean(window.__barFitResizeAt)&&performance.now()-window.__barFitResizeAt<450;
+ const settleDelay=recentResize2?16:120;
+ if(changed||dirty){barFitSettles=0;setTimeout(schedulePlayerBarFit,settleDelay)}
  else{
-  if(barFitStableClean<3){barFitSettles=0;setTimeout(schedulePlayerBarFit,120)}
+  if(barFitStableClean<3){barFitSettles=0;setTimeout(schedulePlayerBarFit,settleDelay)}
   else{barFitSettles++;if(barFitSettles<3)setTimeout(schedulePlayerBarFit,120);else barFitSettles=0}
  }
 }
@@ -1774,7 +1784,7 @@ let barFitRO=null,barFitRONode=null;
 let barFitHitsRun=0; // consecutive passes that measured ≥1 collision
 let barFitRecover=false; // one-shot re-raise sweep already run for this geometry
 if(typeof ResizeObserver!=='undefined'){barFitRO=new ResizeObserver(()=>schedulePlayerBarFit());barFitRONode=$('.playerbar');if(barFitRONode)barFitRO.observe(barFitRONode)}
-window.addEventListener('resize',()=>{barFitSettles=0;barFitRelaxLock=false;barFitStableClean=0;barFitStripTrials=false;barFitConcedeReset();schedulePlayerBarFit()});
+window.addEventListener('resize',()=>{barFitSettles=0;barFitRelaxLock=false;barFitStableClean=0;barFitStripTrials=false;barFitConcedeReset();window.__barFitResizeAt=performance.now();schedulePlayerBarFit()});
 // Run the fit once after first paint so the at-rest layout (including any
 // constant overlap like a wide info block) is corrected even without a resize.
 schedulePlayerBarFit();
