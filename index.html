@@ -115,7 +115,10 @@ body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1
 @media(max-width:880px){.sugg-grid{grid-template-columns:1fr}}
 .home-grid.home-slots{grid-template-columns:repeat(3,minmax(0,1fr))}
 .home-grid.home-slots>.queue-card,.home-grid.home-slots>#homeSongs,.home-grid.home-slots>#homeSuggest,.home-grid.home-slots>#homeEmpty,.home-grid.home-slots>#homeMore{grid-column:auto}
-.home-grid.home-slots .spotlight{height:auto;min-height:280px;padding:20px}
+/* Fluid min instead of the old hard 280px floor: in slots mode the hero
+   must shrink WITH --spot-fluid (window height), never overrule it -
+   otherwise short windows re-jam the page exactly like before. */
+.home-grid.home-slots .spotlight{height:auto;min-height:min(280px,var(--spot-fluid,366px));padding:20px}
 .home-grid.home-slots .cover-frame{min-width:0;min-height:0;width:min(44%,220px);max-width:none;height:auto;aspect-ratio:1}
 @media(max-width:880px){.home-grid,.home-grid.home-slots{grid-template-columns:1fr}.home-grid>.queue-card,.home-grid.home-slots>.queue-card{grid-column:auto}}
 /* Home boxes track the window height: 366px stays the MAX (your layout
