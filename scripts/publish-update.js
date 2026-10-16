@@ -63,7 +63,7 @@ async function main() {
   // Same decimal rule as release.js: the patch digit counts 0-9 then
   // carries into the minor (1.10.9 -> 1.11.0, never 1.10.10).
   for (const checkVersion of [version, tag]) {
-    const segs = String(checkVersion).split('.').map(Number.parseInt, Number);
+    const segs = String(checkVersion).split('.').map(s => Number.parseInt(s, 10));
     if (segs.length !== 3 || segs.some(s => !Number.isInteger(s) || s < 0)) {
       throw new Error(`version "${checkVersion}" must be exactly three numeric segments (X.Y.Z)`);
     }
