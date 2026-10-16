@@ -60,6 +60,17 @@ async function main() {
   const outDir = path.resolve(ROOT, args.out || 'release/update-channel');
   const github = args.github ? String(args.github).trim().replace(/\/+$/, '') : '';
   const tag = (args.tag || `v${version}`).replace(/^v/, '');
+  // Same decimal rule as release.js: the patch digit counts 0-9 then
+  // carries into the minor (1.10.9 -> 1.11.0, never 1.10.10).
+  for (const checkVersion of [version, tag]) {
+    const segs = String(checkVersion).split('.').map(Number.parseInt, Number);
+    if (segs.length !== 3 || segs.some(s => !Number.isInteger(s) || s < 0)) {
+      throw new Error(`version "${checkVersion}" must be exactly three numeric segments (X.Y.Z)`);
+    }
+    if (segs[2] > 9) {
+      throw new Error(`version "${checkVersion}" counts the patch past 9; versions count like decimals (1.10.9 -> 1.11.0)`);
+    }
+  }
   const tagWithV = `v${tag}`;
 
   if (github && !/^[\w.-]+\/[\w.-]+$/.test(github)) {

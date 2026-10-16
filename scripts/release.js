@@ -36,8 +36,27 @@ const flag = (name, fallback = '') => {
 };
 
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+// ── Version rule (user's standing spec): counting is decimal ──────────
+// The patch segment counts 0-9 then carries into the minor: 1.10.9 ->
+// 1.11.0, never 1.10.10. A release whose patch segment is past 9 is a
+// bug in the bump, not a number to publish.
+function assertDecimalVersion(v) {
+  const segs = String(v).split('.').map(s => Number.parseInt(s, 10));
+  if (segs.length !== 3 || segs.some(n => !Number.isInteger(n) || n < 0)) {
+    die(`version "${v}" must be exactly three numeric segments (X.Y.Z)`);
+  }
+  if (segs[2] > 9) {
+    // Normalize by carrying tens out of the patch into the minor:
+    // 1.10.15 -> 1.11.5.
+    const carried = [...segs];
+    while (carried[2] > 9) { carried[2] -= 10; carried[1]++; }
+    die(`version "${v}" counts the patch past 9; versions count like decimals (1.10.9 -> 1.11.0). Correct form: ${carried.join('.')}`);
+  }
+}
 const version = flag('--version', pkg.version);
+assertDecimalVersion(version);
 const tag = flag('--tag', `v${version}`).replace(/^v/, '');
+assertDecimalVersion(tag);
 const tagWithV = `v${tag}`;
 const dryRun = has('--dry-run');
 const skipBuild = has('--skip-build');
