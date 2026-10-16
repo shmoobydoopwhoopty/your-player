@@ -107,7 +107,7 @@ body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1
    surface. Derived from --spot, so themes and custom colors still apply. */
 .home-songs{border:1px solid var(--spot-border,var(--line));border-radius:16px;padding:19px 16px}
 .home-songs.sugg-card{display:flex;flex-direction:column;background:var(--suggbox-bg,linear-gradient(160deg,color-mix(in srgb,var(--spot) 55%,#000) 0%,color-mix(in srgb,var(--spot) 80%,#ffffff14) 55%,color-mix(in srgb,var(--spot) 62%,#000) 100%))}
-.sugg-list{overflow:auto;display:grid;align-content:start;gap:2px;grid-template-columns:1fr;flex:1 1 auto;min-height:0;max-height:calc(var(--spot-h,366px) - 84px);margin:12px -6px 0;padding:0 6px;scrollbar-width:thin;scrollbar-color:#353a39 transparent}
+.sugg-list{overflow:auto;display:grid;align-content:start;gap:2px;grid-template-columns:1fr;flex:1 1 auto;min-height:0;max-height:min(calc(var(--spot-h,366px) - 84px),var(--spot-fluid,366px));margin:12px -6px 0;padding:0 6px;scrollbar-width:thin;scrollbar-color:#353a39 transparent}
 .sugg-row{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:11px;padding:8px 7px;border-radius:9px;cursor:pointer;background:var(--row-bg)}
 .sugg-row:hover{background:var(--row-bg);box-shadow:inset 0 0 0 999px var(--hover-tint,#ffffff0a)}
 .sugg-cover{width:40px;height:40px;border-radius:7px;object-fit:cover;background:#252a27;flex:none}
@@ -118,7 +118,12 @@ body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1
 .home-grid.home-slots .spotlight{height:auto;min-height:280px;padding:20px}
 .home-grid.home-slots .cover-frame{min-width:0;min-height:0;width:min(44%,220px);max-width:none;height:auto;aspect-ratio:1}
 @media(max-width:880px){.home-grid,.home-grid.home-slots{grid-template-columns:1fr}.home-grid>.queue-card,.home-grid.home-slots>.queue-card{grid-column:auto}}
-.spotlight{height:var(--spot-h,366px);min-width:0;position:relative;isolation:isolate;overflow:hidden;border-radius:16px;background:var(--spotbox-bg,linear-gradient(135deg,color-mix(in srgb,var(--spot) 96%,#ffffff10) 0%,color-mix(in srgb,var(--spot-fade) 70%,var(--spot)) 100%));border:1px solid var(--spot-border);padding:25px 32px;container-type:inline-size}
+/* Home boxes track the window height: 366px stays the MAX (your layout
+   slider still rules when there is room), but at short windows the boxes
+   shrink fluidly instead of jamming the page (hero sliver + cut list).
+   Floor of 240px keeps them usable; pure CSS so it scales live with resize. */
+:root{--spot-fluid:min(var(--spot-h,366px),max(240px,calc(100vh - 290px)))}
+.spotlight{height:var(--spot-fluid,366px);min-width:0;position:relative;isolation:isolate;overflow:hidden;border-radius:16px;background:var(--spotbox-bg,linear-gradient(135deg,color-mix(in srgb,var(--spot) 96%,#ffffff10) 0%,color-mix(in srgb,var(--spot-fade) 70%,var(--spot)) 100%));border:1px solid var(--spot-border);padding:25px 32px;container-type:inline-size}
 /* With a manual Now-playing-box pick, drop the art-blur and wash overlays so
    the picked color/gradient reads exactly like the other two boxes do. */
 html.pick-spotBox .spotlight-bg{opacity:0}
@@ -126,7 +131,7 @@ html.pick-spotBox .spotlight:before{opacity:0}.spot-inner{display:flex;align-ite
 /* Up Next card: its own vertical gradient (light at the top fading darker),
    distinct from both the Spotlight's blurred-art surface and the Suggested
    card's reversed diagonal fade. Still derived from --spot for theming. */
-.queue-card{min-width:0;background:var(--upnext-bg,linear-gradient(180deg,color-mix(in srgb,var(--spot) 92%,#ffffff20) 0%,color-mix(in srgb,var(--spot) 78%,#000) 45%,color-mix(in srgb,var(--spot) 30%,#000) 100%));border:1px solid var(--spot-border,var(--line));border-radius:16px;padding:19px 16px;display:flex;flex-direction:column;overflow:hidden}.queue-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.queue-title{font:700 14px Manrope,sans-serif}.queue-sub{font-size:10px;color:var(--text-faint);margin-top:4px}.queue-more{height:28px;width:28px;display:grid;place-items:center;border:0;border-radius:50%;color:var(--text-dim);background:transparent;cursor:pointer}.queue-more:hover{background:#fff1;color:white}.queue-list{overflow:auto;display:grid;align-content:start;gap:2px;scrollbar-width:thin;scrollbar-color:#353a39 transparent}.home-grid .queue-list{flex:1 1 auto;min-height:0;max-height:calc(var(--spot-h,366px) - 80px)}/* Song rows everywhere (library table, Up Next / queue, Suggested list) sit
+.queue-card{min-width:0;background:var(--upnext-bg,linear-gradient(180deg,color-mix(in srgb,var(--spot) 92%,#ffffff20) 0%,color-mix(in srgb,var(--spot) 78%,#000) 45%,color-mix(in srgb,var(--spot) 30%,#000) 100%));border:1px solid var(--spot-border,var(--line));border-radius:16px;padding:19px 16px;display:flex;flex-direction:column;overflow:hidden}.queue-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.queue-title{font:700 14px Manrope,sans-serif}.queue-sub{font-size:10px;color:var(--text-faint);margin-top:4px}.queue-more{height:28px;width:28px;display:grid;place-items:center;border:0;border-radius:50%;color:var(--text-dim);background:transparent;cursor:pointer}.queue-more:hover{background:#fff1;color:white}.queue-list{overflow:auto;display:grid;align-content:start;gap:2px;scrollbar-width:thin;scrollbar-color:#353a39 transparent}.home-grid .queue-list{flex:1 1 auto;min-height:0;max-height:min(calc(var(--spot-h,366px) - 80px),var(--spot-fluid,366px))}/* Song rows everywhere (library table, Up Next / queue, Suggested list) sit
    on a configurable --row-bg placemat: a subtle transparent backdrop separate
    from the hover tint, which layers on top. Default is lightly black. */
 :root{--row-bg:#00000052}
