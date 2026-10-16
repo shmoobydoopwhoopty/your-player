@@ -195,6 +195,12 @@ body[data-progress-side="top"] .main-shell:not([data-player-dock="left"]):not([d
 .main-shell[data-player-dock="top"] .workspace{padding-top:calc(var(--player-h) + 18px);padding-bottom:28px}
 body[data-player-dock="top"] .upnext-drawer{top:calc(76px + var(--player-h) + 12px)}
 @media(max-width:650px){.main-shell[data-player-dock="top"] .playerbar{top:63px}}
+/* ── Resize visual throttle (classes), see the JS listener near the fit loop ── */
+html.app-resizing .spotlight-bg{filter:none!important;transition:none!important}
+html.app-resizing .playerbar{backdrop-filter:none!important}
+html.app-resizing .album-card,html.app-resizing .artist-card,html.app-resizing .queue-card,html.app-resizing .dl-card,html.app-resizing .home-songs,html.app-resizing .spotlight{filter:none!important;box-shadow:none!important;transition:none!important}
+html.app-resizing .modal-backdrop,html.app-resizing .settings-pop,html.app-resizing .sidebar{backdrop-filter:none!important}
+html.app-resizing *,html.app-resizing *::before,html.app-resizing *::after{transition-duration:0s!important;transition-delay:0s!important}
 /* ── Proportional player-bar scaling ──
    The transport (album art, buttons, text, volume) steps down as the window
    shrinks and steps back up when it grows again. The vars are set on the bar
@@ -1803,6 +1809,18 @@ let barFitHitsRun=0; // consecutive passes that measured ≥1 collision
 let barFitRecover=false; // one-shot re-raise sweep already run for this geometry
 if(typeof ResizeObserver!=='undefined'){barFitRO=new ResizeObserver(()=>schedulePlayerBarFit());barFitRONode=$('.playerbar');if(barFitRONode)barFitRO.observe(barFitRONode)}
 window.addEventListener('resize',()=>{barFitSettles=0;barFitRelaxLock=false;barFitStableClean=0;barFitStripTrials=false;barFitConcedeReset();window.__barFitResizeAt=performance.now();schedulePlayerBarFit()});
+/* Resize visual throttle: while the window is actively resizing, suspend the
+   expensive per-frame raster work (full-window 35px art blur, per-card
+   drop shadows, backdrop filters, transition animations). Chromium
+   re-rasterizes these every frame of a drag-resize - on the frameless
+   Electron window that is the difference between instant scaling and
+   "crawls behind the window edge". Restored 300ms after the last resize
+   event, so nothing visibly changes once the window is at rest. */
+window.addEventListener('resize',()=>{
+ document.documentElement.classList.add('app-resizing');
+ clearTimeout(window.__appResizingTimer);
+ window.__appResizingTimer=setTimeout(()=>document.documentElement.classList.remove('app-resizing'),300);
+},{passive:true});
 // Run the fit once after first paint so the at-rest layout (including any
 // constant overlap like a wide info block) is corrected even without a resize.
 schedulePlayerBarFit();

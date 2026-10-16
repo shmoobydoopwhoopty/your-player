@@ -335,6 +335,12 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: true,
       webviewTag: true,
+      // Frameless windows on Windows re-raster synchronously during a live
+      // drag-resize; with background throttling on, the renderer's rAF-fit
+      // loop and compositor updates starve mid-drag and the content visibly
+      // trails the window edge (the "scaling takes forever" report).
+      // This window is the user's primary UI surface: never throttle it.
+      backgroundThrottling: false,
       // Local music files (file:// URLs) otherwise count as cross-origin for
       // MediaElementSource, which silently zeroes the WebAudio graph : killing
       // the equalizer and party mode. Local player, local files: allow it.
