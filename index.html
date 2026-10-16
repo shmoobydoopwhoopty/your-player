@@ -420,7 +420,10 @@ html[data-mini] #miniRoot{display:block!important}
 /* Background honors the user's picked color from the mini settings panel
    (--mini-bg); the hardcoded #15181b stays the default. */
 .miniwin-art{position:absolute;inset:0;z-index:1;background:var(--mini-bg,#15181b);pointer-events:none}.miniwin-art img{pointer-events:auto}.miniwin-dragzone,.miniwin-back{pointer-events:auto}
-.miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* Entire album art, always: contain instead of cover, so no edges are ever
+   cropped and the full artwork is visible; it scales 1:1 with the mini
+   window size (100% box) and centers over the picked background color. */
+.miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center}
 .miniwin-empty{position:absolute;inset:0;display:grid;place-items:center;color:#5b625f;font-size:11px;text-align:center;padding:14px}
 /* No container-type here: size containment makes this panel's auto height
    ignore its children, so the transport got clipped at the window's bottom
