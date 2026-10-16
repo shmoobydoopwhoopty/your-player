@@ -1480,25 +1480,14 @@ function playerBarCollisions(){
   // strip and hid the volume/extras groups. Degenerate boxes are noise,
   // not real overlapping buttons; skip them.
   const rects=cands.map(el=>(({el,r:el.getBoundingClientRect()}))).filter(rec=>!(rec.r.width<1&&rec.r.height<1)).map(rec=>isInfo(rec.el)?{el:rec.el,r:inflate(rec.r,INFO_PAD)}:rec);
-  // While a transport button is being dragged (layout edit), it is often
-  // intentionally shifted over the song info: that is the point of group
-  // placement: so the whole moved group must not count as a collision while
-  // held, and a DROPPED group offset is intended placement too: it never
-  // wedges the guard (the group render above the info block stays the
-  // user's choice; the scan watches the OTHER elements against each other).
-  // The group is the row itself: skip it and every part element in that
-  // row from the scan while the part's group is shifted.
-  const groupRow=document.querySelector('.play-controls');
-  if(groupRow){
-   const groupShifted=(groupRow.style.left&&Number(groupRow.style.left)!==0)||(groupRow.style.top&&Number(groupRow.style.top)!==0)||!!groupRow.style.transform;
-   // The placed cluster is exempt from the scan: its position is produced by
-   // the applier, which only ever outputs non-overlapping spots, so counting
-   // it here would only re-latch the emergency strip (which hides buttons
-   // and shrinks the song info) over a position the applier already fixed.
-   if(groupShifted){
-    for(let i=rects.length-1;i>=0;i--)if(rects[i].el===groupRow||groupRow.contains(rects[i].el))rects.splice(i,1);
-   }
-  }
+  // The transport group is ALWAYS scanned. Its old exemption - skip the
+  // whole group while it carries a transform - permanently blinded the
+  // guard: the auto-placer sets that transform on every settle, so at
+  // tight widths the group could sit on top of the song info (measured
+  // 30px overlap) and no pass ever shrank it, because the guard saw
+  // nothing. Free-move dragging no longer exists (see wirePlayerFreeMove);
+  // the only source of a transform is the auto-placer, whose output the
+  // shrink loop must be able to correct like any other overlap.
   const hits=[];
   for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){
    const a=rects[i],b=rects[j];
@@ -4078,9 +4067,25 @@ function applyTransportOffsets(){
    const d=Math.abs(cx-desired);
    if(!best||d<best.d)best={d,x:cx};
   }
-  // A valid spot always exists unless the bar is smaller than the cluster
-  // itself; in that degenerate case fall back to the natural flex slot.
-  x=best?best.x:natL;
+  // A valid spot usually exists; the remaining degenerate case is a bar so
+  // narrow that no clear position exists at all. Never fall back ONTO an
+  // obstacle: silence the most blocking neighbors by pinning as far from
+  // center as geometry allows (flush against the bar edge, clear of the
+  // song info when that is what blocks it). Overlap here is exactly what
+  // stranded buttons on top of the song info before.
+  if(!best){
+   // Push thresholds so the clean-up lives at the edges: also probe
+   // each pair of adjacent obstacles' gaps as candidates (spot between
+   // two tight blockers), keeping rect placement deterministic.
+   const edgeL=br.left+2, edgeR=br.right-rowW-2;
+   x=edgeL; // default: flush left
+   let worst=null;
+   for(const o of obstacles){if(!vHit(o))continue;
+    const spill=Math.max(0,o.r-(edgeL+rowW)); // how far past the left edge the row would still reach into o
+    if(!worst||spill>worst.spill)worst={spill,o};
+   }
+   if(worst&&worst.o&&worst.o.l-rowW-2>edgeL)x=Math.max(edgeL,worst.o.l-rowW-2);
+  }else x=best.x;
  }
  const nx=Math.round(x-natL);
  row.style.transform=nx?('translate('+nx+'px,0px)'):'';
