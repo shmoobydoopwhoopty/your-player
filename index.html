@@ -2126,15 +2126,30 @@ async function changeAlbumArtwork(albumName){
   // track's private art blob first, so leaving the old embedded covers there
   // brings the previous artwork back on the next launch (and re-seeds the
   // shared album cache with the stale image).
+  // NOTE: artFull stores the FULL-RES blob used by the enlarged-art fullscreen
+  // view. Deleting artFull[t.id] here is correct ONLY for making the NEXT
+  // getTrackArtFull() re-read fresh bytes from the file - but getTrackArtFull
+  // instead falls back to parseTrackDetails() which re-reads the OLD embedded
+  // picture unless re-enrichment has reparsed first, and enrichOne would
+  // restore the OLD blob from its own private 'art' entry. The old cover
+  // resurrection is the reported bug. Sequence that actually persists:
+  // delete the stale full-art FIRST, then write the new blob into BOTH
+  // stores, so every reader (artGet/artGetFull + album cache) sees the new
+  // picture after a relaunch.
+  await Promise.all(targets.map(t => artDelFull(t.id).catch(() => {})));
   for(const t of targets){
-   try{await artPut(t.id,blob)}catch{}
-   try{await artPutFull(t.id,blob)}catch{}
-   try{await artDelFull(t.id)}catch{}
+   const put = Promise.all([artPut(t.id,blob), artPutFull(t.id,blob)]).catch(()=>{});
+   await put;
+   t.artFullBlob=blob;t.artFullChecked=true;
   }
   const heroImg=$('.detail-hero.album-hero img');
   if(heroImg&&detailPage&&detailPage.type==='album'&&String(detailPage.name).toLocaleLowerCase()===albumName.toLocaleLowerCase())heroImg.src=url;
   if(currentTrack()&&targets.includes(currentTrack()))refreshNowPlayingArt();
-  render();renderQueue();persistLibrary();
+ // refreshNowPlayingArt uses t.art (already the new URL); also clear the
+ // full-art URL cache so the enlarged view picks up the new blob and never
+ // the stale object URL from before the change.
+ try{for(const t of targets)fullArtUrlCache.delete(t.id)}catch{}
+ render();renderQueue();persistLibrary();
   let saved=0,failed=0;
   if(desktop&&typeof desktop.writeTrackArt==='function'){
    for(const t of targets){try{await desktop.writeTrackArt({path:t.file.path,bytes:data.bytes,mime:data.mime||'image/jpeg'});saved++}catch(error){failed++;console.warn('Artwork write failed for one file:',error)}}
