@@ -417,7 +417,9 @@ html[data-mini] #miniRoot{display:block!important}
    The old stacked layout's solid background panel under the controls is gone;
    the controls sit on a translucent dark scrim instead, so any cover color
    keeps white text and accent controls readable. */
-.miniwin-art{position:absolute;inset:0;z-index:1;background:#15181b;pointer-events:none}.miniwin-art img{pointer-events:auto}.miniwin-dragzone,.miniwin-back{pointer-events:auto}
+/* Background honors the user's picked color from the mini settings panel
+   (--mini-bg); the hardcoded #15181b stays the default. */
+.miniwin-art{position:absolute;inset:0;z-index:1;background:var(--mini-bg,#15181b);pointer-events:none}.miniwin-art img{pointer-events:auto}.miniwin-dragzone,.miniwin-back{pointer-events:auto}
 .miniwin-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .miniwin-empty{position:absolute;inset:0;display:grid;place-items:center;color:#5b625f;font-size:11px;text-align:center;padding:14px}
 /* No container-type here: size containment makes this panel's auto height
@@ -429,7 +431,7 @@ html[data-mini] #miniRoot{display:block!important}
    mini player is a calc() over both, so resizing the window keeps scaling
    everything AND the user's own text-size preference applies on top. */
 html[data-mini]{--mini-z:.9;--mini-t:1}
-.miniwin-ctl{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;overflow:auto;padding:calc(16px*var(--mini-z)) calc(12px*var(--mini-z)) calc(12px*var(--mini-z));background:linear-gradient(to bottom, rgba(10,12,13,.05) 0%, rgba(10,12,13,.5) 30%, rgba(10,12,13,.84) 100%);pointer-events:none}.miniwin-ctl .miniwin-title,.miniwin-ctl .miniwin-artist,.miniwin-ctl .miniwin-controls,.miniwin-ctl .miniwin-bar,.miniwin-ctl .miniwin-volume,.miniwin-ctl .miniwin-extra{pointer-events:auto}
+.miniwin-ctl{position:relative;z-index:2;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;overflow:auto;padding:calc(16px*var(--mini-z)) calc(12px*var(--mini-z)) calc(12px*var(--mini-z));background:linear-gradient(to bottom, rgba(10,12,13,.05) 0%, rgba(10,12,13,.5) 30%, rgba(10,12,13,.84) 100%);pointer-events:none}.miniwin-title,.miniwin-ctl .miniwin-artist,.miniwin-ctl .miniwin-controls,.miniwin-ctl .miniwin-bar,.miniwin-ctl .miniwin-volume,.miniwin-ctl .miniwin-extra,.miniwin-ctl .miniwin-settings,.miniwin-ctl .miniwin-queue{pointer-events:auto}
 .miniwin-title{font-size:calc(13px*var(--mini-z)*var(--mini-t));font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.75)}
 .miniwin-artist{font-size:calc(11px*var(--mini-z)*var(--mini-t));color:rgba(255,255,255,.82);margin-top:calc(3px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;text-shadow:0 1px 5px rgba(0,0,0,.7)}
 .miniwin-album{font-size:calc(10px*var(--mini-z)*var(--mini-t));color:rgba(255,255,255,.6);margin-top:calc(2px*var(--mini-z)*var(--mini-t));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 5px rgba(0,0,0,.7)}
