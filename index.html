@@ -95,7 +95,7 @@ body[data-player-arrange="1"] .playerbar>[data-part="volume"],body[data-player-a
 .spotlight-layout[data-queue-side="left"]{grid-template-columns:290px minmax(0,1fr)}
 .spotlight-layout[data-queue-side="left"] .queue-card{order:-1}
 @media(max-width:880px){.spotlight-layout[data-queue-side="left"]{grid-template-columns:1fr}}
-.home-grid{display:grid;grid-template-columns:minmax(0,1fr) var(--queue-w,290px);gap:17px;align-items:stretch}
+.home-grid{display:grid;grid-template-columns:minmax(230px,1fr) var(--queue-w,290px);gap:17px;align-items:stretch}
 .home-grid>.queue-card{grid-column:span 2 / span 2}
 .home-grid>#homeSongs,.home-grid>#homeSuggest,.home-grid>#homeEmpty,.home-grid>#homeMore{grid-column:1 / -1;min-width:0}
 body[data-view]:not([data-view="home"]) .home-grid>.queue-card{display:none}
@@ -113,7 +113,14 @@ body[data-view="home"] .home-grid:not(.home-slots)>.spotlight{grid-column:1 / -1
 .sugg-cover{width:40px;height:40px;border-radius:7px;object-fit:cover;background:#252a27;flex:none}
 .sugg-why{font-size:10px;color:var(--text-faint);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:880px){.sugg-grid{grid-template-columns:1fr}}
-.home-grid.home-slots{grid-template-columns:repeat(3,minmax(0,1fr))}
+.home-grid.home-slots{grid-template-columns:repeat(3,minmax(170px,1fr))}
+/* Placed home boxes must stay VISIBLE wherever they're dropped, at any
+   window width: a hard floor on each placed box so an oversized spanning
+   sibling (Suggested spans two-plus columns and has wide content) can
+   never squeeze the box next to it down to a sliver. 170px still shows
+   title/kicker and a usable cover; below that the boxes fold to one
+   column per the 880px media query instead of squishing. */
+.home-grid.home-slots>.spotlight{min-width:170px}
 .home-grid.home-slots>.queue-card,.home-grid.home-slots>#homeSongs,.home-grid.home-slots>#homeSuggest,.home-grid.home-slots>#homeEmpty,.home-grid.home-slots>#homeMore{grid-column:auto}
 /* Fluid min instead of the old hard 280px floor: in slots mode the hero
    must shrink WITH --spot-fluid (window height), never overrule it -
