@@ -37,13 +37,11 @@
   Delete "$INSTDIR\resources\vendor\yt-dlp.fresh"
 !macroend
 
-; UNINSTALL: never touches user data. Electron stores userData in
+; UNINSTALL: wipes the app's data folders so a reinstall is a fresh install
+; (onboarding, empty library). Electron stores userData in
 ; %APPDATA%\<package.json "name"> = %APPDATA%\your-player, plus the legacy
-; "Afterglow Music Player" folder from before the app was renamed. Those
-; folders hold the user's library, playlists and settings; uninstalling the
-; program must leave them alone. Wiping them here destroyed a user's whole
-; library on 2026-10-16 when a reinstall ran the uninstall hook first.
-; Never delete user data from an uninstaller.
+; "Afterglow Music Player" folder from before the app was renamed.
 !macro customUnInstall
-  ; Intentionally empty: user data in %APPDATA% is never deleted.
+  RMDir /r "$APPDATA\your-player"
+  RMDir /r "$APPDATA\Afterglow Music Player"
 !macroend
