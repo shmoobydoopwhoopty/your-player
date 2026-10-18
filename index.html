@@ -167,7 +167,7 @@ html.pick-spotBox .spotlight:before{opacity:0}.spot-inner{display:flex;align-ite
 .detail-hero.album-hero:hover .artist-photo-edit,.detail-hero.album-hero .artist-photo-edit:focus-visible{opacity:1;background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .detail-hero.album-hero:hover .artist-photo-edit{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .detail-hero img{width:100%;height:100%;object-fit:cover;display:block}.toast{position:fixed;z-index:20;bottom:118px;left:50%;transform:translate(-50%,15px);padding:10px 15px;border:1px solid #ffffff18;background:var(--panel2);color:var(--text-strong);border-radius:22px;font-size:11px;opacity:0;pointer-events:none;transition:.2s;box-shadow:0 10px 30px #0007}.toast.show{opacity:1;transform:translate(-50%,0)}.drop-overlay{position:fixed;inset:14px;z-index:30;border:2px dashed var(--accent);background:var(--drop-bg);border-radius:22px;display:none;place-items:center;text-align:center;font:700 22px Manrope,sans-serif;color:var(--accent)}.drop-overlay.show{display:grid}
-.playerbar{position:absolute;left:0;right:0;bottom:0;height:var(--player-h);background:var(--player-bg);backdrop-filter:blur(24px);border-top:1px solid #ffffff12;z-index:5;padding:0 27px 10px;display:flex;align-items:center;justify-content:space-between;gap:20px}.playerbar>[data-part]{flex:0 1 auto;min-width:0}/* Progress zone reserve: the seek bar and its time labels live absolutely at
+.playerbar{position:absolute;left:0;right:0;bottom:0;height:var(--player-h);background:var(--player-bg);border-top:1px solid #ffffff12;z-index:5;padding:0 27px 10px;display:flex;align-items:center;justify-content:space-between;gap:20px}.playerbar>[data-part]{flex:0 1 auto;min-width:0}/* Progress zone reserve: the seek bar and its time labels live absolutely at
    the bar's top (or bottom) edge; these paddings carve that zone out of the
    bar's content box so art, buttons and text are centered in what remains
    and NEVER cross the progress bar. Excludes the left/right docked bar (its
@@ -1640,6 +1640,9 @@ function barFitClear(){
  const bar=barEl();if(!bar)return;
  for(const name of Object.values(BAR_FIT_VARS))bar.style.removeProperty(name);
  barFit=null;barFitConcedeReset();
+ // New geometry to fit: wake the settle chain back up.
+ barFitStableClean=0;barFitSettles=0;barFitRecover=false;
+ schedulePlayerBarFit();
 }
 let barFitRaf=0,barFitBusy=false,barFitPending=false;
 function schedulePlayerBarFit(){
@@ -1793,17 +1796,24 @@ function runPlayerBarFit(){
  if(dirty)barFitRelaxLock=true; // keep the old latch defined; no longer grown on
  // Change-driven settle chain: any pass that changed something or ends
  // dirty MUST be followed by another pass so the landed geometry is
- // re-verified.
+ // re-verified. A clean pass counts toward stopping; the chain halts
+ // after three consecutive clean passes and waits for a REAL change
+ // (resize/slider/theme -> barFitClear or the ResizeObserver) to resume.
+ // Without that stop, the chain re-ran a full measurement pass every
+ // ~120ms forever even while nothing moved - a constant few-percent CPU
+ // burn at idle that profiling confirmed was pure self-rescheduling.
  // Re-center the transport cluster on the FINAL geometry of this pass (the
  // pass may have shrunk sizes after the top-of-pass centering), so the
  // settled layout is exactly centered, not mid-flight centered.
  try{applyTransportOffsets()}catch{}
  const recentResize2=Boolean(window.__barFitResizeAt)&&performance.now()-window.__barFitResizeAt<450;
  const settleDelay=recentResize2?16:120;
- if(changed||dirty){barFitSettles=0;setTimeout(schedulePlayerBarFit,settleDelay)}
+ if(changed||dirty){barFitSettles=0;barFitStableClean=0;setTimeout(schedulePlayerBarFit,settleDelay)}
  else{
-  if(barFitStableClean<3){barFitSettles=0;setTimeout(schedulePlayerBarFit,settleDelay)}
-  else{barFitSettles++;if(barFitSettles<3)setTimeout(schedulePlayerBarFit,120);else barFitSettles=0}
+  barFitStableClean++;
+  if(barFitStableClean<3){setTimeout(schedulePlayerBarFit,settleDelay)}
+  else if(barFitSettles<2){barFitSettles++;setTimeout(schedulePlayerBarFit,120)}
+  // else: settled. No more passes until something actually changes.
  }
 }
 let barFitPasses=0,barFitSettles=0,barFitRelaxLock=false,barFitStableClean=0,barFitCollisionsPending=false,barFitFloorFit=null,barFitStripTrials=false;
