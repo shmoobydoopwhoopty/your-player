@@ -2874,6 +2874,11 @@ function beginCrossfadeTo(index){
  const fromTrack=tracks[current];
  const oldUrl=audio.src;
  const fromDuration=Number(fromTrack&&fromTrack.duration)||0;
+ // The timeupdate pre-trigger fires INSIDE the fade window, so the live
+ // position is the true start of the tail: the clone must continue from
+ // here, not restart a recomputed window the listener already heard.
+ const fromLiveAt=Number(audio.currentTime)||0;
+ const fromLiveDur=Number(audio.duration)||fromDuration;
  // The new song takes the MAIN element immediately (bookkeeping first, then
  // the swap), and the clone is built from the old track's URL synchronously
  // BEFORE the main src changes.
@@ -2885,18 +2890,23 @@ function beginCrossfadeTo(index){
  const vol=()=>{const v=Number($('#volumeSlider').value);return Number.isFinite(v)&&v>=0&&v<=1?v:1};
  const clone=audio.cloneNode(false); // listeners are not cloned
  crossfadeClone=clone;clone.src=oldUrl;clone.preload='auto';
+ try{clone.load()}catch{}
  clone.volume=Math.max(0,Math.min(1,vol()));
  audio.pause();audio.volume=0;playing=false;updatePlayButtons();updateCurrent();persistLibrary();
+ // Old tail first, and SYNCHRONOUSLY: start it the moment the clone decodes
+ // (not gated behind the new song's URL/metadata resolution, which used to
+ // leave a dead-air gap before the tail ever began). Main is paused above,
+ // so the tail's live position keeps the song playing without a second voice.
+ const inTailWindow=fromLiveAt>0&&Number.isFinite(fromLiveDur)&&fromLiveDur>0&&fromLiveAt<fromLiveDur&&fromLiveAt>=fromLiveDur-crossfadeSeconds-0.6;
+ const tailStart=inTailWindow?fromLiveAt:Math.max(fromLiveAt,Number.isFinite(fromLiveDur)?fromLiveDur:0);
+ const cloneStart=()=>{clone.play().catch(()=>{});try{clone.currentTime=tailStart}catch{}};
+ if(clone.readyState>=2)cloneStart();else clone.addEventListener('loadeddata',cloneStart,{once:true});
  (async()=>{
   try{
    const url=desktop&&t.file&&t.file.path?await desktop.getPlayableUrl(t.file.path):URL.createObjectURL(t.file);
    if(currentTrack()?.id!==t.id)return; // superseded while the file resolved, a direct switch is already driving
-   // Old tail first: start it at (duration: fadeWindow) with clone.volume
-   // already at full, so its falloff overlays the new song's fade-in.
-   const tailStart=Math.max(0,fromDuration-crossfadeSeconds);
-   const cloneStart=()=>{clone.play().catch(()=>{});try{clone.currentTime=tailStart}catch{}};
-   if(clone.readyState>=2)cloneStart();else clone.addEventListener('loadeddata',cloneStart,{once:true});
-   // Main becomes the new song, silent at first, then play -> fade loop.
+   // The old tail is already running, started synchronously above; here the
+   // MAIN element becomes the new song, silent at first, then fades in.
    audio.src=url;
    await new Promise(res=>{const done=()=>{audio.removeEventListener('loadedmetadata',done);res()};audio.addEventListener('loadedmetadata',done);setTimeout(res,1500)});
    if(crossfadeClone!==clone)return; // superseded mid-fade: playAt disposed this clone
@@ -2926,6 +2936,32 @@ function beginCrossfadeTo(index){
   }
  })();
 }
+/* Crossfade pre-trigger + next-track choice. The old crossfade only started
+   AFTER 'ended' fired, then a clone re-played the last fade-window seconds
+   the listener had ALREADY heard - the "last second of the old song plays
+   again over the start of the new one" bug. Now a timeupdate pre-trigger
+   starts the handoff just inside the fade window, so the tail keeps playing
+   onward while the new song fades in underneath. 'ended' stays as the
+   fallback for songs whose duration metadata never lets the pre-trigger
+   fire (and for crossfade-off, where goNext still owns advancement). */
+function crossfadeTargetIndex(){
+ if(repeatMode===2)return -1;
+ if(upNext.length){const idx=tracks.findIndex(t=>t.id===upNext[0]);return idx>=0?idx:-1}
+ if(shuffle)return pickShuffleNextIndex();
+ const scopeIds=playScopeIds();
+ if(scopeIds&&scopeIds.length){const pos=tracks[current]?scopeIds.indexOf(tracks[current].id):-1;const nextPos=pos>=0?pos+1:0;if(nextPos<scopeIds.length){const idx=tracks.findIndex(t=>t.id===scopeIds[nextPos]);if(idx>=0)return idx}return repeatMode===1?tracks.findIndex(t=>t.id===scopeIds[0]):-1}
+ if(current+1<tracks.length)return current+1;
+ return repeatMode===1?0:-1;
+}
+audio.addEventListener('timeupdate',()=>{
+ if(crossfadeSeconds<=0||crossfadeBusy||!playing||seekDragging||repeatMode===2||!tracks[current]||!audio.src)return;
+ const d=Number(audio.duration);
+ if(!Number.isFinite(d)||d<=crossfadeSeconds+0.6)return; // songs shorter than the fade window crossfade via the ended fallback
+ const remaining=d-audio.currentTime;
+ if(remaining<=0||remaining>crossfadeSeconds+0.6)return;
+ const idx=crossfadeTargetIndex();
+ if(idx>=0&&idx!==current)beginCrossfadeTo(idx);
+});
 const crossfadeSlider=$('#crossfadeSlider');
 if(crossfadeSlider){crossfadeSlider.addEventListener('input',()=>{crossfadeSeconds=Number(crossfadeSlider.value);syncCrossfadeUI();persistCrossfade()});syncCrossfadeUI()}
 $('#playerCover').addEventListener('click',openNowPlaying);
