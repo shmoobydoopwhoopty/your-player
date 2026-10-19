@@ -1821,12 +1821,52 @@ ipcMain.on('mini:command', (event, cmd, arg) => {
   }
 });
 
+// ── Ad blockers in the downloader's YouTube webview ───────────────────────
+// Load uBlock Origin (full MV2 with real chrome.webRequest blocking, which
+// Electron 39 still supports) AND Adblock for YouTube (the MV3 store
+// extension the user asked for) into the same persistent session the
+// Downloader's embedded YouTube uses, so the in-app site plays without ads.
+// Electron loads unpacked extension directories, never .crx; fetch-vendor
+// unpacks both into vendor/. loadExtension must be re-called on every app
+// start (Chromium evicts loaded extensions on shutdown), and it needs to
+// happen before the webview first navigates, which is why it is awaited
+// inside whenReady before createWindow. Running both together was verified
+// live: 0 rendered ad slots on a real watch page (uBlock alone leaves a
+// promoted feed item behind).
+async function loadAdBlockers() {
+  const { session } = require('electron');
+  const ses = session.fromPartition('persist:youtube-signin');
+  const dirs = [
+    ['uba', path.join(__dirname, '..', 'vendor', 'ublock-origin')],
+    ['aby', path.join(__dirname, '..', 'vendor', 'adblock-for-youtube')],
+  ];
+  const packagedRoot = path.join(process.resourcesPath || __dirname, 'vendor');
+  dirs.push(['uba', path.join(packagedRoot, 'ublock-origin')]);
+  dirs.push(['aby', path.join(packagedRoot, 'adblock-for-youtube')]);
+  let loaded = 0;
+  for (const [, dir] of dirs) {
+    let isDir = false;
+    try { isDir = fsSync.existsSync(path.join(dir, 'manifest.json')); } catch {}
+    if (!isDir) continue;
+    try {
+      const ext = await ses.extensions.loadExtension(dir, { allowFileAccess: true });
+      console.log(`adblock: loaded ${ext.name} ${ext.version} into the YouTube session`);
+      loaded += 1;
+    } catch (error) { console.error(`adblock load failed for ${dir}:`, error.message || error); }
+  }
+  return loaded;
+}
+
 app.whenReady().then(async () => {
   // Finish applying an update that was staged but interrupted, before the UI loads.
   try {
     const applied = await updater.applyPendingUpdate();
     if (applied && applied.applied) console.log(`Finished installing update ${applied.version}`);
   } catch {}
+  // Ad-free YouTube inside the Downloader tab: uBlock Origin + Adblock for
+  // YouTube into the same session the embedded webview uses, before anything
+  // loads a page.
+  try { await loadAdBlockers(); } catch (error) { console.error('adblock init failed:', error); }
   // Restore saved YouTube cookies so the downloader stays signed in.
   try { const { session } = require('electron'); await refreshYouTubeCookies(session.fromPartition('persist:youtube-signin')); } catch {}
   // Keep them fresh: Google rotates session cookies on every request, and the
