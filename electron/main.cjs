@@ -693,9 +693,12 @@ ipcMain.handle('artist-photo:remove', async (_event, name) => {
 // ── Hi-res album art ────────────────────────────────────────────────────────
 // Cover art embedded in audio files is often only 300-600px, which turns into
 // a pixelated mess in the full-screen player. When the renderer asks, look up
-// a high-resolution cover (Deezer cover_xl, ~1000px) for that album once,
-// cache it in the user data folder, and return the bytes. This never touches
-// the music files themselves : it is display-only.
+// a high-resolution cover for that album once, cache it in the user data
+// folder, and return the bytes. Sources, best first:
+//   1. Deezer cover_xl (~1000px), available for most major releases
+//   2. Cover Art Archive (MusicBrainz), often larger (1200px+ thumbnails,
+//      sometimes multi-thousand-pixel full-size scans)
+// This never touches the music files themselves : it is display-only.
 const albumArtHiresDir = path.join(app.getPath('userData'), 'album-art-hires');
 
 ipcMain.handle('album-art:hires', async (_event, payload) => {
@@ -732,15 +735,47 @@ ipcMain.handle('album-art:hires', async (_event, payload) => {
       })
       .sort((a, b) => b.score - a.score);
     const best = scored[0];
-    if (!best || best.score < 4) return { ok: false };
-    const coverUrl = best.entry.cover_xl || best.entry.cover_big || best.entry.cover_medium;
-    if (!coverUrl) return { ok: false };
-    const imgRes = await fetch(coverUrl, { signal: AbortSignal.timeout(15000) });
-    if (!imgRes.ok) return { ok: false };
-    const buf = Buffer.from(await imgRes.arrayBuffer());
-    if (buf.length < 4096) return { ok: false };
-    await fs.writeFile(file, buf);
-    return { ok: true, data: `data:image/jpeg;base64,${buf.toString('base64')}` };
+    const artUrls = [];
+    if (best && best.score >= 4) {
+      const coverUrl = best.entry.cover_xl || best.entry.cover_big || best.entry.cover_medium;
+      if (coverUrl) artUrls.push(coverUrl);
+    }
+    // Fallback: MusicBrainz -> Cover Art Archive. The archive serves 1200px
+    // thumbnails and, for many releases, multi-thousand-pixel full-size art.
+    if (!candidates.length) {
+      const fetchJson = async (url) => {
+        const res = await fetch(url, {
+          headers: { 'User-Agent': 'YourPlayer/1.0 (https://github.com/shmoobydoopwhoopty/your-player)' },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!res.ok) return null;
+        try { return await res.json(); } catch { return null; }
+      };
+      const mbQuery = encodeURIComponent(`artist:"${artist}" AND releasegroup:"${album}"`);
+      const mbRes = await fetchJson(`https://musicbrainz.org/ws/2/release-group/?query=${mbQuery}&limit=5&fmt=json`);
+      const groups = Array.isArray(mbRes?.['release-groups']) ? mbRes['release-groups'] : [];
+      const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const group = groups.find(g => norm(g.title) === albumN)
+        || groups.find(g => norm(g.title) && (norm(g.title).includes(albumN) || albumN.includes(norm(g.title))));
+      if (group?.id) {
+        const caaRes = await fetchJson(`https://coverartarchive.org/release-group/${group.id}`);
+        const images = Array.isArray(caaRes?.images) ? caaRes.images : [];
+        const front = images.find(im => im.front && im.approved !== false) || images.find(im => im.front);
+        const caaUrl = front?.thumbnails?.['1200'] || front?.image || null;
+        if (caaUrl) artUrls.push(caaUrl.replace(/^http:/, 'https:'));
+      }
+    }
+    for (const coverUrl of artUrls) {
+      try {
+        const imgRes = await fetch(coverUrl, { signal: AbortSignal.timeout(15000) });
+        if (!imgRes.ok) continue;
+        const buf = Buffer.from(await imgRes.arrayBuffer());
+        if (buf.length < 4096) continue;
+        await fs.writeFile(file, buf);
+        return { ok: true, data: `data:image/jpeg;base64,${buf.toString('base64')}` };
+      } catch { /* try the next candidate */ }
+    }
+    return { ok: false };
   } catch {
     return { ok: false };
   }

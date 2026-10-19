@@ -2770,11 +2770,76 @@ function sharpenCanvas(canvas,amount){
   }
   ctx.putImageData(new ImageData(out,w,h),0,0);return canvas;
 }
-// ── 4K upscaler for blown-up (now playing) art ──────────────────────────────
-// Grows low-res art to the screen's size (up to 4K, 3840px long edge) using
-// stepped bilinear growth with an unsharp mask between steps, then a gentle
-// final pass. Cache keys include the target so a resize re-upscales once.
+// ── Detail-reconstructing upscaler for blown-up (now playing) art ───────────
+// The goal is NOT a bigger picture: it is the same cover with the pixel-grid
+// mush removed. Pipeline: enlarge once with high-quality smoothing, then run
+// iterative back-projection (IBP) - repeatedly down-project the working image
+// onto the original cover pixels, measure what the enlargement got WRONG with
+// the correct sign in the source's own coordinates, and push that correction
+// back in at full size. Convergence forces the result to literally agree with
+// the true cover at native scale, which is the property a resize+sharpen
+// chain never has and the reason pixel blocks dissolve instead of getting
+// sharper. A final edge-aware, halo-clamped sharpen pass restores crispness
+// only where the cover really has edges. Runs while the overlay already shows
+// the fallback art, yields between passes, and caches per source+target.
 const UPSCALE_MAX_EDGE=3840;
+const UPSCALE_WORK_MAX=2560;   // reconstruction happens at this cap at most;
+const UPSCALE_ITERS=3;         // larger displays get one final smooth stretch
+const nextFrame=()=>new Promise(r=>setTimeout(r,0));
+function paintSource(bmp,w,h){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  const x=c.getContext('2d',{willReadFrequently:true});
+  x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';
+  x.fillStyle='#191d1e';x.fillRect(0,0,w,h); // flatten alpha covers onto the overlay bg
+  x.drawImage(bmp,0,0,w,h);
+  return c;
+}
+// Bilinear-stretch a SIGNED residual (0 = "this pixel needs no correction")
+// from source coordinates up to working coordinates. Float in, Float out so
+// corrections keep both sign and sub-unit magnitude. Chunked so the playing
+// UI never stalls.
+async function upsampleResidueChunks(r,sw,sh,dw,dh,onChunk){
+  const out=new Float32Array(dw*dh*3);
+  const xr=sw/dw,yr=sh/dh;
+  for(let y=0;y<dh;y++){
+    const fy=(y+.5)*yr-.5,y0=Math.max(0,Math.min(sh-1,Math.floor(fy))),y1=Math.min(sh-1,y0+1),wy=fy<0?0:Math.min(1,fy-y0);
+    const row0=y0*sw*3,row1=y1*sw*3,orow=y*dw*3;
+    for(let x=0;x<dw;x++){
+      const fx=(x+.5)*xr-.5,x0=Math.max(0,Math.min(sw-1,Math.floor(fx))),x1=Math.min(sw-1,x0+1),wx=fx<0?0:Math.min(1,fx-x0);
+      const i00=row0+x0*3,i10=row0+x1*3,i01=row1+x0*3,i11=row1+x1*3,oi=orow+x*3;
+      for(let c=0;c<3;c++)out[oi+c]=(r[i00+c]*(1-wx)+r[i10+c]*wx)*(1-wy)+(r[i01+c]*(1-wx)+r[i11+c]*wx)*wy;
+    }
+    if(onChunk&&(y&255)===255)await onChunk();
+  }
+  return out;
+}
+// Edge-aware sharpen that CANNOT halo: the crispness added at an edge is
+// clamped to the edge's own local 3x3 contrast range, so a dark side of a
+// boundary can never be pushed brighter than the bright side actually is.
+function edgeSharpenClamped(data,w,h,amount){
+  const n=w*h;
+  const lum=new Uint8ClampedArray(n);
+  for(let p=0,q=0;p<n;p++,q+=4)lum[p]=(data[q]*77+data[q+1]*151+data[q+2]*28)>>8;
+  // blur3 (separable) for the detail signal
+  const tmp=new Float32Array(n),blur=new Float32Array(n);
+  for(let y=0;y<h;y++){const o=y*w;for(let x=0;x<w;x++)tmp[o+x]=lum[o+Math.max(0,x-1)]+lum[o+x]+lum[o+Math.min(w-1,x+1)]}
+  for(let x=0;x<w;x++)for(let y=0;y<h;y++){const i=y*w+x;blur[i]=(tmp[Math.max(0,y-1)*w+x]+tmp[i]+tmp[Math.min(h-1,y+1)*w+x])/9}
+  // separable 3x3 min/max for the per-pixel clamp bound
+  const mn1=new Uint8ClampedArray(n),mx1=new Uint8ClampedArray(n),mn=new Uint8ClampedArray(n),mx=new Uint8ClampedArray(n);
+  for(let y=0;y<h;y++){const o=y*w;for(let x=0;x<w;x++){const c=lum[o+x],a=lum[o+Math.max(0,x-1)],b=lum[o+Math.min(w-1,x+1)];mn1[o+x]=Math.min(a,b,c);mx1[o+x]=Math.max(a,b,c)}}
+  for(let x=0;x<w;x++){const xm=Math.max(0,x-1),xp=Math.min(w-1,x+1);for(let y=0;y<h;y++){const i=y*w+x,ym=Math.max(0,y-1)*w+x,yp=Math.min(h-1,y+1)*w+x;mn[i]=Math.min(mn1[ym],mn1[i],mn1[yp]);mx[i]=Math.max(mx1[ym],mx1[i],mx1[yp])}}
+  for(let p=0,q=0;p<n;p++,q+=4){
+    const L=lum[p];
+    let corr=amount*(L-blur[p]);
+    const lim=.55*(mx[p]-mn[p])+2;
+    if(corr>lim)corr=lim;else if(corr<-lim)corr=-lim;
+    if(L<=28||!corr)continue; // deep-dark pixels: sharpening there just makes block noise
+    const ratio=(L+corr)/L;
+    data[q]*=ratio;data[q+1]*=ratio;data[q+2]*=ratio; // Uint8ClampedArray clamps + keeps hue/sat
+  }
+  return data;
+}
+const UPSCALE_MAX_EDGE_UNUSED=UPSCALE_MAX_EDGE; // (kept for the API surface)
 async function upscaleArt(src){
   if(!src)return null;
   const target=Math.min(UPSCALE_MAX_EDGE,Math.max(1920,Math.round(Math.max(window.innerWidth,window.innerHeight)*1.5)));
@@ -2783,46 +2848,63 @@ async function upscaleArt(src){
   let bmp=null;
   try{
     bmp=await loadToBitmap(src);
-    const longest=Math.max(bmp.width,bmp.height);
+    const sw=bmp.width,sh=bmp.height,longest=Math.max(sw,sh);
     if(longest>=target){upscaleCache.set(cacheKey,src);return src}
-    // Only tiny art needs the heavy pipeline; >=720px art is smooth enough at
-    // 1.5x screen size: a single high-quality step beats many sharpen passes.
-    if(longest>=720&&target/longest<=2){
-      const c=document.createElement('canvas');
-      c.width=target;c.height=Math.max(1,Math.round(bmp.height*target/bmp.width));
-      const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';
-      cx.drawImage(bmp,0,0,c.width,c.height);
-      try{sharpenCanvas(c,.25)}catch{}
+    const scaleToTarget=target/longest;
+    if(scaleToTarget<1.6){ // browser scaling is already near-lossless this close
+      const c=paintSource(bmp,Math.round(sw*scaleToTarget),Math.round(sh*scaleToTarget));
       const outBlob=await new Promise(res=>c.toBlob(res,'image/jpeg',.94));
       try{bmp.close()}catch{}
       if(!outBlob){upscaleCache.set(cacheKey,src);return src}
       const url=URL.createObjectURL(outBlob);upscaleCache.set(cacheKey,url);return url;
     }
-    // Small source: grow in ~2x steps; each step blends 4 bilinear draws at
-    // sub-pixel offsets (poor man's Lanczos) so edges stay soft, then a mild
-    // unsharp mask restores crispness without halos.
-    let cw=bmp.width,ch=bmp.height,cur=bmp,isBitmap=true;
-    while(cw<target){
-      const nw=Math.min(target,cw*2),nh=Math.max(1,Math.round(ch*nw/cw));
-      const c=document.createElement('canvas');c.width=nw;c.height=nh;
-      const cx=c.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';
-      const ox=(nw/cw-1)*.25,oy=(nh/ch-1)*.25;
-      cx.drawImage(cur,-ox,-oy,nw+2*ox,nh+2*oy);cx.drawImage(cur,ox,-oy,nw-2*ox,nh+2*oy);
-      cx.drawImage(cur,-ox,oy,nw+2*ox,nh-2*oy);cx.drawImage(cur,ox,oy,nw-2*ox,nh-2*oy);
-      cx.globalAlpha=.25;cx.drawImage(cur,0,0,nw,nh);cx.globalAlpha=1;
-      if(isBitmap)bmp.close();else cur.width=0;
-      cur=c;isBitmap=false;cw=nw;ch=nh;
-      if(cw<target){try{sharpenCanvas(cur,.3)}catch{}}
-      await new Promise(r=>setTimeout(r,0));
+    // Working geometry: reconstruct at most at UPSCALE_WORK_MAX; a larger
+    // display gets one final high-quality stretch (a smooth 1.5x from a
+    // reconstructed image costs nothing and preserves the detail recovered).
+    const workScale=Math.min(scaleToTarget,UPSCALE_WORK_MAX/longest);
+    const ww=Math.max(1,Math.round(sw*workScale)),wh=Math.max(1,Math.round(sh*workScale));
+    const srcC=paintSource(bmp,sw,sh);
+    const srcCtx=srcC.getContext('2d',{willReadFrequently:true});
+    const s=srcCtx.getImageData(0,0,sw,sh).data;
+    const hiC=paintSource(bmp,ww,wh);
+    const hiCtx=hiC.getContext('2d',{willReadFrequently:true});
+    const smallC=document.createElement('canvas');smallC.width=sw;smallC.height=sh;
+    const smallCtx=smallC.getContext('2d',{willReadFrequently:true});
+    smallCtx.imageSmoothingEnabled=true;smallCtx.imageSmoothingQuality='high';
+    let hi=null,hdr=null;
+    for(let it=0;it<UPSCALE_ITERS;it++){
+      // 1) what does the current working image claim the source should be?
+      smallCtx.drawImage(hiC,0,0,sw,sh);
+      const lo=smallCtx.getImageData(0,0,sw,sh).data;
+      // 2) signed measurement error in the source's own pixels
+      const r=new Float32Array(sw*sh*3);let energy=0;
+      for(let i=0,q=0;i<r.length;i+=3,q+=4){
+        const dr=s[q]-lo[q],dg=s[q+1]-lo[q+1],db=s[q+2]-lo[q+2];
+        r[i]=dr;r[i+1]=dg;r[i+2]=db;
+        energy+=Math.abs(dr)+Math.abs(dg)+Math.abs(db);
+      }
+      // 3) converged - the enlargement agrees with the cover everywhere
+      if(energy<sw*sh*1.5)break;
+      // 4) carry the correction up (chunked so the playing UI never stalls)
+      const rUp=await upsampleResidueChunks(r,sw,sh,ww,wh,nextFrame);
+      hdr=hiCtx.getImageData(0,0,ww,wh);hi=hdr.data;
+      for(let i=0,q=0;i<rUp.length;i+=3,q+=4){
+        hi[q]+=rUp[i];hi[q+1]+=rUp[i+1];hi[q+2]+=rUp[i+2]; // auto-clamped
+      }
+      hiCtx.putImageData(hdr,0,0);
+      await nextFrame();
     }
-    const fin=document.createElement('canvas');fin.width=cw;fin.height=ch;
-    const fx=fin.getContext('2d');
-    fx.imageSmoothingEnabled=true;fx.imageSmoothingQuality='high';
-    fx.filter='saturate(1.03) contrast(1.01)';
-    fx.drawImage(cur,0,0);
-    fx.filter='none';
-    try{sharpenCanvas(fin,.3)}catch{}
-    if(!isBitmap)cur.width=0;
+    // 5) halo-clamped crispness pass now that the geometry agrees
+    hdr=hiCtx.getImageData(0,0,ww,wh);
+    edgeSharpenClamped(hdr.data,ww,wh,.85);
+    hiCtx.putImageData(hdr,0,0);
+    await nextFrame();
+    let fin;
+    if(scaleToTarget>workScale+1e-6){
+      fin=document.createElement('canvas');fin.width=Math.round(sw*scaleToTarget);fin.height=Math.round(sh*scaleToTarget);
+      const fx=fin.getContext('2d');fx.imageSmoothingEnabled=true;fx.imageSmoothingQuality='high';
+      fx.drawImage(hiC,0,0,fin.width,fin.height);
+    }else fin=hiC;
     const outBlob=await new Promise(res=>fin.toBlob(res,'image/jpeg',.94));
     if(!outBlob){upscaleCache.set(cacheKey,src);return src}
     const url=URL.createObjectURL(outBlob);
