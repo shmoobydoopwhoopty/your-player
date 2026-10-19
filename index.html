@@ -349,7 +349,7 @@ body.layout-edit .play-controls{cursor:move}.control-btn{height:var(--ctrl-btn-s
 .dl-pill .dl-bar{margin:0}
 .dl-pill-cancel{flex:none;width:24px;height:24px;border:1px solid var(--line);background:transparent;border-radius:50%;color:var(--text-strong);display:grid;place-items:center;cursor:pointer;padding:0}
 .dl-pill-cancel:hover{border-color:var(--danger);color:var(--danger)}
-.dl-cancel{flex:none;width:26px;height:26px;border:1px solid var(--line);background:transparent;border-radius:50%;color:#b9c0bb;display:grid;place-items:center;cursor:pointer}.dl-cancel:hover{border-color:var(--danger);color:var(--danger)}.dl-preview{margin:0 0 18px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:720px}.dl-preview-frame{position:relative;background:#000}.dl-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--text-dim);font-size:12px}.dl-yt-wrap{position:relative;height:min(72vh,760px);border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#000;margin-bottom:18px}.dl-yt-actions{position:absolute;top:10px;right:12px;z-index:3;display:flex;gap:8px;opacity:0;pointer-events:none;transition:opacity .15s}.dl-yt-wrap:hover .dl-yt-actions,.dl-yt-actions.stay{opacity:1;pointer-events:auto}
+.dl-cancel{flex:none;width:26px;height:26px;border:1px solid var(--line);background:transparent;border-radius:50%;color:#b9c0bb;display:grid;place-items:center;cursor:pointer}.dl-cancel:hover{border-color:var(--danger);color:var(--danger)}.dl-preview{margin:0 0 18px;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:720px}.dl-preview-frame{position:relative;background:#000}.dl-preview-loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--text-dim);font-size:12px}.dl-yt-wrap{position:relative;height:min(72vh,760px);border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#000;margin-bottom:18px}.dl-yt-actions{position:absolute;top:10px;right:12px;z-index:6;display:flex;gap:8px;opacity:0;pointer-events:none;transition:opacity .15s}.dl-yt-wrap:hover .dl-yt-actions,.dl-yt-actions.stay{opacity:1;pointer-events:auto}.dl-name-backdrop{position:fixed;inset:0;background:#0009;z-index:46;display:none;place-items:center;padding:20px}.dl-name-backdrop.open{display:grid}.dl-name-backdrop .modal{z-index:2}.dl-name-grid{display:grid;gap:10px;margin:0 0 6px}.dl-name-grid .modal-actions{margin-top:6px}
 /* The embedded YouTube webview must never be re-created or re-parented: a
    <webview> behaves like an iframe, moving or rebuilding it in the DOM tears
    the guest page down and reloads it. So the one webview lives permanently at
@@ -1005,6 +1005,11 @@ html[data-surface="moss"]{--bg:#0c1008;--glow:#263a12;--sidebar-bg:rgba(9,11,6,.
 <div class="art-context" id="artContextMenu" role="menu" aria-label="Album art options"></div>
 <div class="art-context" id="artistPhotoMenu" role="menu" aria-label="Artist picture options"></div>
 <div class="modal-backdrop" id="playlistModal"><form class="modal" id="playlistForm"><h3>Create a playlist</h3><p>Name your playlist.</p><input id="playlistName" maxlength="42" placeholder="e.g. Late night drive" required><div class="modal-actions"><button type="button" class="cancel-btn" id="cancelModal">Cancel</button><button class="create-btn" type="submit">Create playlist</button></div></form></div>
+<div class="dl-name-backdrop" id="dlNameModal"><form class="modal" id="dlNameForm"><h3 id="dlNameHeading">Name this download</h3><p id="dlNameHint">Optional - leave blank to keep the YouTube title.</p><div class="dl-name-grid">
+<label>Title<input id="dlNameTitle" maxlength="120" placeholder="Song name"></label>
+<div class="row2"><label>Artist<input id="dlNameArtist" maxlength="120" placeholder="Artist name"></label><label>Album<input id="dlNameAlbum" maxlength="120" placeholder="Album name"></label></div>
+<label style="max-width:130px">Track #<input id="dlNameTrack" type="number" min="1" max="999" placeholder="1"></label>
+</div><div class="modal-actions"><button type="button" class="cancel-btn" id="dlNameCancel">Cancel</button><button class="create-btn" type="submit" id="dlNameSubmit">Download</button></div></form></div>
 <div class="modal-backdrop" id="wipePlaysModal"><div class="modal"><h3>Reset play counts?</h3><p>This can't be undone, it will permanently reset the play count of every song in the app to zero.</p><div class="modal-actions"><button type="button" class="cancel-btn" id="wipePlaysCancel">Cancel</button><button type="button" class="create-btn" id="wipePlaysAccept">Yes, reset everything</button></div></div></div>
 <div class="modal-backdrop" id="obModal"><div class="modal ob-card" id="obCard"></div></div>
 <div class="layout-edit-bar" id="layoutEditBar" hidden><span>Drag a section onto a glowing zone, drag edge bars to resize</span><button class="secondary-btn" id="homeSlotsReset" type="button">Reset home layout</button><button class="accent-btn" id="layoutDoneBtn" type="button">Done</button></div>
@@ -3109,7 +3114,7 @@ function historyGo(step){
 }
 $('#backBtn').addEventListener('click',()=>historyGo(-1));
 $('#forwardBtn').addEventListener('click',()=>historyGo(1));
-document.addEventListener('keydown',e=>{if(e.target instanceof Element&&e.target.matches('input,textarea'))return;if($('#obModal').classList.contains('open'))return;if(e.code==='Space'){e.preventDefault();togglePlay()}if(e.code==='ArrowRight'&&current>=0)audio.currentTime=Math.min(audio.duration||0,audio.currentTime+5);if(e.code==='ArrowLeft'&&current>=0)audio.currentTime=Math.max(0,audio.currentTime-5);if(e.code==='ArrowUp'){e.preventDefault();$('#volumeSlider').value=Math.min(1,Number($('#volumeSlider').value)+.05);audio.volume=Number($('#volumeSlider').value)}if(e.code==='ArrowDown'){e.preventDefault();$('#volumeSlider').value=Math.max(0,Number($('#volumeSlider').value)-.05);audio.volume=Number($('#volumeSlider').value)}if(e.code==='Escape'){if(layoutEditing)exitLayoutEdit();$('#playlistModal').classList.remove('open');closeEditModal();closeMp3Modal();$('#trimModal').classList.remove('open');closeNowPlaying();closeArtContextMenu();closeArtistPhotoMenu();closeAppVideo();closeUpNextDrawer();settingsPop&&settingsPop.classList.remove('open');customizePop&&customizePop.classList.remove('open');layoutPop&&layoutPop.classList.remove('open');closeEqPop();closeSearchSuggest();closeDlSuggest()}});
+document.addEventListener('keydown',e=>{if(e.target instanceof Element&&e.target.matches('input,textarea'))return;if($('#obModal').classList.contains('open'))return;if(e.code==='Space'){e.preventDefault();togglePlay()}if(e.code==='ArrowRight'&&current>=0)audio.currentTime=Math.min(audio.duration||0,audio.currentTime+5);if(e.code==='ArrowLeft'&&current>=0)audio.currentTime=Math.max(0,audio.currentTime-5);if(e.code==='ArrowUp'){e.preventDefault();$('#volumeSlider').value=Math.min(1,Number($('#volumeSlider').value)+.05);audio.volume=Number($('#volumeSlider').value)}if(e.code==='ArrowDown'){e.preventDefault();$('#volumeSlider').value=Math.max(0,Number($('#volumeSlider').value)-.05);audio.volume=Number($('#volumeSlider').value)}if(e.code==='Escape'){if($('#dlNameModal').classList.contains('open')){closeDlNameModal()}if(layoutEditing)exitLayoutEdit();$('#playlistModal').classList.remove('open');closeEditModal();closeMp3Modal();$('#trimModal').classList.remove('open');closeNowPlaying();closeArtContextMenu();closeArtistPhotoMenu();closeAppVideo();closeUpNextDrawer();settingsPop&&settingsPop.classList.remove('open');customizePop&&customizePop.classList.remove('open');layoutPop&&layoutPop.classList.remove('open');closeEqPop();closeSearchSuggest();closeDlSuggest()}});
 window.addEventListener('dragenter',e=>{e.preventDefault();if(internalQueueDrag)return;dragDepth++;$('#dropOverlay').classList.add('show')});window.addEventListener('dragover',e=>e.preventDefault());window.addEventListener('dragleave',e=>{e.preventDefault();if(internalQueueDrag)return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)$('#dropOverlay').classList.remove('show')});window.addEventListener('drop',e=>{e.preventDefault();if(internalQueueDrag)return;dragDepth=0;$('#dropOverlay').classList.remove('show');if(e.dataTransfer.files.length)importFiles(e.dataTransfer.files).catch(error=>{console.error('Dropped-file import failed:',error);showToast('Some files could not be imported')})});
 // ── Artist photos (looked up by name, display-only) ────────────────────────
 const artistPhotosCustomKey='yourplayer.artistPhotos.custom.v1';
@@ -3171,7 +3176,8 @@ function currentVideoState(){return{videoId:dlWebview?.dataset?.videoId||'',url:
 function syncDownloadButtons(){
  const actions=$('#dlYtActions');if(!actions)return;
  // Context-aware overlay: the video buttons appear only while actually
- // watching a video; on a playlist page the playlist button takes over.  const url=String(dlWebview?.getURL?.()||'');
+ // watching a video; on a playlist page the playlist button takes over.
+ const url=String(dlWebview?.getURL?.()||'');
   const isWatch=/youtube\.com\/watch/.test(url);
   const isPlaylist=/youtube\.com\/playlist/.test(url)||/[?&]list=/i.test(url)&&!/\bv=[\w-]{11}\b/.test(url);
   const videoId=(dlWebview?.dataset?.videoId||'');
@@ -3247,8 +3253,50 @@ function downloaderDownload(kind){
  const {videoId,url,title}=currentVideoState();
  const effectiveUrl=url||`https://www.youtube.com/watch?v=${videoId}`;
  if(!videoId&&!looksLikeUrl(effectiveUrl)){showToast('Open a video on YouTube first, the Download buttons appear when you are watching one');return}
- startAppDownload({id:videoId,url:effectiveUrl,title:title||effectiveUrl},kind);
+ openDlNameModal({title:title||effectiveUrl,channel:''},tags=>startAppDownload({id:videoId,url:effectiveUrl,title:title||effectiveUrl},kind,false,tags));
 }
+// ── Pre-download naming dialog ──────────────────────────────────────────────
+// Every single video/audio download opens this first so the file can land in
+// the library properly named and tagged (song / artist / album / track #).
+// Leave-everything-blank keeps today's behavior. Split-on-dash prefills
+// "Artist - Song" YouTube titles into the two fields they usually are.
+let dlNameCallback=null,dlNameTarget='';
+function guessTitleParts(raw){
+ const t=String(raw||'').replace(/^\s*"|"\s*$/g,'').replace(/\s*[(\[][^)\]]*(?:official|video|audio|lyric|hd|4k)[^)\]]*[)\]]\s*$/i,'').trim();
+ const dash=/^(.{1,80}?)\s+[-\u2013\u2014]\s+(.+)$/.exec(t);
+ if(dash){const artist=dash[1].trim();const song=dash[2].trim();if(artist&&!/^\d+$/.test(artist))return {artist,song}}
+ return {artist:'',song:t};
+}
+function openDlNameModal(item,submit){
+ const modal=$('#dlNameModal');if(!modal){submit({});return}
+ dlNameCallback=submit||null;
+ dlNameTarget=String(item.title||'');
+ const parts=guessTitleParts(item.title||'');
+ $('#dlNameTitle').value=deserializeTitle(parts.song);
+ $('#dlNameArtist').value=deserializeTitle(parts.artist);
+ $('#dlNameAlbum').value='';
+ $('#dlNameTrack').value='';
+ $('#dlNameHint').textContent='Optional - fields left blank keep the YouTube title.';
+ modal.classList.add('open');
+ setTimeout(()=>$('#dlNameTitle').focus(),50);
+}
+function deserializeTitle(s){return String(s||'').replace(/\s+/g,' ').trim()}
+function closeDlNameModal(){const modal=$('#dlNameModal');if(!modal)return;modal.classList.remove('open');dlNameCallback=null}
+$('#dlNameCancel').addEventListener('click',closeDlNameModal);
+$('#dlNameModal').addEventListener('click',e=>{if(e.target.id==='dlNameModal')closeDlNameModal()});
+$('#dlNameForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ const cb=dlNameCallback;closeDlNameModal();
+ if(!cb)return;
+ const song=deserializeTitle($('#dlNameTitle').value);
+ const artist=deserializeTitle($('#dlNameArtist').value);
+ const album=deserializeTitle($('#dlNameAlbum').value);
+ const trackRaw=$('#dlNameTrack').value.trim();
+ const track=trackRaw?Math.max(1,Math.min(999,Number.parseInt(trackRaw,10)||0)):0;
+ // No naming provided at all: behave exactly like before the dialog existed.
+ if(!song&&!artist&&!album&&!track){cb(null);return}
+ cb({song,artist,album,track});
+});
 // Enqueue every track of the playlist/album open in the embedded YouTube tab.
 // Uses the same expansion endpoint the old collection cards wired, then queues
 // each track as a normal audio download.
@@ -3288,7 +3336,7 @@ function openAppPreview(item){
  }
 }
 function stopAppPreview(){/* kept: close/refresh flows reference it; the host view removed */}
-async function startAppDownload(item,kind,intoMusic=false){
+async function startAppDownload(item,kind,intoMusic=false,tags=null){
   if(!desktop||!item)return;
   const effKind=intoMusic?'audio-music':kind;
   const key=`${item.id}:${effKind}`;
@@ -3297,7 +3345,8 @@ async function startAppDownload(item,kind,intoMusic=false){
   activeAppDownloads.set(key,Date.now());
   if(view!=='downloader')showToast(intoMusic?'Downloading audio, it will land in your music folder':kind==='video'?`Downloading video, it will appear in ${displayBrand()} Media`:'Downloading audio, it will land in your library');
   try{
-    const result=await desktop.startDownload({url,kind,title:item.title,channel:item.channel,intoMusic});
+    const metadata=tags&&typeof tags==='object'?{song:tags.song||'',artist:tags.artist||'',album:tags.album||'',track:tags.track||0}:undefined;
+    const result=await desktop.startDownload({url,kind,title:item.title,channel:item.channel,intoMusic,metadata});
     handleAppDownloadFinished(result);
   }catch(error){console.error('Downloader download failed:',error);showToast('Download failed - '+String(error?.message||error).slice(0,90))}
   finally{activeAppDownloads.delete(key)}

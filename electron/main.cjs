@@ -867,6 +867,17 @@ ipcMain.handle('player:download', async (event, payload) => {
     channel: typeof payload?.channel === 'string' ? payload.channel : '',
     // Album collections pass their title so downloaded MP3s get the album tag.
     albumTitle: typeof payload?.albumTitle === 'string' && payload.albumTitle.trim() ? payload.albumTitle.trim() : '',
+    // Single downloads can carry full naming from the pre-download dialog:
+    // { song, artist, album, track } - tagged into the file by yt-dlp and the
+    // output renamed to "NN - Artist - Song" (NN = track number, when given).
+    metadata: payload?.metadata && typeof payload.metadata === 'object'
+      ? {
+          song: typeof payload.metadata.song === 'string' ? payload.metadata.song.trim().slice(0, 200) : '',
+          artist: typeof payload.metadata.artist === 'string' ? payload.metadata.artist.trim().slice(0, 200) : '',
+          album: typeof payload.metadata.album === 'string' ? payload.metadata.album.trim().slice(0, 200) : '',
+          track: Math.max(0, Math.min(999, Number(payload.metadata.track) || 0)),
+        }
+      : null,
     onProgress: data => {
       const now = Date.now();
       if (now - dlProgressLastSent < 250) return;

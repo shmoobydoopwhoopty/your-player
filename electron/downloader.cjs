@@ -3,7 +3,7 @@
 // Audio downloads land in the downloads folder and behave like any other song.
 // Video downloads land in <downloads folder>\Your Media and play in the Media tab.
 
-const { spawn } = require('node:child_process');
+const { spawn, execFile } = require('node:child_process');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const os = require('node:os');
@@ -112,12 +112,14 @@ async function resolveTools() {
     which('ffmpeg'),
     isWin ? 'C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe' : '/usr/local/bin/ffmpeg',
   ];
+  const fpCandidates = ffCandidates.map(p => p ? p.replace(/ffmpeg(\.exe)?$/i, m2 => /\./.test(m2) ? 'ffprobe.exe' : 'ffprobe') : p);
   const ytDlpPath = await probe(ytCandidates);
   const ffmpegPath = await probe(ffCandidates);
+  const ffprobePath = await probe(fpCandidates);
   if (!ytDlpPath) {
     throw new Error('yt-dlp was not found. Install it ("pip install -U yt-dlp" or "winget install yt-dlp") or set YOUR_PLAYER_TOOLS_DIR to its folder.');
   }
-  cachedTools = { ytDlpPath, ffmpegPath };
+  cachedTools = { ytDlpPath, ffmpegPath, ffprobePath };
   return cachedTools;
 }
 
@@ -528,6 +530,56 @@ async function findNewestOutput(dir, sinceMs, extensions) {
   return newest;
 }
 
+function ytDlpEscape(s) {
+  return String(s || '').replace(/([&\\/])/g, '\\$1');
+}
+// Naming-dialog metadata. yt-dlp's --replace-in-metadata proved unreliable for
+// artist/album on the vendored build, so only the FILENAME is derived here;
+// the actual ID3 tagging happens in ffTagOutput() with ffmpeg after the file
+// finishes (copy-mode, no re-encode).
+function metadataArgs(metadata, isVideo) {
+  if (!metadata || typeof metadata !== 'object') return { renameTo: null, tags: null };
+  const song = String(metadata.song || '').trim();
+  const artist = String(metadata.artist || '').trim();
+  const album = String(metadata.album || '').trim();
+  const track = Math.max(0, Math.min(999, Number(metadata.track) || 0));
+  if (!song && !artist && !album && !track) return { renameTo: null, tags: null };
+  const renameTo = `${track ? String(track).padStart(2, '0') + ' - ' : ''}${artist ? artist + ' - ' : ''}${song || 'Unknown title'}`;
+  const tags = isVideo ? null : { title: song || null, artist: artist || null, album: album || null, track: track || null };
+  return { renameTo, tags };
+}
+
+// Rewrite ID3/MP4 tags on a finished download WITHOUT re-encoding. The cover
+// art yt-dlp embedded travels through as a copied stream.
+function ffTagOutput(ffprobePath, ffmpegPath, filePath, tags) {
+  return new Promise(resolve => {
+    execFile(ffprobePath, ['-v', 'error', '-show_entries', 'format_tags=title,artist,album,track', '-of', 'json', filePath], (err, stdout) => {
+      const existing = (!err && stdout) ? safeJson(stdout) : {};
+      const fmtTags = existing.format || {};
+      const pick = (key, fallback) => (String(fmtTags[key] || '').trim() || fallback);
+      const wantedTitle = tags.title || pick('title', 'Unknown title');
+      const wantedArtist = tags.artist || pick('artist', '');
+      const wantedAlbum = tags.album;
+      const wantedTrack = String(tags.track || '').trim();
+      const args = ['-y', '-i', filePath, '-map', '0', '-c', 'copy',
+        '-map_metadata', '-1',
+        '-metadata', `title=${wantedTitle}`,
+        '-metadata', `artist=${wantedArtist}`,
+        '-metadata', `album=${wantedAlbum || 'Single'}`,
+        '-metadata', wantedTrack ? `track=${wantedTrack}` : 'track=',
+        '-id3v2_version', '3'];
+      // The temp file must keep a real media extension (mp3/m4a/…) or ffmpeg
+      // can't pick a muxer ("Unable to choose an output format for '*.tagtmp'").
+      const tmp = filePath.replace(/(\.[A-Za-z0-9]{2,5})$/, '.tagtmp$1');
+      execFile(ffmpegPath, [...args, tmp], { windowsHide: true }, err2 => {
+        if (err2) return resolve(false);
+        fsp.rename(tmp, filePath).then(() => resolve(true)).catch(() => resolve(false));
+      });
+    });
+  });
+}
+function safeJson(s) { try { return JSON.parse(s); } catch { return {}; } }
+
 function startDownload(options) {
   return new Promise((resolve, reject) => {
     resolveTools().then(tools => {
@@ -546,6 +598,9 @@ function startDownload(options) {
       const metaArgs = !isVideo && options.albumTitle ? [
         '--parse-metadata', `album:(?s)^${String(options.albumTitle).replace(/([&\\/])/g, '\\$1')}$`,
       ] : [];
+      // Naming-dialog metadata: explicit song/artist/album/track override the
+      // YouTube ones, and the final file gets a friendly name.
+      const { renameTo, tags } = metadataArgs(options.metadata, isVideo);
       const args = [...youtubeCookieArgs(), ...baseYtDlpArgs(), '--ffmpeg-location', tools.ffmpegPath, ...formatArgs, ...metaArgs, '-o', path.join(outputDir, template), options.url];
       const child = spawn(tools.ytDlpPath, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
 
@@ -615,6 +670,27 @@ function startDownload(options) {
         item.finishedAt = Date.now();
         if (item.status === 'done' && !item.filePath) {
           item.filePath = await findNewestOutput(outputDir, item.startedAt, OUTPUT_PATH_RE);
+        }
+        // Naming dialog: tag the file (ffmpeg, copy-mode) then friendly-rename
+        // to "NN - Artist - Song". A tag/rename hiccup never fails the download.
+        if (item.status === 'done' && renameTo && item.filePath) {
+          try {
+            if (tags) await ffTagOutput(tools.ffprobePath, tools.ffmpegPath, item.filePath, tags);
+            let finalPath = item.filePath;
+            try {
+              const target = path.join(path.dirname(finalPath), renameTo + path.extname(finalPath));
+              let bump = 1;
+              let dest = target;
+              while (fs.existsSync(dest) && path.resolve(dest) !== path.resolve(finalPath)) {
+                dest = path.join(path.dirname(target), `${renameTo} (${bump})${path.extname(target)}`);
+                bump++;
+              }
+              if (path.resolve(dest) !== path.resolve(finalPath)) await fsp.rename(finalPath, dest);
+              finalPath = dest;
+            } catch { /* keep the original name */ }
+            item.filePath = finalPath;
+            if (tags) item.title = renameTo;
+          } catch { /* keep the original file rather than failing a finished download */ }
         }
         if (options.onProgress) options.onProgress(activeData());
         resolve(item);
