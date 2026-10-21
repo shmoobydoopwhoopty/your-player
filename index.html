@@ -2437,6 +2437,12 @@ function updateNpTransport(){const t=currentTrack();const playing_=playing;
  if(s){s.classList.toggle('selected',shuffle);s.innerHTML=svg('shuffle',20)}
  if(r){r.classList.toggle('selected',repeatMode>0);r.innerHTML=svg('repeat',17)+(repeatMode===2?'<span class="control-badge">1</span>':'')}
  if(p){p.innerHTML=svg(playing_?'pause':'play',26)}
+ // Prev/next were the two transport buttons nothing ever painted: the markup
+ // ships them empty, so they rendered as invisible 16×16 bystanders while
+ // shuffle/repeat/play painted themselves every state change.
+ const pr=$('#npPrev'),nx=$('#npNext');
+ if(pr)pr.innerHTML=svg('previous',20);
+ if(nx)nx.innerHTML=svg('next',20);
  const v=$('#npVolumeSlider');if(v&&document.activeElement!==v)v.value=String($('#volumeSlider').value)
 }
 const npForward=(npSel,mainSel)=>{$(npSel).addEventListener('click',event=>{const main=$(mainSel);if(!main||main.disabled)return;event.stopPropagation();main.click()})};
@@ -3873,7 +3879,23 @@ const SURFACE_OPACITY_DEFS=[
  {key:'textStrongOpacity',sliderId:'ccTextStrongOpacity',vars:['--text-strong'],color:'textStrong'},
  {key:'textDimOpacity',sliderId:'ccTextDimOpacity',vars:['--text-dim'],color:'textDim'},
  {key:'textFaintOpacity',sliderId:'ccTextFaintOpacity',vars:['--text-faint'],color:'textFaint'}];
+/* Bind the surface-opacity sliders ONCE at script eval. They used to be wired
+   only inside buildCustomColors() (i.e. the first time the Customize pop was
+   opened), but they live in the LAYOUT pop's "Surfaces & text" section, so
+   dragging them there did nothing except the rare case Customize had been
+   opened first. "Pop had been opened before" must never be a precondition for
+   a slider to respond. */
+function wireSurfaceOpacitySliders(){
+ for(const def of SURFACE_OPACITY_DEFS){const s=$('#'+def.sliderId);if(!s||s.dataset.opBound)continue;s.dataset.opBound='1';bindColorSlider('#'+def.sliderId,def.key)}
+ syncColorSliders();
+}
 const surfaceBases={};var surfaceBasesStale=true;var surfaceOpacityReady;
+wireSurfaceOpacitySliders();
+/* And honor previously saved opacities on every boot: customColors was just
+   restored from localStorage, but nothing called applyCustomColors() until the
+   user happened to touch another control, so a relaunch silently looked
+   factory-fresh again. */
+applyCustomColors();
 function markSurfacesStale(){surfaceBasesStale=true}
 function readSurfaceBases(){
  if(typeof getComputedStyle!=='function'){surfaceBasesStale=false;return}
@@ -4060,7 +4082,8 @@ function buildCustomColors(){
  if(toggle){toggle.checked=customColors.shadowOn!==false;toggle.addEventListener('change',()=>{customColors.shadowOn=toggle.checked;applyCustomColors();persistCustomColors()})}
  const shadowSlider=$('#ccShadowOpacity');
  if(shadowSlider)bindColorSlider('#ccShadowOpacity','shadowOp');
- for(const def of SURFACE_OPACITY_DEFS){const s=$('#'+def.sliderId);if(s)bindColorSlider('#'+def.sliderId,def.key)}
+ // The sliders bound once at script eval (opBound guard); just re-sync UI.
+ syncColorSliders();
  wireCustomColorPopovers();
  syncColorSliders();
  const reset=$('#ccReset');
