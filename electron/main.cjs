@@ -1833,28 +1833,168 @@ ipcMain.on('mini:command', (event, cmd, arg) => {
 // inside whenReady before createWindow. Running both together was verified
 // live: 0 rendered ad slots on a real watch page (uBlock alone leaves a
 // promoted feed item behind).
+// The custom updater applies only the flat channel files (index.html,
+// package.json, the .cjs modules) to resources/app, so an install updated
+// from a build that predated the extensions ships without any extension
+// folders under resources/vendor at all. When nothing is found anywhere,
+// fetch both extensions once into userData/adblock-extensions (a directory
+// the app can always write, no admin needed, and it survives app updates)
+// and load from there. Mirrors scripts/fetch-vendor.cjs.
+const ABY_STORE_ID = 'cmedhionkhpnakcndndgjdbohmhepckk';   // Adblock for YouTube (Chrome Web Store id)
+function adblockActiveExtensionsRoot() { return path.join(app.getPath('userData'), 'adblock-extensions'); }
+function adblockCandidateDirs(name) {
+  const devRoot = path.join(__dirname, '..', 'vendor', name);
+  const packagedRoot = path.join(process.resourcesPath || __dirname, 'vendor', name);
+  const provisionedRoot = path.join(adblockActiveExtensionsRoot(), name);
+  // Test/verification seam: force an install-layout probe through the
+  // download fallback by hiding the bundled candidates.
+  if (process.env.YOUR_PLAYER_ADBLOCK_FORCE_DOWNLOAD === '1') return [provisionedRoot];
+  return [packagedRoot, devRoot, provisionedRoot]; // packaged vendor is the canonical source when present
+}
+function findAdblockDir(name) {
+  for (const dir of adblockCandidateDirs(name)) {
+    try { if (fsSync.statSync(path.join(dir, 'manifest.json')).isFile()) return dir; } catch {}
+  }
+  return '';
+}
+function adblockDownload(url, dest) {
+  return new Promise((resolve, reject) => {
+    const get = (target, redirects) => {
+      if (redirects > 6) return reject(new Error('adblock fetch: too many redirects'));
+      https.get(target, { headers: { 'User-Agent': 'your-player' } }, res => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
+          return get(new URL(res.headers.location, target).toString(), redirects + 1);
+        }
+        if (res.statusCode !== 200) { res.resume(); return reject(new Error(`adblock fetch: HTTP ${res.statusCode} for ${target}`)); }
+        const file = fsSync.createWriteStream(dest);
+        res.pipe(file);
+        file.on('finish', () => file.close(() => resolve()));
+        file.on('error', err => { try { fsSync.unlinkSync(dest); } catch {} reject(err); });
+      }).on('error', reject);
+    };
+    get(url, 0);
+  });
+}
+function adblockFindManifestDir(dir) {
+  if (fsSync.statSync(path.join(dir, 'manifest.json'), { throwIfNoEntry: false })?.isFile()) return dir;
+  for (const entry of fsSync.readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const hit = adblockFindManifestDir(path.join(dir, entry.name));
+    if (hit) return hit;
+  }
+  return '';
+}
+// Calls PowerShell Expand-Archive: no JS unzip dependency in the main bundle,
+// and Windows always has it.
+function adblockUnzip(zip, destDir) {
+  const ps = require('node:child_process').spawnSync(
+    'powershell', ['-NoProfile', '-Command', `Expand-Archive -LiteralPath '${zip}' -DestinationPath '${destDir}' -Force`],
+    { stdio: 'ignore', timeout: 300000 },
+  );
+  if (ps.status !== 0) throw new Error('adblock fetch: Expand-Archive failed');
+  return adblockFindManifestDir(destDir);
+}
+async function adblockFetchUblock(destDir) {
+  let tag = '';
+  try {
+    let data = '';
+    await new Promise((resolve, reject) => {
+      const req = https.get('https://api.github.com/repos/gorhill/uBlock/releases/latest', { headers: { 'User-Agent': 'your-player' } }, res => {
+        if (res.statusCode !== 200) { res.resume(); return reject(new Error(`adblock fetch: GitHub API HTTP ${res.statusCode}`)); }
+        res.setEncoding('utf8');
+        res.on('data', c => { data += c; });
+        res.on('end', () => { try { tag = String(JSON.parse(data).tag_name || ''); resolve(); } catch (e) { reject(e); } });
+      });
+      req.on('error', reject);
+      req.setTimeout(15000, () => req.destroy(new Error('adblock fetch: GitHub API timeout')));
+    });
+  } catch {}
+  const version = tag.replace(/^v/, '');
+  const assetUrl = tag
+    ? `https://github.com/gorhill/uBlock/releases/download/${tag}/uBlock0_${version}.chromium.zip`
+    : 'https://github.com/gorhill/uBlock/releases/latest/download/uBlock0.chromium.zip';
+  const workDir = path.join(adblockActiveExtensionsRoot(), '.ubo-src-' + process.pid);
+  const zip = path.join(workDir, 'ubo.zip');
+  fsSync.mkdirSync(workDir, { recursive: true });
+  try {
+    await adblockDownload(assetUrl, zip);
+    fsSync.statSync(zip).size; // sanity: download completed
+    const found = adblockUnzip(zip, workDir + '-x');
+    if (!found) throw new Error('adblock fetch: manifest.json not found in the uBlock package');
+    // Must be the full MV2 build: MV3 Lite cannot block via webRequest.
+    const manifest = JSON.parse(fsSync.readFileSync(path.join(found, 'manifest.json'), 'utf8'));
+    if (manifest.manifest_version !== 2) throw new Error(`adblock fetch: uBlock shipped manifest_version ${manifest.manifest_version}, expected 2`);
+    const target = path.join(adblockActiveExtensionsRoot(), 'ublock-origin');
+    fsSync.rmSync(target, { recursive: true, force: true });
+    fsSync.renameSync(found, target);
+    try { fsSync.writeFileSync(path.join(target, '.appversion'), JSON.stringify({ tag })); } catch {}
+    return target;
+  } finally {
+    try { fsSync.rmSync(workDir, { recursive: true, force: true }); } catch {}
+    try { fsSync.rmSync(workDir + '-x', { recursive: true, force: true }); } catch {}
+  }
+}
+async function adblockFetchAby(destDir) {
+  const crxUrl = `https://clients2.google.com/service/update2/crx?response=redirect&acceptformat=crx2,crx3&prodversion=130.0.0.0&x=id%3D${ABY_STORE_ID}%26uc`;
+  const root = adblockActiveExtensionsRoot();
+  const workDir = path.join(root, '.aby-src-' + process.pid);
+  const crx = path.join(workDir, 'aby.crx');
+  fsSync.mkdirSync(workDir, { recursive: true });
+  try {
+    await adblockDownload(crxUrl, crx);
+    const size = fsSync.statSync(crx).size;
+    if (size < 100 * 1024) throw new Error(`adblock fetch: Adblock for YouTube crx looks too small (${size} bytes)`);
+    // CRX3: 'Cr24' magic, version 3, then a little-endian header length. The
+    // zip payload starts right after the 12-byte package header + header.
+    const buf = fsSync.readFileSync(crx);
+    if (buf.subarray(0, 4).toString() !== 'Cr24' || buf.readUInt32LE(4) !== 3) throw new Error('adblock fetch: not a CRX3 package');
+    const headerLen = buf.readUInt32LE(8);
+    const zip = path.join(workDir, 'aby.zip');
+    fsSync.writeFileSync(zip, buf.subarray(12 + headerLen));
+    const found = adblockUnzip(zip, workDir + '-x');
+    if (!found) throw new Error('adblock fetch: manifest.json not found in the Adblock for YouTube package');
+    const target = path.join(root, 'adblock-for-youtube');
+    fsSync.rmSync(target, { recursive: true, force: true });
+    fsSync.renameSync(found, target);
+    // Strip the store provenance folder: Electron's loader refuses a directory
+    // that contains _metadata.
+    try { fsSync.rmSync(path.join(target, '_metadata'), { recursive: true, force: true }); } catch {}
+    try { const m = JSON.parse(fsSync.readFileSync(path.join(target, 'manifest.json'), 'utf8')); fsSync.writeFileSync(path.join(target, '.appversion'), JSON.stringify({ tag: m.version })); } catch {}
+    return target;
+  } finally {
+    try { fsSync.rmSync(workDir, { recursive: true, force: true }); } catch {}
+    try { fsSync.rmSync(workDir + '-x', { recursive: true, force: true }); } catch {}
+  }
+}
+const ADBLOCK_FETCHERS = {
+  'ublock-origin': adblockFetchUblock,
+  'adblock-for-youtube': adblockFetchAby,
+};
 async function loadAdBlockers() {
   const { session } = require('electron');
   const ses = session.fromPartition('persist:youtube-signin');
-  const dirs = [
-    ['uba', path.join(__dirname, '..', 'vendor', 'ublock-origin')],
-    ['aby', path.join(__dirname, '..', 'vendor', 'adblock-for-youtube')],
-  ];
-  const packagedRoot = path.join(process.resourcesPath || __dirname, 'vendor');
-  dirs.push(['uba', path.join(packagedRoot, 'ublock-origin')]);
-  dirs.push(['aby', path.join(packagedRoot, 'adblock-for-youtube')]);
   let loaded = 0;
-  for (const [, dir] of dirs) {
-    let isDir = false;
-    try { isDir = fsSync.existsSync(path.join(dir, 'manifest.json')); } catch {}
-    if (!isDir) continue;
+  const report = {};
+  for (const name of ['ublock-origin', 'adblock-for-youtube']) {
+    const discovered = findAdblockDir(name);
+    let dir = discovered;
+    if (!dir) {
+      try {
+        dir = await ADBLOCK_FETCHERS[name]();
+        console.log(`adblock: fetched missing ${name} into ${dir}`);
+      } catch (error) { console.error(`adblock fetch failed for ${name} (continuing without it):`, error.message || error); }
+    }
+    if (!dir) { report[name] = 'missing'; continue; }
     try {
       const ext = await ses.extensions.loadExtension(dir, { allowFileAccess: true });
-      console.log(`adblock: loaded ${ext.name} ${ext.version} into the YouTube session`);
+      console.log(`adblock: loaded ${ext.name} ${ext.version} into the YouTube session (${discovered ? 'bundled' : 'downloaded'})`);
+      report[name] = ext.version;
       loaded += 1;
-    } catch (error) { console.error(`adblock load failed for ${dir}:`, error.message || error); }
+    } catch (error) { console.error(`adblock load failed for ${dir}:`, error.message || error); report[name] = 'load-error'; }
   }
-  return loaded;
+  require('./updater.cjs'); // keep the module alive once so IPC hooks register consistently when deferred
+  return { loaded, report };
 }
 
 app.whenReady().then(async () => {
