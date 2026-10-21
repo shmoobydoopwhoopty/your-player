@@ -3248,14 +3248,23 @@ function ensureDownloaderWebview(){
  dlWebview=persistent;
  if(dlWebview.dataset.wired)return;
  dlWebview.dataset.wired='1';
- dlWebview.addEventListener('dom-ready',()=>{
+ // Inject the in-page navigation probe fresh on every page load.
+ const injectProbe=()=>{
   try{dlWebview.executeJavaScript(
     'document.addEventListener(\'yt-navigate-finish\',()=>{try{const u=location.href;const m=/[?&]v=([\\w-]{11})/.exec(u)||/\/(?:shorts|live)\\/([\\w-]{11})/.exec(u);const t=document.title||\'\';window.__dlYT={url:u,videoId:m&&m[1]?m[1]:\'\',title:t}}catch{}});'
     +'window.addEventListener(\'popstate\',()=>{try{const m=/[?&]v=([\\w-]{11})/.exec(location.href)||/\/(?:shorts|live)\\/([\\w-]{11})/.exec(location.href);window.__dlYT={url:location.href,videoId:m&&m[1]?m[1]:\'\',title:document.title||\'\'}}catch{}});'
     +'\'ready\'').catch(()=>{});
   }catch{}
-  pollDownloaderVideo();
- });
+ };
+ dlWebview.addEventListener('dom-ready',injectProbe);
+ // The webview boots hidden with src=youtube.com at app startup, so by the
+ // time the Downloader tab first wires it (often minutes later) the page's
+ // dom-ready has long since fired — listening here would never fire again
+ // and the video detection poll would never start, leaving the Download
+ // video/MP3 buttons hidden on EVERY video. Start the poll immediately and
+ // also re-sync on any fresh page load.
+ pollDownloaderVideo();
+ try{dlWebview.getWebContents?.()?.executeJavaScript('document.readyState').then(r=>{if(r==='complete')injectProbe()}).catch(()=>{})}catch{}
 }
 // Position the persistent webview over the Downloader tab's slot, or hide it
 // when any other tab is active. `fixed` + getBoundingClientRect keeps the
