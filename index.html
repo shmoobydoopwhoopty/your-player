@@ -3025,8 +3025,27 @@ function beginCrossfadeTo(index){
  // so the tail's live position keeps the song playing without a second voice.
  const inTailWindow=fromLiveAt>0&&Number.isFinite(fromLiveDur)&&fromLiveDur>0&&fromLiveAt<fromLiveDur&&fromLiveAt>=fromLiveDur-crossfadeSeconds-0.6;
  const tailStart=inTailWindow?fromLiveAt:Math.max(fromLiveAt,Number.isFinite(fromLiveDur)?fromLiveDur:0);
- const cloneStart=()=>{clone.play().catch(()=>{});try{clone.currentTime=tailStart}catch{}};
- if(clone.readyState>=2)cloneStart();else clone.addEventListener('loadeddata',cloneStart,{once:true});
+ const cloneStart=()=>{try{clone.currentTime=tailStart}catch{}clone.play().catch(()=>{})};
+ if(clone.readyState>=1)cloneStart();else clone.addEventListener('loadeddata',cloneStart,{once:true});
+ /* Asymmetric fade (the tighter-opinion): the old song's tail was the LOUDER
+    voice for the whole overlap - it ran at full volume until the new song
+    became audible, and its ramp-down clock never started until the new song
+    actually began (URL + metadata + play), so at short settings the last
+    seconds of the old track spilled over the next song's begin. Now the old
+    tail owns its own duck clock that starts at the handoff INSTANT: it ramps
+    to silence over a third of the slider window (floor .4s), clearing the
+    tail long before/at the new song's first audible moment, whatever the
+    new song's load latency turns out to be. The main element keeps the full
+    crossfadeSeconds fade-in for a smooth entrance. */
+ const oldFade=crossfadeDuckLen();
+ (async()=>{
+  const steps=Math.max(8,Math.round(oldFade*1000/60)),stepMs=oldFade*1000/steps;
+  for(let i=1;i<=steps;i++){
+   await new Promise(r=>setTimeout(r,stepMs));
+   if(crossfadeClone!==clone)return; // superseded mid-fade: playAt disposed this clone
+   if(!crossfadeClone.paused)try{clone.volume=Math.max(0,Math.min(1,vol()*(1-i/steps)))}catch{} // while paused, hold the tail's current level so resume sounds the same, then keep ramping
+  }
+ })();
  (async()=>{
   try{
    const url=desktop&&t.file&&t.file.path?await desktop.getPlayableUrl(t.file.path):URL.createObjectURL(t.file);
@@ -3043,7 +3062,8 @@ function beginCrossfadeTo(index){
     await new Promise(r=>setTimeout(r,stepMs));
     if(crossfadeClone!==clone)return; // superseded mid-fade
     try{audio.volume=Math.max(0,Math.min(1,vol()*(i/steps)))}catch{}
-    try{clone.volume=Math.max(0,Math.min(1,vol()*(1-i/steps)))}catch{}
+    // The old tail's volume is owned by its own faster duck loop above; the
+    // main element's ramp must not slow it back down.
    }
    try{audio.volume=Math.max(0,Math.min(1,vol()))}catch{}
    playAtVolumeNormRestart=true;
@@ -3079,12 +3099,21 @@ function crossfadeTargetIndex(){
  if(current+1<tracks.length)return current+1;
  return repeatMode===1?0:-1;
 }
+/* How much of the window the old song's tail ducks through (see the duck
+   loop in beginCrossfadeTo); one shared definition for the fade and the
+   pre-trigger so they never drift apart. */
+function crossfadeDuckLen(){return Math.max(0.25,crossfadeSeconds*0.18)}
 audio.addEventListener('timeupdate',()=>{
  if(crossfadeSeconds<=0||crossfadeBusy||!playing||seekDragging||repeatMode===2||!tracks[current]||!audio.src)return;
  const d=Number(audio.duration);
- if(!Number.isFinite(d)||d<=crossfadeSeconds+0.6)return; // songs shorter than the fade window crossfade via the ended fallback
+ const duckLen=crossfadeDuckLen();
+ if(!Number.isFinite(d)||d<=duckLen+0.4)return; // songs shorter than the duck window crossfade via the ended fallback
  const remaining=d-audio.currentTime;
- if(remaining<=0||remaining>crossfadeSeconds+0.6)return;
+ /* Fire when only the duck window (+ a small slop for event granularity) is
+    left: the old song then plays essentially to its true end instead of
+    ending crossfadeSeconds early while the tail sits muted. The new song's
+    fade-in length still honors the full slider value from this point. */
+ if(remaining<=0||remaining>duckLen+0.25)return;
  const idx=crossfadeTargetIndex();
  if(idx>=0&&idx!==current)beginCrossfadeTo(idx);
 });
