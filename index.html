@@ -3217,14 +3217,18 @@ let dlWebview=null;
 // youtube.com site. Users search inside it like they would in a browser.
 // Detecting the video they are watching lets the Download buttons appear.
 function parseYouTubeVideoUrl(u){
- try{const parsed=new URL(String(u||''));if(!/^www\.youtube\.com$/.test(parsed.hostname))return '';if(parsed.pathname!=='/watch')return '';const v=parsed.searchParams.get('v');return v&&/^[\w-]{11}$/.test(v)?v:''}catch{return ''}}
+ try{const parsed=new URL(String(u||''));const isYT=/^(?:www|m)\.youtube\.com$/.test(parsed.hostname);if(!isYT)return '';const v=parsed.pathname==='/watch'?parsed.searchParams.get('v'):/\/\/(?:shorts|live)\/[\w-]{11}$/.test(parsed.pathname)?parsed.pathname.split('/').pop():'';return v&&/^[\w-]{11}$/.test(v)?v:''}catch{return ''}}
+// Watch-page URL shapes the downloader understands: /watch?v=ID, plus Shorts
+// (/shorts/ID) and live VODs (/live/ID) which are full videos with no ?v=.
+function youTubeVideoIdFromUrl(u){
+ try{const s=String(u||'');const m=/[?&]v=([\w-]{11})/.exec(s);if(m&&m[1])return m[1];const sh=/\/(?:shorts|live)\/([\w-]{11})/.exec(s);if(sh&&sh[1]&&/youtube\.com\//.test(s))return sh[1];return ''}catch{return ''}}
 function currentVideoState(){return{videoId:dlWebview?.dataset?.videoId||'',url:dlWebview?.dataset?.videoUrl||'',title:dlWebview?.dataset?.videoTitle||''}}
 function syncDownloadButtons(){
  const actions=$('#dlYtActions');if(!actions)return;
  // Context-aware overlay: the video buttons appear only while actually
  // watching a video; on a playlist page the playlist button takes over.
  const url=String(dlWebview?.getURL?.()||'');
-  const isWatch=/youtube\.com\/watch/.test(url);
+  const isWatch=/youtube\.com\/(watch|shorts|live)/.test(url);
   const isPlaylist=/youtube\.com\/playlist/.test(url)||/[?&]list=/i.test(url)&&!/\bv=[\w-]{11}\b/.test(url);
   const videoId=(dlWebview?.dataset?.videoId||'');
  const v=isWatch&&videoId;
@@ -3246,8 +3250,8 @@ function ensureDownloaderWebview(){
  dlWebview.dataset.wired='1';
  dlWebview.addEventListener('dom-ready',()=>{
   try{dlWebview.executeJavaScript(
-    'document.addEventListener(\'yt-navigate-finish\',()=>{try{const u=location.href;const m=/[?&]v=([\\w-]{11})/.exec(u);const t=document.title||\'\';window.__dlYT={url:u,videoId:m&&m[1]?m[1]:\'\',title:t}}catch{}});'
-    +'window.addEventListener(\'popstate\',()=>{try{const m=/[?&]v=([\\w-]{11})/.exec(location.href);window.__dlYT={url:location.href,videoId:m&&m[1]?m[1]:\'\',title:document.title||\'\'}}catch{}});'
+    'document.addEventListener(\'yt-navigate-finish\',()=>{try{const u=location.href;const m=/[?&]v=([\\w-]{11})/.exec(u)||/\/(?:shorts|live)\\/([\\w-]{11})/.exec(u);const t=document.title||\'\';window.__dlYT={url:u,videoId:m&&m[1]?m[1]:\'\',title:t}}catch{}});'
+    +'window.addEventListener(\'popstate\',()=>{try{const m=/[?&]v=([\\w-]{11})/.exec(location.href)||/\/(?:shorts|live)\\/([\\w-]{11})/.exec(location.href);window.__dlYT={url:location.href,videoId:m&&m[1]?m[1]:\'\',title:document.title||\'\'}}catch{}});'
     +'\'ready\'').catch(()=>{});
   }catch{}
   pollDownloaderVideo();
@@ -3283,9 +3287,9 @@ function pollDownloaderVideo(){
  try{
    if(dlWebview){
      const url=String(dlWebview.getURL?.()||'');
-     const isWatch=/youtube\.com\/watch/.test(url);
+     const isWatch=/youtube\.com\/(watch|shorts|live)/.test(url);
      dlWebview.dataset.watched=isWatch?'1':'0';
-     const m=/[?&]v=([\w-]{11})/.exec(url);
+     const m=/[?&]v=[\w-]{11}/.test(url)||/\/(?:shorts|live)\/[\w-]{11}/.test(url)?[null,youTubeVideoIdFromUrl(url)]:null;
      if(m&&m[1]){dlWebview.dataset.videoId=m[1];dlWebview.dataset.videoUrl=url}
      else{dlWebview.dataset.videoId='';dlWebview.dataset.videoUrl=''}
      try{const t=dlWebview.getTitle();if(t)dlWebview.dataset.videoTitle=t}catch{}
