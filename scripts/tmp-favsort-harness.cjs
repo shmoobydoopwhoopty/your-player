@@ -66,12 +66,13 @@ const PROBE = `JSON.stringify((()=>{
       :((table.compareDocumentPosition(host)&2)?'collections-before-table':'same-node?'))
     : (host?'table-missing':'host-missing');
   const headings=[...(host?host.querySelectorAll('.section-heading h3'):[])].map(h=>h.textContent.trim());
+  const headsAll=[...document.querySelectorAll('.section-heading h3')].map(h=>h.textContent.trim());
   const albumNames=[...(host?host.querySelectorAll('#favCollectionsHost ~ * .album-grid .album-title,#favCollectionsHost .album-grid .album-title'):[...document.querySelectorAll('.album-grid .album-title')])].map(e=>e.textContent.trim());
   const cardAlbums=host?([...host.querySelectorAll('.album-grid .album-title')].map(e=>e.textContent.trim())):null;
   const cardArtists=host?([...host.querySelectorAll('.artist-grid .artist-name')].map(e=>e.textContent.trim())):null;
   const rows=[...document.querySelectorAll('#trackBody .track-title')].map(e=>e.textContent.trim());
   const label=(document.querySelector('#sortButton')||{}).textContent||'';
-  return {order,headings,cardAlbums,cardArtists,rows,label};
+  return {order,headings,headsAll,cardAlbums,cardArtists,rows,label};
 })())`;
 
 async function pick(key, dir) {
@@ -126,6 +127,7 @@ app.whenReady().then(async () => {
     line('album:', JSON.stringify(p));
     assert(p.order === 'collections-before-table', 'with Album name sort the collections are at the top');
     assert(p.headings[0] === 'Favorite albums', 'album section leads the collections block');
+    assert(p.headsAll[0] === 'Your favorites', 'the favorites heading (with Play/Shuffle/sort) stays above everything');
     assert(p.cardAlbums.join() === 'A Roads,C Roads', 'album cards alphabetical ascending');
     assert(p.label.includes('Album name'), 'sort button reads Album name');
 
@@ -142,6 +144,7 @@ app.whenReady().then(async () => {
     line('artist:', JSON.stringify(p));
     assert(p.order === 'collections-before-table', 'with Artist name sort the collections are at the top');
     assert(p.headings[0] === 'Favorite artists', 'artist section leads the collections block');
+    assert(p.headsAll[0] === 'Your favorites', 'the favorites heading still stays above everything');
     assert(p.cardArtists.join() === 'Ava,Mia', 'artist cards alphabetical ascending');
     assert(p.rows.join() === 'Gamma,Alpha,Beta', 'song rows follow artist name ascending (Ava group first)');
 
