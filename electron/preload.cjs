@@ -55,6 +55,7 @@ contextBridge.exposeInMainWorld('afterglowDesktop', {
   searchYouTube: query => ipcRenderer.invoke('player:search', query),
   searchCollections: query => ipcRenderer.invoke('player:search-collections', query),
   expandCollection: url => ipcRenderer.invoke('player:expand-collection', url),
+  playlistInfo: url => ipcRenderer.invoke('player:playlist-info', url),
   getPreviewStream: videoId => ipcRenderer.invoke('player:preview-stream', videoId),
   searchSuggestions: query => ipcRenderer.invoke('player:suggest', query),
   startDownload: payload => ipcRenderer.invoke('player:download', payload),

@@ -846,6 +846,10 @@ ipcMain.handle('player:expand-collection', async (_event, url) => {
   return lists[0] || null;
 });
 ipcMain.handle('player:suggest', (_event, query) => downloader.fetchYouTubeSuggestions(query));
+// Playlist downloader tab: paste a playlist link, get back the tracks plus the
+// inferred album/artist/song names (editable in the preview) for a batch
+// download that tags every MP3 correctly.
+ipcMain.handle('player:playlist-info', async (_event, url) => downloader.playlistAlbumInfo(url));
 
 ipcMain.handle('player:download', async (event, payload) => {
   const url = typeof payload?.url === 'string' ? payload.url.trim() : '';

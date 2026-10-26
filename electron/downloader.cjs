@@ -331,6 +331,139 @@ async function expandCollection(url) {
   return [{ ...collection, tracks }];
 }
 
+// ── Playlist → album metadata inference ─────────────────────────────────────
+// A pasted playlist link is most likely a full-album upload: the playlist
+// title names the release ("Artist – Album (Year)"), the uploader is the
+// artist, and each video title looks like "Artist - Song (Official Audio)".
+// These pure helpers turn that sketch into real album/artist/song metadata
+// the tracks get tagged with, so the sweep lands as a proper album in library.
+
+const JUNK_TITLE_RE = /\b(?:official( (music |lyric(s)? )?(video|audio|visualizer|film))?|music video|lyric(s)? video|lyrics?|video oficial|audio|video|visualizer|full[ -]album|complete album|album playlist|album with lyrics|full[ -]playlist|remaster(ed)?( version)?( (19|20)\d{2})?|hd|hq|4k|explicit|m\/v|mv|topic|sub espa\w+|high quality|premiere galaxia)\b/i;
+const JUNK_ONLY_RE = /^(?:\(? ?(?:19|20)\d{2} ?\)?)$/i;
+
+function isJunkGroup(inner) {
+  return JUNK_TITLE_RE.test(inner) || JUNK_ONLY_RE.test(inner);
+}
+
+// Turn one video title into a bare song name: peel trailing bracket groups
+// made of junk words (keeping useful ones like "(feat. Ada Lea)"), drop a
+// leading copy of the artist's name, and trim leftover quotes/whitespace.
+function cleanSongTitle(rawTitle, artist) {
+  const original = String(rawTitle || '').trim();
+  let text = original;
+  for (;;) {
+    const m = text.match(/\s*[\(\[\{]\s*([^\)\]}]{0,80})[\)\]\}]\s*$/);
+    if (m && isJunkGroup(m[1])) { text = text.slice(0, m.index).trim(); continue; }
+    break;
+  }
+  if (artist) {
+    const escaped = artist.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    text = text.replace(new RegExp('^' + escaped + '\\s*[-\u2013\u2014|:]\\s*'), '').trim();
+  }
+  // Un-bracketed junk tails too: "Song - 4K Music Video" loses "4K Music Video".
+  let segments = text.split(/\s+[-\u2013\u2014|]\s+/);
+  while (segments.length > 1 && isJunkGroup(segments[segments.length - 1])) segments.pop();
+  text = segments.join(' - ').trim();
+  text = text.replace(/["\u201C\u201D]+/g, '').trim()
+    .replace(/\s*[-\u2013\u2014|:]\s*$/, '').trim();
+  return text || original || 'Untitled';
+}
+
+// Infer album + artist from a playlist title / uploader / track titles.
+// Returns { artist, album, year, songs: [ bare song names ] }.
+function inferAlbumMeta(rawPlaylistTitle, rawChannel, rawTrackTitles) {
+  const trackTitles = (rawTrackTitles || []).map(t => String(t || ''));
+  let album = String(rawPlaylistTitle || '').trim()
+    .replace(/[\(\[\{]\s*(?:19|20)\d{2}\s*[\)\]\}]/g, ' ') // standalone years
+    .replace(/\b(?:full[ -]?album|official album|album playlist|complete album|album with lyrics|full[ -]?playlist|playlist|album|remaster(ed)?|hd|hq|4k|official|audio|video|download)\b/ig, ' ')
+    .replace(/\s*[\[\(\{]\s*[\]\)\}]/g, ' ') // brackets emptied by the strip above
+    .replace(/["\u201C\u201D]/g, ' ')
+    .replace(/\s+/g, ' ').trim().replace(/^[-\u2013\u2014|:,.]+/, '').replace(/[-\u2013\u2014|:,.]+$/, '').trim();
+  const yearMatch = String(rawPlaylistTitle || '').match(/(?:19|20)\d{2}/);
+  const year = yearMatch ? yearMatch[0] : '';
+
+  // 1. "Artist - Topic" uploader channels are YouTube's auto-generated artist
+  //    profiles: the strongest artist signal there is.
+  let artist = '';
+  const channel = String(rawChannel || '').trim();
+  if (/-\s*topic$/i.test(channel)) artist = channel.replace(/-\s*topic$/i, '').trim();
+  // 2. Over half the track titles starting with the same "X - " prefix means
+  //    X is the artist, even if the uploader is some data channel.
+  if (!artist && trackTitles.length) {
+    const counts = new Map();
+    for (const t of trackTitles) {
+      const parts = t.split(/\s+[-\u2013\u2014|:]\s+/);
+      if (parts.length > 1 && parts[0].trim() && parts[0].trim().length <= 40) {
+        const key = parts[0].trim().toLowerCase();
+        const hit = counts.get(key) || { count: 0, label: parts[0].trim() };
+        hit.count++;
+        counts.set(key, hit);
+      }
+    }
+    let best = null;
+    for (const hit of counts.values()) if (!best || hit.count > best.count) best = hit;
+    const need = Math.max(2, Math.ceil(trackTitles.length * 0.5));
+    if (best && best.count >= need) artist = best.label;
+  }
+  // 3. "Artist - Album" split inside the playlist title itself, unless the
+  //    left side is a generic aggregator name ("Various", "Playlist"…).
+  if (!artist) {
+    const parts = album.split(/\s+[-\u2013\u2014|]\s+/);
+    if (parts.length > 1) {
+      const candidate = parts[0].trim();
+      if (candidate && !/^(?:various(?: artists)?|playlist|compilation|music|full album|best of|topic)$/i.test(candidate)) artist = candidate;
+      album = parts.slice(1).join(' - ').trim();
+    }
+  }
+  // 4. The uploader itself, unless it is a generic aggregator name.
+  if (!artist && channel && !/^(?:various(?: artists)?|playlist|compilation|music|full album|best of|topic)$/i.test(channel)) {
+    artist = channel;
+  }
+  album = album || String(rawPlaylistTitle || '').trim() || 'Unknown album';
+  return {
+    artist: artist || 'Unknown artist',
+    album,
+    year,
+    songs: trackTitles.map(t => cleanSongTitle(t, artist || '')),
+  };
+}
+
+// One IPC-sized call: expand a playlist link into its tracks AND the inferred
+// album/artist/song metadata the renderer shows for a quick edit + downloads.
+async function playlistAlbumInfo(url) {
+  const clean = String(url || '').trim();
+  if (!/[?&]list=([\w-]+)/i.test(clean) && !/music\.youtube\.com/i.test(clean) && !/^MPRE[\w-]+$/.test(clean)) {
+    throw new Error('Paste a YouTube playlist link: youtube.com/playlist?list=… or a music.youtube.com album link.');
+  }
+  const lists = await expandCollection(clean);
+  const collection = lists && lists[0];
+  if (!collection || !Array.isArray(collection.tracks) || !collection.tracks.length) {
+    throw new Error('Could not read any tracks from that playlist.');
+  }
+  const meta = inferAlbumMeta(collection.title, collection.channel, collection.tracks.map(t => t.title));
+  const thumbnail = (collection.tracks[0] && collection.tracks[0].thumbnail) || '';
+  const tracks = collection.tracks.map((track, index) => ({
+    id: track.id,
+    url: track.url || `https://www.youtube.com/watch?v=${track.id}`,
+    title: track.title,
+    channel: track.channel || '',
+    duration: track.duration,
+    track: index + 1,
+    song: meta.songs[index] || track.title,
+  }));
+  return {
+    url: collection.url || clean,
+    playlistTitle: collection.title,
+    thumbnail,
+    isAlbum: Boolean(collection.isAlbum),
+    album: meta.album,
+    artist: meta.artist,
+    year: meta.year,
+    trackCount: tracks.length,
+    tracks,
+  };
+}
+
 async function searchYouTube(query) {
   const trimmed = String(query || '').trim();
   if (!trimmed) return [];
@@ -782,6 +915,9 @@ async function ensureDirectories() {
 module.exports = {
   searchYouTubeCollections,
   expandCollection,
+  playlistAlbumInfo,
+  inferAlbumMeta,
+  cleanSongTitle,
   setYouTubeCookies,
   resolveTools,
   resetToolsCache,
