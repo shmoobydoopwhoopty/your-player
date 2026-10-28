@@ -2450,11 +2450,15 @@ editForm.addEventListener('submit',async event=>{
  let savedCount=0;try{
  for(const t of targets){
   const payload={path:t.file.path,title:type==='song'?(newTitle||t.title):t.title,artist:albumKeepsArtists?t.artist:newArtist,album:type==='artist'?t.album:newAlbum,trackNo:type==='song'?newTrackNo:null};
-  let ok=true;
-  try{if(desktop&&desktop.writeTrackTags){await desktop.writeTrackTags(payload)}else ok=false}catch(error){ok=false;console.warn('Tag write failed:',error)}
+  let ok=true;      try{if(desktop&&typeof desktop.writeTrackTags==='function'){await desktop.writeTrackTags(payload)}else ok=false}catch(error){ok=false;console.warn('Tag write failed:',error)}
   if(ok){savedCount++;if(type==='song')t.userEdited=true;else targets.forEach(x=>x.userEdited=true)}
  }
  if(editArtDirty){
+  // Put the new picture into the library state right away: parseTrackDetails
+  // for the freshly written file would otherwise run ahead of any throttled
+  // (file-watcher style) re-read and answer artUrl with the OLD embedded
+  // cover, overwriting what we just wrote.
+  try{if(editArtBlob)await artPut(track.id,new Blob([editArtBlob.bytes],{type:editArtBlob.mime||'image/jpeg'}));else await artPut(track.id,null)}catch{}
   try{
    if(editArtBlob&&desktop&&desktop.writeTrackArt){
     // Album/artist edits apply the picture to every file in scope, so the
@@ -2471,7 +2475,14 @@ editForm.addEventListener('submit',async event=>{
  }
  if(newNotes){for(const t of targets)if(!t.notes)t.notes=newNotes}
  albumArtworkCache.clear();
- for(const t of targets){t.artUrl=null;t.art=null;t.art=makePlaceholder(`${t.artist} · ${t.album}`,t.title,hash(`${t.artist}${t.album}`));t.enrichDone=false;t.artFullChecked=false;t.enriched=false}
+ for(const t of targets){t.artUrl=null;t.art=null;if(editArtDirty&&editArtBlob!==undefined&&t===track)continue;t.art=t.art||makePlaceholder(`${t.artist} · ${t.album}`,t.title,hash(`${t.artist}${t.album}`));t.enrichDone=false;t.artFullChecked=false;t.enriched=false}
+ if(editArtDirty&&track){
+  // Update the edited song's library state with the new picture right away so
+  // the UI shows it immediately (the file write happened above, deduped by
+  // main.fileWrite against same bytes).
+  try{const url=URL.createObjectURL(new Blob([editArtBlob.bytes],{type:editArtBlob.mime||'image/jpeg'}));track.artUrl=url;track.art=url;track.artFullBlob=null;track.artFullChecked=false;try{fullArtUrlCache.delete(track.id)}catch{}}
+  catch(error){console.warn('Could not apply the new cover to the library state:',error)}
+ }
  await adoptAlbumArtwork(targets,prevAlbumInfo)
  enqueueEnrichment(targets)
  closeEditModal();
