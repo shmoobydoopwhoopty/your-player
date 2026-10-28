@@ -2217,7 +2217,50 @@ async function changeAlbumArtwork(albumName){
   else showToast(`New art applied to all ${targets.length} songs in the album`);
  }catch(error){console.warn('Album artwork change failed:',error);showToast('Could not change the album artwork')}
 }
-function coverLookupQuery(){
+// ── Album-cover adoption ──
+// When an edit moves song(s) into an album the library already knows - one
+// with an established cover, whether a custom album picture or the artwork
+// the sibling songs carry - the newcomer takes on that cover instead of
+// keeping the picture from its old album/file.
+async function adoptAlbumArtwork(targets,prev){
+ let persist=false;
+ for(let i=0;i<targets.length;i++){const t=targets[i];const before=prev&&prev[i];
+  if(!before)continue;
+  if(String(before.artist||'').toLocaleLowerCase()===String(t.artist||'').toLocaleLowerCase()&&String(before.album||'').toLocaleLowerCase()===String(t.album||'').toLocaleLowerCase())continue;
+  const artistL=String(t.artist||'').toLocaleLowerCase(),albumL=String(t.album||'').toLocaleLowerCase();
+  if(!albumL||albumL==='unknown album')continue;
+  // A sibling already carrying the album's cover: same artist+album first,
+  // otherwise the same album name when it belongs to a single artist.
+  let donor=tracks.find(x=>x!==t&&(x.album||'').toLocaleLowerCase()===albumL&&(x.artist||'').toLocaleLowerCase()===artistL&&x.artUrl);
+  if(!donor){const nameGroup=tracks.filter(x=>x!==t&&(x.album||'').toLocaleLowerCase()===albumL);const arts=new Set(nameGroup.map(x=>(x.artist||'').toLocaleLowerCase()));if(arts.size===1)donor=nameGroup.find(x=>x.artUrl)}
+  if(!donor)continue;
+  const albumKey=`${artistL}\u0000${albumL}`;
+  let blob=null;
+  try{blob=await artGet(`hires:${artistL}\u0000${albumL}`)}catch{}
+  if(!(blob instanceof Blob)&&donor.artFullBlob instanceof Blob&&donor.artFullBlob.size)blob=donor.artFullBlob;
+  if(!(blob instanceof Blob)){try{blob=await artGetFull(donor.id)}catch{}}
+  if(!(blob instanceof Blob)){try{blob=await artGet(donor.id)}catch{}}
+  try{
+   if(blob&&blob.size){
+    const url=URL.createObjectURL(blob);
+    albumArtworkCache.set(albumKey,url);
+    t.artUrl=url;t.art=url;t.artFullBlob=blob;t.artFullChecked=true;
+    try{await artPut(t.id,blob)}catch{}
+    try{await artPutFull(t.id,blob)}catch{}
+    try{fullArtUrlCache.delete(t.id)}catch{}
+    // Mirror the changeAlbumArtwork behavior: write the cover into the file
+    // itself, so the newcomer matches its new album on disk as well.
+    try{if(desktop&&typeof desktop.writeTrackArt==='function'&&t.file&&t.file.path)await desktop.writeTrackArt({path:t.file.path,bytes:new Uint8Array(await blob.arrayBuffer()),mime:blob.type||'image/jpeg'})}catch(we){console.warn('Could not write the adopted cover into the file:',we)}
+    persist=true;
+   }else{
+    // No stored blob (session-only art); at least borrow the cover for now.
+    const url=donor.artUrl||donor.art;
+    if(url){t.artUrl=url;t.art=url;persist=true}
+   }
+  }catch(e){console.warn('Album cover adoption failed:',e)}
+ }
+ if(persist){try{persistLibrary()}catch{}}
+}function coverLookupQuery(){
  const artist=($('#editArtist')&&$('#editArtist').value.trim())||'';
  const album=($('#editAlbum')&&$('#editAlbum').value.trim())||'';
  return `${artist} ${album} album cover`.trim()||'album cover';
@@ -2397,7 +2440,7 @@ editForm.addEventListener('submit',async event=>{
  if(!newArtist){showToast('The artist name is needed');return}
  const oldAlbumKey=`${track.artist.toLocaleLowerCase()}|||${track.album.toLocaleLowerCase()}`;
  const updates={title:newTitle,artist:newArtist,album:newAlbum,trackNo:newTrackNo};
- const targets=type==='album'?tracks.filter(t=>(t.album||'').toLocaleLowerCase()===(track.album||'').toLocaleLowerCase()):type==='artist'?tracks.filter(t=>t.artist===track.artist):[track];const albumKeepsArtists=type==='album'&&albumArtistsOf(targets).length>1;
+ const targets=type==='album'?tracks.filter(t=>(t.album||'').toLocaleLowerCase()===(track.album||'').toLocaleLowerCase()):type==='artist'?tracks.filter(t=>t.artist===track.artist):[track];const albumKeepsArtists=type==='album'&&albumArtistsOf(targets).length>1;const prevAlbumInfo=targets.map(t=>({artist:t.artist,album:t.album}));
  const saveBtn=$('#editSave');saveBtn.disabled=true;saveBtn.textContent='Saving…';
  let savedCount=0;try{
  for(const t of targets){
@@ -2424,6 +2467,7 @@ editForm.addEventListener('submit',async event=>{
  if(newNotes){for(const t of targets)if(!t.notes)t.notes=newNotes}
  albumArtworkCache.clear();
  for(const t of targets){t.artUrl=null;t.art=null;t.art=makePlaceholder(`${t.artist} · ${t.album}`,t.title,hash(`${t.artist}${t.album}`));t.enrichDone=false;t.artFullChecked=false;t.enriched=false}
+ await adoptAlbumArtwork(targets,prevAlbumInfo)
  enqueueEnrichment(targets)
  closeEditModal();
  const sameAlbumCount=tracks.filter(t=>t.artist===newArtist&&t.album===newAlbum).length;
