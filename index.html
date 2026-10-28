@@ -2260,7 +2260,12 @@ async function adoptAlbumArtwork(targets,prev){
   }catch(e){console.warn('Album cover adoption failed:',e)}
  }
  if(persist){try{persistLibrary()}catch{}}
-}function coverLookupQuery(){
+}
+// Cover-lookup state was lost in a refactor (references survived, the
+// declaration did not), which made the Lookup cover button throw instead of
+// opening the Google Images picker. Restored.
+const clState={open:false,phase:'web',selectedUrl:'',pickedBytes:null,pickedMime:'',pickedUrl:'',cropScale:1,cropMin:1,offsetX:0,offsetY:0,drag:null};
+function coverLookupQuery(){
  const artist=($('#editArtist')&&$('#editArtist').value.trim())||'';
  const album=($('#editAlbum')&&$('#editAlbum').value.trim())||'';
  return `${artist} ${album} album cover`.trim()||'album cover';
